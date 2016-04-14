@@ -1,0 +1,233 @@
+\documentclass[a4paper,twocolumn]{article}
+
+\usepackage{palatino}
+\usepackage{amsthm}
+
+\begin{document}
+
+\title{The Dots-and-Boxes Game}
+\author{Andrew Medworth (\texttt{https://github.com/amdw})}
+\date{\today}
+\maketitle
+
+\begin{abstract}
+  An introduction to the game dots-and-boxes, and the more general game
+  strings-and-coins. Aims to explain why the game is interesting, and discuss
+  some strategic techniques, giving mathematical proofs where appropriate.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}
+
+\subsection{The rules of dots-and-boxes}
+
+Dots-and-boxes is a game for two players.
+
+\begin{enumerate}
+  \item The game is played on a rectangular grid of dots.
+  \item The players take it in turns to draw a line of their choice
+    connecting a pair of horizontally or vertically adjacent dots.
+  \item If a player completes a $1 \times 1$ box, she scores a point
+    (normally recorded by writing her initial inside it) and
+    \emph{must} make another move: a player's turn only comes to an
+    end when she makes a move which does not complete a box.
+  \item The game ends when all boxes have been completed; the winner
+    is the player who has completed more boxes.
+\end{enumerate}
+
+An example game is shown in Figure TODO.
+
+The rules of dots-and-boxes are very simple: the rules can be learned in
+moments, and it can be played purely with pencil and paper. The size of the
+board can be varied to alter the simplicity and length of the game: the board
+with $5 \times 5$ boxes is already quite deep. The strategy of the game is quite
+complex and interesting, and the aim of this paper is to explore it in more
+detail.
+
+\subsection{Strings-and-coins}
+
+Dots-and-boxes is a special case of a more general game called
+\emph{strings-and-coins}.
+
+\begin{enumerate}
+  \item This game begins with a set of coins, and a set of strings
+    each connecting a pair of coins; some coins also have one or more
+    strings connecting them to the ground.
+  \item The players take it in turns to remove one string of their
+    choice.
+  \item If a player removes the last string connected to a coin, she
+    wins the coin, removing it from the game, and \emph{must} play
+    another move, her turn ending only when she removes a string which
+    does not win any coins.
+  \item The game ends when all coins are gone; the winner is the
+    player who has captured more coins.
+\end{enumerate}
+
+The $m \times n$ game of dots-and-boxes is the special case of
+strings-and-coins where $mn$ coins are connected in a rectangular $m
+\times n$ grid, with the outer coins connected to the ground. The
+strings-and-coins game parallel to the dots-and-boxes game in Figure
+TODO is shown in Figure TODO; connections to the ground are indicated
+by arrows.
+
+Strings-and-coins is a more general game, because it is possible to
+start with a graph (indeed, a multigraph, since the same pair of coins
+can be joined by more than one string) of any shape and connectivity
+whatsoever.
+
+Anything we learn about strings-and-coins will also apply to
+dots-and-boxes; we will therefore mostly focus our attention on
+strings-and-coins, occasionally making reference to dots-and-boxes
+where something we learn has specific implications there.
+
+\section{Definitions and basic strategy}
+
+\subsection{Basic terminology}
+
+We will call the two players $A$ and $B$, with $A$ generally moving
+first in a given position.
+
+The \emph{valency} of a coin is the number of strings connected to it
+(this term is borrowed from graph theory). In the starting position of
+dots-and-boxes, all coins have valency 4; each move reduces the
+valency of either one or two coins by 1. A coin of valency 1 can
+be immediately captured.
+
+A \emph{loop} is a connected set of coins, all having valency 2, which
+form a circuit. An $n$-loop is a loop consisting of $n$ coins. (In
+dots-and-boxes, there are no loops with fewer than 4 coins, and due to
+the symmetry, all loops have an even number of coins.)
+
+A \emph{chain} is a connected set of coins with maximum valency 2
+which is not a loop. An \emph{open chain} is one which can be
+immediately captured, i.e. a chain where one or both ends has valency
+1. By contrast a \emph{closed chain} is one where both ends are
+connected to the ground, and thus all coins have valency 2. The term
+``chain'' will generally be used to mean a closed chain, unless
+otherwise stated. A $n$-chain is a chain consisting of $n$ coins.
+
+A \emph{double-cross move} is a move which wins two coins at once
+(because the string removed connected two coins of valency 1). These
+moves are of strategic importance for reasons we will see later.
+
+\subsection{Strategic foundations}
+
+To understand the strategy of a game, it is often a good idea to begin
+with positions close to the end of the game, since the understanding
+of earlier positions depends on later ones.
+
+Let us consider a very simple endgame position: a single closed
+$n$-chain. Obviously this position is a 0--$n$ victory for player $B$,
+as player $A$ has no alternative but to open the chain for his
+opponent, who will take all $n$ coins straight away.
+
+Now consider the position consisting of \emph{two} closed
+$n$-chains. At first glance it might appear that this position is a
+$n$--$n$ draw, as $A$ must open one chain for $B$, who will take it
+and then be forced to open the other one for $A$. However this is not
+true: when $A$ opens the first chain, $B$ can take all but the last
+two boxes, and then sacrifice them with a \emph{double-dealing move}
+as shown in Figure TODO. Because this move does not win a coin, it
+ends $B$'s turn, and forces $A$ to make a move. $A$ might as well take
+the two sacrificed coins, because in either case, he is again forced
+to open the remaining chain for $B$, which $B$ then wins. Thus $B$
+wins by $2n - 2$ points to 2.
+
+Notice that this only works with $n \ge 3$: a closed chain of length 2
+can be opened by removing the middle string, in which case a
+double-dealing move is impossible. Only when $n \ge 3$ is there no way
+to open a closed $n$-chain without allowing a double-dealing move.
+
+A similar situation arises with loops, but with one important
+difference: when a loop is opened, in order to play a double-dealing
+move a player must sacrifice 4 boxes, rather than 2, as shown in
+Figure TODO. This is because an opened loop has no link to the ground,
+so the only way to avoid taking a coin at the end (and thus be forced
+to continue making moves) is to take the string between two connected
+pairs of coins, sacrificing both pairs. This means that a
+double-dealing move is only possible with an $n$-loop if $n \ge 4$.
+
+Double-dealing moves are an absolutely central concept in
+strings-and-coins strategy, because they allow a player to maintain
+\emph{control} of a position, to decide whether to play first in the
+rest of the position or to force the opponent to do so.
+
+Because of this, a \emph{long chain} is defined as a chain of at least
+\emph{three} coins, and a \emph{long loop} is defined as a loop of at
+least \emph{four} coins. A long chain or loop is one which cannot be
+opened without allowing a double-dealing move.
+
+Further, a \emph{loony move} is defined as a move which allows the
+opponent to play a double-dealing move. There are three types of loony
+move:
+
+\begin{enumerate}
+  \item Opening a long chain
+  \item Opening a long loop
+  \item Opening a 2-chain by cutting one of the links to the ground:
+    this is called a \emph{half-hearted handout}, in contrast to a
+    \emph{hard-hearted handout} which is opening the 2-chain by
+    cutting the middle link (and is not a loony move).
+\end{enumerate}
+
+When a player makes a loony move, it hands over control of the
+position to the opponent, and so if a player can force her opponent to
+make a loony move, she is almost always winning. (We will discuss the
+exceptions shortly.)
+
+These central concepts of strings-and-coins strategy bring us to our
+first theorem.
+
+\newtheorem{sstealing}{Theorem}
+
+\begin{sstealing}
+  If a player has just made a loony move, her opponent can score at
+  least half of the remaining points, regardless of the rest of the
+  position.
+\end{sstealing}
+
+\begin{proof}
+  Let $L$ be the position after the loony move, and $P$ be the
+  position without the coins offered by the loony move.
+  
+  The proof uses a technique called \emph{strategy-stealing}. It
+  relies on the fact that following a loony move, the opponent can
+  choose whether to take all the coins on offer and play first in $P$,
+  or play a double-dealing move, sacrificing a few coins but forcing
+  the opponent to play first in $P$.
+
+  Let $V(X)$ be the net value of a position $X$, assuming optimal play
+  from both sides, from the perspective of the player who has to play
+  first in it (so $V(X)$ could be either positive, zero or
+  negative). ($V(X)$ is also known as the \emph{minimax} value of
+  $X$ and $V$ is the \emph{value function} of strings-and-coins.)
+
+  Let $s$ be the number of coins the player would have to sacrifice in
+  order to play a double-dealing move, and let $m$ be the total number
+  of coins placed on offer by the loony move. Note that $s$ is either
+  2 or 4, depending on whether a chain or a loop has been opened, and
+  $m \ge s$.
+
+  By taking all the coins and playing first in $P$, the player's
+  outcome would be $m + V(P)$. By taking all but $s$ coins and forcing
+  the opponent to play first in $P$, the player's outcome would be
+  $m-2s-V(P)$. So $$V(M) = \max(m+V(P), m-2s-V(P))$$
+
+  If we can show $V(M) \ge 0$, we will have proved the theorem, as
+  this means the player responding to the loony move can score at
+  least half the points remaining.
+
+  If $m+V(P) \ge 0$ then $V(M) \ge 0$ straight away, so suppose
+  $m+V(P) < 0$. Then as $m \ge s$, $$m-2s-V(P) > 2m-2s \ge 0$$ so in
+  this case $V(M) \ge 0$ also.
+\end{proof}
+
+3-chains and loops make things complicated as control doesn't always win.
+
+\begin{thebibliography}{99}
+  \bibitem{berl} Elwyn Berlekamp, \emph{The Dots-and-Boxes Game},
+    A~K~Peters 2000
+\end{thebibliography}
+
+\end{document}
