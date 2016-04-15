@@ -3,6 +3,11 @@
 \usepackage{palatino}
 \usepackage{amsthm}
 
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{sstealing}[thm]{Theorem}
+\newtheorem{loonybad}[thm]{Corollary}
+\newtheorem{freecoins}[thm]{Theorem}
+
 \begin{document}
 
 \title{The Dots-and-Boxes Game}
@@ -189,8 +194,6 @@ exceptions shortly.)
 These central concepts of strings-and-coins strategy bring us to our
 first theorem.
 
-\newtheorem{sstealing}{Theorem}
-
 \begin{sstealing}
   If a player has just made a loony move resulting in position $L$,
   her opponent can score at least half of the remaining points,
@@ -208,20 +211,36 @@ first theorem.
   play a double-dealing move, sacrificing a few coins but forcing the
   opponent to play first in $P$.
 
-  Let $s$ be the number of coins the player would have to sacrifice in
-  order to play a double-dealing move, and let $m$ be the total number
-  of coins placed on offer by the loony move. Note that $s$ is either
-  2 or 4, depending on whether a chain or a loop has been opened, and
-  $m \ge s$.
+  Let $s$ be the minimum number of coins the player would have to
+  sacrifice in order to play a double-dealing move, and let $m$ be the
+  total number of coins placed on offer by the loony move. Note that
+  $s$ is either 2 or 4, depending on whether a chain or a loop has
+  been opened, and $m \ge s$.
 
   By taking all the coins and playing first in $P$, the player's
   outcome would be $m + V(P)$. By taking all but $s$ coins and forcing
   the opponent to play first in $P$, the player's outcome would be
-  $m-2s-V(P)$. So $$V(M) = \max(m+V(P), m-2s-V(P))$$
+  $m-2s-V(P)$. So $$V(L) = \max(m+V(P), m-2s-V(P))$$
 
-  If $m+V(P) \ge 0$ then $V(M) \ge 0$ straight away, so suppose
+  If $m+V(P) \ge 0$ then $V(L) \ge 0$ straight away, so suppose
   $m+V(P) < 0$. Then as $m \ge s$, $$m-2s-V(P) > 2m-2s \ge 0$$ so in
-  this case $V(M) \ge 0$ also.
+  this case $V(L) \ge 0$ also.
+\end{proof}
+
+\begin{loonybad}
+  A loony move is never better than a non-loony move in the same position.
+\end{loonybad}
+\begin{proof}
+  TODO
+\end{proof}
+
+\begin{freecoins}
+  Any coins which can be captured without affecting the ability to
+  play a double-dealing move later in the turn should always be
+  captured immediately.
+\end{freecoins}
+\begin{proof}
+  TODO
 \end{proof}
 
 3-chains and loops make things complicated as control doesn't always win.
