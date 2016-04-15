@@ -88,28 +88,38 @@ where something we learn has specific implications there.
 We will call the two players $A$ and $B$, with $A$ generally moving
 first in a given position.
 
-The \emph{valency} of a coin is the number of strings connected to it
-(this term is borrowed from graph theory). In the starting position of
-dots-and-boxes, all coins have valency 4; each move reduces the
-valency of either one or two coins by 1. A coin of valency 1 can
-be immediately captured.
+The \emph{valency} or \emph{degree} of a coin is the number of strings
+connected to it (these terms are borrowed from graph theory). In the
+starting position of dots-and-boxes, all coins have valency 4; each
+move reduces the valency of either one or two coins by 1. A coin of
+valency 1 can be immediately captured.
 
-A \emph{loop} is a connected set of coins, all having valency 2, which
+A \emph{joint} is a coin of degree 3 or more.
+
+A \emph{loop} is a connected set of coins which all have valency 2, and
 form a circuit. An $n$-loop is a loop consisting of $n$ coins. (In
 dots-and-boxes, there are no loops with fewer than 4 coins, and due to
 the symmetry, all loops have an even number of coins.)
 
-A \emph{chain} is a connected set of coins with maximum valency 2
-which is not a loop. An \emph{open chain} is one which can be
-immediately captured, i.e. a chain where one or both ends has valency
-1. By contrast a \emph{closed chain} is one where both ends are
-connected to the ground, and thus all coins have valency 2. The term
-``chain'' will generally be used to mean a closed chain, unless
-otherwise stated. A $n$-chain is a chain consisting of $n$ coins.
+A \emph{(closed) chain} is a connected set of coins with valency 2
+which is not a loop. A chain has two ends, which can either be
+connected to the ground or to a joint. An \emph{open chain} is one
+which can be immediately captured, i.e. a chain where one or both ends
+has valency 1. A $n$-chain is a chain consisting of $n$ coins.
+
+The act of \emph{opening} a chain or loop is cutting it so that it
+becomes an open chain, which can then be captured.
 
 A \emph{double-cross move} is a move which wins two coins at once
 (because the string removed connected two coins of valency 1). These
 moves are of strategic importance for reasons we will see later.
+
+Let $V(P)$ be the net value of a position $P$, assuming optimal play
+from both sides, from the perspective of the player who has to play
+first in it. Clearly $V(P)$ will be an integer, and could be either
+positive, zero or negative, depending on whether $P$ is advantageous
+for the first player. $V(P)$ is also known as the \emph{minimax} value
+of $P$ and $V$ is the \emph{value function} of strings-and-coins.
 
 \subsection{Strategic foundations}
 
@@ -182,26 +192,21 @@ first theorem.
 \newtheorem{sstealing}{Theorem}
 
 \begin{sstealing}
-  If a player has just made a loony move, her opponent can score at
-  least half of the remaining points, regardless of the rest of the
-  position.
+  If a player has just made a loony move resulting in position $L$,
+  her opponent can score at least half of the remaining points,
+  regardless of the rest of the position: in other words, $V(L) \ge
+  0$.
 \end{sstealing}
 
 \begin{proof}
-  Let $L$ be the position after the loony move, and $P$ be the
-  position without the coins offered by the loony move.
+  Let $P$ be the position with the coins offered by the loony move
+  removed.
   
   The proof uses a technique called \emph{strategy-stealing}. It
-  relies on the fact that following a loony move, the opponent can
-  choose whether to take all the coins on offer and play first in $P$,
-  or play a double-dealing move, sacrificing a few coins but forcing
-  the opponent to play first in $P$.
-
-  Let $V(X)$ be the net value of a position $X$, assuming optimal play
-  from both sides, from the perspective of the player who has to play
-  first in it (so $V(X)$ could be either positive, zero or
-  negative). ($V(X)$ is also known as the \emph{minimax} value of
-  $X$ and $V$ is the \emph{value function} of strings-and-coins.)
+  relies on the fact that from $L$, the player to move can choose
+  whether to take all the coins on offer and play first in $P$, or
+  play a double-dealing move, sacrificing a few coins but forcing the
+  opponent to play first in $P$.
 
   Let $s$ be the number of coins the player would have to sacrifice in
   order to play a double-dealing move, and let $m$ be the total number
@@ -213,10 +218,6 @@ first theorem.
   outcome would be $m + V(P)$. By taking all but $s$ coins and forcing
   the opponent to play first in $P$, the player's outcome would be
   $m-2s-V(P)$. So $$V(M) = \max(m+V(P), m-2s-V(P))$$
-
-  If we can show $V(M) \ge 0$, we will have proved the theorem, as
-  this means the player responding to the loony move can score at
-  least half the points remaining.
 
   If $m+V(P) \ge 0$ then $V(M) \ge 0$ straight away, so suppose
   $m+V(P) < 0$. Then as $m \ge s$, $$m-2s-V(P) > 2m-2s \ge 0$$ so in
