@@ -487,6 +487,40 @@ Example calculations for $k=3$, $k=4$ and $k=10$ can be seen in tables
   \label{vpik10}
 \end{table*}
 
+Notice that the larger the value of $k$ (i.e. the bigger the big
+chain), the longer double-dealing remains the optimal strategy for
+$B$, the player in control. This is to be expected, as the bigger the
+chain is, the more points it is worth sacrificing by double-dealing
+from 3-chains to capture it.
+
+However, in all cases, once $i$ is large enough (i.e. there are enough
+3-chains), double-dealing after the opening of the first 3-chain
+ceases to become the sole optimal strategy, and if there are an even
+number of 3-chains, it ceases to become the optimal strategy at all.
+
+The position consisting of four 3-chains, $P_{3,3}$, is a simple
+counter-example to the notion that loony moves are always inferior to
+non-loony moves. When $A$ opens the first 3-chain in this position,
+$B$ does best to take it, winning 3 coins, and open the next 3-chain
+for $A$, even though the latter is a loony move and a non-loony move
+could have been played instead.
+
+The reason is that giving away control by playing a loony move in the
+position with three 3-chains, $P_{2,3}$, only loses one point, which
+is more than offset by the three coins won in the process of reaching
+that position. If instead $B$ had played a double-dealing move, he
+would have been one point behind from the first chain, and only won
+one point from $P_{2,3}$, so the game would have finished drawn.
+
+A very similar analysis would apply if the 3-chains from this example
+were replaced by loops of length 4, 5, 6 or 7. All these structures
+require a sacrifice of coins in order to retain control, so a precise
+analysis of the rest of the position is required in order to know
+whether double-dealing or taking is the right strategy. If the rest of
+the position is close in score, it may be better to take all the coins
+on offer and play a loony move, even though there was a non-loony move
+available.
+
 \begin{thebibliography}{99}
   \bibitem{berl} Elwyn Berlekamp, \emph{The Dots-and-Boxes Game},
     A~K~Peters 2000
