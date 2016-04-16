@@ -2,11 +2,14 @@
 
 \usepackage{palatino}
 \usepackage{amsthm}
+\usepackage{amsmath}
 
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
+\newtheorem{addcoins}[thm]{Lemma}
 \newtheorem{freecoins}[thm]{Theorem}
 \newtheorem{halfheartedbad}[thm]{Theorem}
+\newtheorem{hardheartedbeatsloony}[thm]{Theorem}
 
 \begin{document}
 
@@ -255,25 +258,49 @@ section \ref{smallchains}.
 However the third and fourth types of loony move can never be the sole
 optimal move, and we will prove that now.
 
+\begin{addcoins}\label{addcoins}
+  For any position $P$, if $P'$ is the position resulting from adding
+  $n$ capturable coins to $P$, then $V(P') \ge V(P)+n$.
+\end{addcoins}
+\begin{proof}
+  This is immediate, as a gain of $V(P)+n$ coins can be made from $P'$
+  by taking the $n$ available coins and then following the optimal
+  strategy in $P$. (There may of course be a better strategy
+  available.)
+\end{proof}
+
 \begin{freecoins}\label{freecoins}
   Any coins which can be captured without affecting the ability to
   play a double-dealing move later in the turn should always be
   captured immediately.
 \end{freecoins}
 \begin{proof}
-  Let $P$ be the position with all capturable coins removed. Then
-  as we have already seen, taking all available coins means we are
-  obliged to play first in $P$, whereas making a double-dealing move
-  (if possible) obliges the opponent to play first in $P$.
+  Let:
+  \begin{itemize}
+    \item $P$ be the current position
+    \item $n$ be the maximum number of coins we can capture without
+      affecting the ability to play a double-dealing move
+    \item $P_t$ the position after we capture all possible coins from
+      $P$ and then make the optimal move in the remaining position
+    \item $P_d$ the position resulting from taking $n$ coins from $P$
+      and then making a double-dealing move
+  \end{itemize}
 
-  In either case, if we refrain from taking any other available coins
-  first, the opponent can take those coins and then play whatever
-  optimal strategy they could have played. The only difference is that
-  they have won some additional coins. Therefore nothing can ever be
-  gained by refraining from capturing.
+  If we take any number of coins $m < n$ and then play a
+  double-dealing move, the resulting position is the same as $P_d$ but
+  with $n-m$ extra capturable coins, so by lemma \ref{addcoins}, its
+  value is at least $n-m$ greater than $V(P_d)$.
 
-  (Not capturing may also give the opponent additional possibilities,
-  such as making a double-dealing move of their own.)
+  Similarly, if we take any number of coins $m < n$, ignore the rest
+  of the coins, and then play a non-double-dealing move, its value
+  will be at least $n-m$ greater than $V(P_t)$.
+
+  Thus, in either case, if we refrain from taking any other available
+  coins, the opponent can take those coins and then play whatever
+  optimal strategy they could have played if we had taken them. Thus
+  we have achieved nothing except giving the opponent some free coins
+  (and perhaps some other possibilities too, such as making a
+  double-dealing move of their own.)
 \end{proof}
 
 \begin{halfheartedbad}
@@ -305,11 +332,11 @@ these two concepts.
 
 First, suppose we have a position composed of an arbitrary
 sub-position $P$ and a single chain with more coins than in all of
-$P$. In this case the game will be won by whichever player can win the
-big chain: neither player will open the chain unless they have no
-choice, so both players will strive \emph{not} to take the last coin
-in $P$. In this case control of $P$ will determine the outcome of the
-game.
+$P$. In this case, since the big chain contains more than half the
+coins, the game will be won by whichever player can win it: neither
+player will open the big chain unless they have no choice, so both
+players will strive \emph{not} to take the last coin in $P$. In this
+case control of $P$ will determine the outcome of the game.
 
 In general, the more a position is dominated by chains and loops with
 a large number of coins, the more important it is to have control,
@@ -342,6 +369,123 @@ classification:
 
 (Again I register my objection to this terminology, but it is standard
 and I will stick to it.)
+
+We will now examine how smaller chains and loops affect
+strings-and-coins positions.
+
+\subsubsection{Short chains and loops}
+
+Recall that the defining characteristic of a short chain or loop is
+that it can be opened with a non-loony move; therefore, sacrificing it
+does not entail giving up control of the position.
+
+\begin{hardheartedbeatsloony}
+  Opening a short chain or loop with a hard-hearted handout is never
+  worse than making a loony move.
+\end{hardheartedbeatsloony}
+\begin{proof}
+  TODO
+\end{proof}
+
+\subsubsection{Long but not very long chains and loops}
+
+Here we examine the effect of small long chains and loops by
+considering a family of loony endgame positions $P_{i,k}$ consisting
+of $i$ 3-chains and one $k$-chain, with $k \ge 3$, as shown in Figure
+TODO.
+
+In $P_{i,k}$, $A$ can choose whether to open the $k$-chain or one of
+the 3-chains, and in response, $B$ can choose whether to take the
+whole chain or take all but two boxes and play a double-dealing move.
+
+When you remove one chain from $P_{i,k}$, you reach another position
+from the same family: removing the $k$-chain yields $P_{i-1,3}$ (which
+consists purely of $i$ 3-chains), and removing one of the 3-chains
+yields $P_{i-1,k}$. We can use this fact to compute the value of each
+possible pair of moves from $V(P_{i,k})$ as described in table
+\ref{vpikcomponents}.
+
+\begin{table*}[tp]
+  \centering
+  \begin{tabular}{c | c c}
+    & $A$ opens a 3-chain & $A$ opens the $k$-chain \\
+    \hline
+    $B$ takes & $-3-V(P_{i-1,k})$ & $-k-V(P_{i-1,3})$ \\
+    $B$ double-deals & $1+V(P_{i-1,k})$ & $-k+4+V(P_{i-1,3})$
+  \end{tabular}
+  \caption{Values to $A$ of moves from $P_{i,k}$}
+  \label{vpikcomponents}
+\end{table*}
+
+$A$ never does better to open the $k$-chain than one of the 3-chains,
+so we can calculate $V(P_{i,k})$ as follows.
+
+\begin{eqnarray*}
+  V(P_{0,k}) & = & -k \\
+  V(P_{i,k}) & = & \min(-3-V(P_{i-1,k}), 1+V(P_{i-1,k}))
+\end{eqnarray*}
+
+Example calculations for $k=3$, $k=4$ and $k=10$ can be seen in tables
+\ref{vpik3}, \ref{vpik4} and \ref{vpik10}.
+
+\begin{table*}[p]
+  \centering
+  \begin{tabular}{c c c c}
+    $i$ & $V(P_{i,3})$ & $B$ taking optimal? & $B$ double-dealing optimal? \\
+    \hline
+    0 & -3 & Yes & No \\
+    1 & -2 & No & Yes \\
+    2 & -1 & Yes & Yes \\
+    3 & -2 & Yes & No \\
+    4 & -1 & Yes & Yes \\
+    5 & -2 & Yes & No \\
+    6 & -1 & Yes & Yes
+  \end{tabular}
+  \caption{$k=3$}
+  \label{vpik3}
+\end{table*}
+
+\begin{table*}[p]
+  \centering
+  \begin{tabular}{c c c c}
+    $i$ & $V(P_{i,4})$ & $B$ taking optimal? & $B$ double-dealing optimal? \\
+    \hline
+    0 & -4 & Yes & No \\
+    1 & -3 & No & Yes \\
+    2 & -2 & No & Yes \\
+    3 & -1 & Yes & Yes \\
+    4 & -2 & Yes & No \\
+    5 & -1 & Yes & Yes \\
+    6 & -2 & Yes & No \\
+    7 & -1 & Yes & Yes \\
+    8 & -2 & Yes & No
+  \end{tabular}
+  \caption{$k=4$}
+  \label{vpik4}
+\end{table*}
+
+\begin{table*}[p]
+  \centering
+  \begin{tabular}{c c c c}
+    $i$ & $V(P_{i,10})$ & $B$ taking optimal? & $B$ double-dealing optimal? \\
+    \hline
+    0 & -10 & Yes & No \\
+    1 & -9 & No & Yes \\
+    2 & -8 & No & Yes \\
+    3 & -7 & No & Yes \\
+    4 & -6 & No & Yes \\
+    5 & -5 & No & Yes \\
+    6 & -4 & No & Yes \\
+    7 & -3 & No & Yes \\
+    8 & -2 & No & Yes \\
+    9 & -1 & Yes & Yes \\
+    10 & -2 & Yes & No \\
+    11 & -1 & Yes & Yes \\
+    12 & -2 & Yes & No
+  \end{tabular}
+  \caption{$k=10$}
+  \label{vpik10}
+\end{table*}
 
 \begin{thebibliography}{99}
   \bibitem{berl} Elwyn Berlekamp, \emph{The Dots-and-Boxes Game},
