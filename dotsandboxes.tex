@@ -217,7 +217,7 @@ which the only possible moves are loony moves.
 These central concepts of strings-and-coins strategy bring us to our
 first theorem.
 
-\begin{sstealing}
+\begin{sstealing} \label{sstealing}
   If a player has just made a loony move resulting in position $L$,
   her opponent can score at least half of the remaining points,
   regardless of the rest of the position: in other words, $V(L) \ge
@@ -331,12 +331,12 @@ the flow of the play. This section explores the relationship between
 these two concepts.
 
 First, suppose we have a position composed of an arbitrary
-sub-position $P$ and a single chain with more coins than in all of
+sub-position $S$ and a single chain with more coins than in all of
 $P$. In this case, since the big chain contains more than half the
 coins, the game will be won by whichever player can win it: neither
 player will open the big chain unless they have no choice, so both
-players will strive \emph{not} to take the last coin in $P$. In this
-case control of $P$ will determine the outcome of the game.
+players will strive \emph{not} to take the last coin in $S$. In this
+case control of $S$ will determine the outcome of the game.
 
 In general, the more a position is dominated by chains and loops with
 a large number of coins, the more important it is to have control,
@@ -372,20 +372,6 @@ and I will stick to it.)
 
 We will now examine how smaller chains and loops affect
 strings-and-coins positions.
-
-\subsubsection{Short chains and loops}
-
-Recall that the defining characteristic of a short chain or loop is
-that it can be opened with a non-loony move; therefore, sacrificing it
-does not entail giving up control of the position.
-
-\begin{hardheartedbeatsloony}
-  Opening a short chain or loop with a hard-hearted handout is never
-  worse than making a loony move.
-\end{hardheartedbeatsloony}
-\begin{proof}
-  TODO
-\end{proof}
 
 \subsubsection{Long but not very long chains and loops}
 
@@ -487,6 +473,18 @@ Example calculations for $k=3$, $k=4$ and $k=10$ can be seen in tables
   \label{vpik10}
 \end{table*}
 
+We know from theorem \ref{sstealing} that no loony endgame can have a
+positive value, but all the $V(P_{i,k})$ are strictly less than
+zero. This is because the 3-chains have an odd number of coins, but
+the number of coins you have to sacrifice to make a double-dealing
+move is even, so the two never cancel out exactly.
+
+(It is possible to construct a loony endgame position with value 0:
+for example, the position consisting of two 4-loops. In this case,
+taking the first loop would mean sacrificing the second, while
+double-dealing the first loop would sacrifice four coins to gain the
+second loop.)
+
 Notice that the larger the value of $k$ (i.e. the bigger the big
 chain), the longer double-dealing remains the optimal strategy for
 $B$, the player in control. This is to be expected, as the bigger the
@@ -520,6 +518,19 @@ whether double-dealing or taking is the right strategy. If the rest of
 the position is close in score, it may be better to take all the coins
 on offer and play a loony move, even though there was a non-loony move
 available.
+
+\subsubsection{Short chains and loops}
+
+Recall that the defining characteristic of a short chain or loop is
+that it can be opened with a non-loony move; therefore, sacrificing it
+does not entail giving up control of the position.
+
+\begin{hardheartedbeatsloony}
+  A hard-hearted handout is never worse than a half-hearted handout.
+\end{hardheartedbeatsloony}
+\begin{proof}
+  TODO
+\end{proof}
 
 \begin{thebibliography}{99}
   \bibitem{berl} Elwyn Berlekamp, \emph{The Dots-and-Boxes Game},
