@@ -5,8 +5,8 @@
 
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
-\newtheorem{loonybad}[thm]{Corollary}
 \newtheorem{freecoins}[thm]{Theorem}
+\newtheorem{halfheartedbad}[thm]{Theorem}
 
 \begin{document}
 
@@ -90,6 +90,10 @@ where something we learn has specific implications there.
 
 \subsection{Basic terminology}
 
+Where possible, I have tried to be consistent with the standard
+terminology of mathematical graph theory, and with existing literature
+such as \cite{berl}.
+
 We will call the two players $A$ and $B$, with $A$ generally moving
 first in a given position.
 
@@ -126,28 +130,29 @@ positive, zero or negative, depending on whether $P$ is advantageous
 for the first player. $V(P)$ is also known as the \emph{minimax} value
 of $P$ and $V$ is the \emph{value function} of strings-and-coins.
 
-\subsection{Strategic foundations}
+\subsection{Basics of loony endgames}
 
 To understand the strategy of a game, it is often a good idea to begin
 with positions close to the end of the game, since the understanding
 of earlier positions depends on later ones.
 
-Let us consider a very simple endgame position: a single closed
-$n$-chain. Obviously this position is a 0--$n$ victory for player $B$,
-as player $A$ has no alternative but to open the chain for his
-opponent, who will take all $n$ coins straight away.
+Let us consider a very simple endgame position $S_n$ consisting of a
+single closed $n$-chain. Obviously $V(S_n)=-n$, as there is no
+alternative but to open the chain for the opponent, who will take all
+$n$ coins straight away.
 
-Now consider the position consisting of \emph{two} closed
-$n$-chains. At first glance it might appear that this position is a
-$n$--$n$ draw, as $A$ must open one chain for $B$, who will take it
-and then be forced to open the other one for $A$. However this is not
-true: when $A$ opens the first chain, $B$ can take all but the last
-two boxes, and then sacrifice them with a \emph{double-dealing move}
-as shown in Figure TODO. Because this move does not win a coin, it
-ends $B$'s turn, and forces $A$ to make a move. $A$ might as well take
-the two sacrificed coins, because in either case, he is again forced
-to open the remaining chain for $B$, which $B$ then wins. Thus $B$
-wins by $2n - 2$ points to 2.
+Now consider the position $D_n$ with $2n$ coins divided into
+\emph{two} closed $n$-chains. At first glance it might appear that
+this position is a $n$--$n$ draw, as $A$ must open one chain for $B$,
+who will take it and then be forced to open the other one for
+$A$. However this is not true: when $A$ opens the first chain, $B$ can
+take all but the last two boxes, and then sacrifice them with a
+\emph{double-dealing move} as shown in Figure TODO. Because this move
+does not win a coin, it ends $B$'s turn, and forces $A$ to make a
+move. $A$ might as well take the two sacrificed coins, because in
+either case, he is again forced to open the remaining chain for $B$,
+which $B$ then wins. Thus $B$ wins by $2n - 2$ points to 2, so $V(D_n)
+= 4-2n$.
 
 Notice that this only works with $n \ge 3$: a closed chain of length 2
 can be opened by removing the middle string, in which case a
@@ -171,10 +176,19 @@ rest of the position or to force the opponent to do so.
 Because of this, a \emph{long chain} is defined as a chain of at least
 \emph{three} coins, and a \emph{long loop} is defined as a loop of at
 least \emph{four} coins. A long chain or loop is one which cannot be
-opened without allowing a double-dealing move.
+opened without allowing a double-dealing move. By contrast a
+\emph{short} chain or loop is one which is not long.
+
+(I do not particularly like this terminology, because the words
+``long'' and ``short'' are such common words, and giving them a
+specific technical meaning like this can often be confusing. However
+they are standard in the dots-and-boxes literature, so throughout this
+paper I have tried to consistently use ``long'' and ``short'' in this
+technical sense, preferring ``big'' and ``small'' in more informal
+contexts.)
 
 Further, a \emph{loony move} is defined as a move which allows the
-opponent to play a double-dealing move. There are three types of loony
+opponent to play a double-dealing move. There are four types of loony
 move:
 
 \begin{enumerate}
@@ -184,12 +198,18 @@ move:
     this is called a \emph{half-hearted handout}, in contrast to a
     \emph{hard-hearted handout} which is opening the 2-chain by
     cutting the middle link (and is not a loony move).
+  \item Handing one of these situations back to the opponent by
+    playing in an unrelated area of the board when the opponent has
+    made a loony move of their own.
 \end{enumerate}
 
 When a player makes a loony move, it hands over control of the
 position to the opponent, and so if a player can force her opponent to
 make a loony move, she is almost always winning. (We will discuss the
 exceptions shortly.)
+
+A \emph{loony endgame} is defined as a strings-and-coins position in
+which the only possible moves are loony moves.
 
 These central concepts of strings-and-coins strategy bring us to our
 first theorem.
@@ -227,23 +247,101 @@ first theorem.
   this case $V(L) \ge 0$ also.
 \end{proof}
 
-\begin{loonybad}
-  A loony move is never better than a non-loony move in the same position.
-\end{loonybad}
-\begin{proof}
-  TODO
-\end{proof}
+This argument shows that it is \emph{generally} undesirable to make a
+loony move; that is not always the case, though, as sometimes the
+alternatives are actually worse. We will see some counter-examples in
+section \ref{smallchains}.
 
-\begin{freecoins}
+However the third and fourth types of loony move can never be the sole
+optimal move, and we will prove that now.
+
+\begin{freecoins}\label{freecoins}
   Any coins which can be captured without affecting the ability to
   play a double-dealing move later in the turn should always be
   captured immediately.
 \end{freecoins}
 \begin{proof}
-  TODO
+  Let $P$ be the position with all capturable coins removed. Then
+  as we have already seen, taking all available coins means we are
+  obliged to play first in $P$, whereas making a double-dealing move
+  (if possible) obliges the opponent to play first in $P$.
+
+  In either case, if we refrain from taking any other available coins
+  first, the opponent can take those coins and then play whatever
+  optimal strategy they could have played. The only difference is that
+  they have won some additional coins. Therefore nothing can ever be
+  gained by refraining from capturing.
+
+  (Not capturing may also give the opponent additional possibilities,
+  such as making a double-dealing move of their own.)
 \end{proof}
 
-3-chains and loops make things complicated as control doesn't always win.
+\begin{halfheartedbad}
+  A half-hearted handout is never better than a hard-hearted handout.
+\end{halfheartedbad}
+\begin{proof}
+  Let $P$ be the position without the two coins concerned.
+
+  The value of the position after the hard-hearted handout is
+  $2+V(P)$, as the two coins should always be captured by Theorem
+  \ref{freecoins}.
+  
+  A half-hearted handout by $A$ gives $B$ the choice whether to take
+  the two coins and play first in $P$, or to play a double-dealing
+  move and force $A$ to play first in $P$. So the value of the
+  position after the half-hearted handout is $$\max(2+V(P),-2-V(P))
+  \ge 2+V(P)$$ by definition of $\max$.
+\end{proof}
+
+\subsection{Control}
+\label{smallchains}
+
+From the preceding discussion, it is clear that the concept of control
+is extremely important to understanding a dots-and-boxes
+position. However, the winner in strings-and-coins is the player who
+wins most coins, not the player who makes the last move or controls
+the flow of the play. This section explores the relationship between
+these two concepts.
+
+First, suppose we have a position composed of an arbitrary
+sub-position $P$ and a single chain with more coins than in all of
+$P$. In this case the game will be won by whichever player can win the
+big chain: neither player will open the chain unless they have no
+choice, so both players will strive \emph{not} to take the last coin
+in $P$. In this case control of $P$ will determine the outcome of the
+game.
+
+In general, the more a position is dominated by chains and loops with
+a large number of coins, the more important it is to have control,
+because this will determine who is forced to give them away.
+
+The complication comes from the fact that when a small enough chain
+and or loop is opened, keeping control requires a net sacrifice of
+coins, so if the position is dominated by such structures, naively
+keeping control all the way to the end can result in defeat. It is in
+these contexts that giving away control with a loony move can actually
+be the optimal approach.
+
+A chain or loop which does not require a net loss of coins to make a
+double-dealing move is defined as \emph{very long}. Because making a
+double-dealing move in a chain requires a sacrifice of two coins and
+in a loop requires four coins, we now have the following
+classification:
+
+\begin{itemize}
+  \item Chains of length 1 and 2 and loops of length 1, 2 or 3 are
+    short (as they can always be opened with a non-loony move)
+  \item Chains of length 3 and loops of length 4, 5, 6 or 7 are long
+    but not very long (as they can only be opened with a loony move,
+    but keeping control with a double-dealing move requires a net loss
+    of coins)
+  \item Larger chains and loops are both long and very long (these can
+    only be opened with a loony move, after which control can be kept
+    with no net loss).
+\end{itemize}
+
+(Again I register my objection to this terminology, but it is standard
+and I will stick to it.)
 
 \begin{thebibliography}{99}
   \bibitem{berl} Elwyn Berlekamp, \emph{The Dots-and-Boxes Game},
