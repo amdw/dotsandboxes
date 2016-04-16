@@ -4,6 +4,10 @@ This repository is dedicated to the dots-and-boxes game.
 
 So far, the only thing here is a draft of a paper I am writing on the game.
 
+This can be compiled with an installation of
+[LaTeX](http://latex-project.org/) (e.g. on Fedora, `dnf install
+texlive` and `latex dotsandboxes.tex`).
+
 # Licensing
 
 This work is licensed under a Creative Commons license as follows.
