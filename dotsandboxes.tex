@@ -3,6 +3,7 @@
 \usepackage{palatino}
 \usepackage{amsthm}
 \usepackage{amsmath}
+\usepackage{graphicx}
 
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
@@ -377,8 +378,16 @@ strings-and-coins positions.
 
 Here we examine the effect of small long chains and loops by
 considering a family of loony endgame positions $P_{i,k}$ consisting
-of $i$ 3-chains and one $k$-chain, with $k \ge 3$, as shown in Figure
-TODO.
+of $i$ 3-chains and one $k$-chain, with $k \ge 3$. For example,
+$P_{4,5}$ is shown in Figure \ref{p45}.
+
+\begin{figure}
+  \centering
+  \def\svgwidth{\columnwidth}
+  \input{fig_p45.pdf_tex}
+  \caption{Position $P_{4,5}$}
+  \label{p45}
+\end{figure}
 
 In $P_{i,k}$, $A$ can choose whether to open the $k$-chain or one of
 the 3-chains, and in response, $B$ can choose whether to take the

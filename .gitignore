@@ -3,5 +3,6 @@ _*
 *.dvi
 *.aux
 *.toc
-*.pdf
+*.pdf*
 *.log
+*.svg
