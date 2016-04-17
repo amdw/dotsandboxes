@@ -117,9 +117,30 @@ class StringsAndCoinsPosition:
         """Add a coin to the position"""
         self.coins.append(coin)
 
+    def default_coin(self, x, y):
+        """Create coin with default size, colour etc"""
+        return Coin(x, y,
+                    r=self.default_coin_r,
+                    colour=self.default_fill_colour,
+                    line_colour=self.default_line_colour,
+                    thickness=self.default_thickness)
+
     def add_link(self, link):
         """Add a link to the position"""
         self.links.append(link)
+
+    def add_default_2clink(self, coin1, coin2):
+        """Add a two-coin link with default colour, thickness etc"""
+        self.add_link(TwoCoinLink(coin1, coin2,
+                                  colour=self.default_line_colour,
+                                  thickness=self.default_thickness))
+
+    def add_default_glink(self, coin, direction):
+        """Add a ground link with default colour, thickness etc"""
+        self.add_link(GroundLink(coin, direction,
+                                 length=self.default_gap,
+                                 colour=self.default_line_colour,
+                                 thickness=self.default_thickness))
 
     def render(self, to=sys.stdout):
         """Render position as SVG"""
@@ -129,30 +150,31 @@ class StringsAndCoinsPosition:
         for coin in self.coins:
             coin.render(to)
 
-    def add_horizontal_chain(self, num_coins):
-        """Add a horizontal chain of a specified number of coins"""
+    def add_horizontal_row(self, num_coins, x_offset=0, y=None):
+        """Add a horizontal row of linked coins"""
+        if y is None:
+            y = self.default_y
         coins = []
         for i in range(num_coins):
-            coin = Coin(self.default_x + ((i + 1) * self.default_gap),
-                        self.default_y,
-                        r=self.default_coin_r,
-                        colour=self.default_fill_colour,
-                        line_colour=self.default_line_colour,
-                        thickness=self.default_thickness)
+            coin = self.default_coin(self.default_x + (i * self.default_gap) + x_offset, y)
             coins.append(coin)
             self.add_coin(coin)
             if i > 0:
-                self.add_link(TwoCoinLink(coins[i-1], coin,
-                                          colour=self.default_line_colour,
-                                          thickness=self.default_thickness))
+                self.add_default_2clink(coins[i-1], coin)
+        return coins
 
-        self.add_link(GroundLink(coins[0], "left",
-                                 length=self.default_gap,
-                                 colour=self.default_line_colour,
-                                 thickness=self.default_thickness))
-        self.add_link(GroundLink(coins[-1], "right",
-                                 length=self.default_gap,
-                                 colour=self.default_line_colour,
-                                 thickness=self.default_thickness))
+    def add_horizontal_chain(self, num_coins):
+        """Add a horizontal chain of a specified number of coins"""
+        coins = self.add_horizontal_row(num_coins, self.default_gap)
+        self.add_default_glink(coins[0], "left")
+        self.add_default_glink(coins[-1], "right")
 
-        self.default_y += self.default_gap
+    def add_horizontal_loop(self, num_coins):
+        """Add a horizontal loop with a specified number of coins"""
+        if num_coins % 2 != 0:
+            raise ValueError("Only even coin counts are currently supported: {0}".format(num_coins))
+        row_length = int(num_coins / 2)
+        row1_coins = self.add_horizontal_row(row_length, y=self.default_y)
+        row2_coins = self.add_horizontal_row(row_length, y=self.default_y + self.default_gap)
+        self.add_default_2clink(row1_coins[0], row2_coins[0])
+        self.add_default_2clink(row1_coins[-1], row2_coins[-1])

@@ -4,6 +4,7 @@
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{calc}
 
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
@@ -383,7 +384,7 @@ $P_{4,5}$ is shown in Figure \ref{p45}.
 
 \begin{figure}
   \centering
-  \def\svgwidth{\columnwidth}
+  \def\svgscale{0.7}
   \input{fig_p45.pdf_tex}
   \caption{Position $P_{4,5}$}
   \label{p45}
@@ -493,6 +494,14 @@ for example, the position consisting of two 4-loops shown in Figure
 TODO. In this case, taking the first loop would mean sacrificing the
 second, while double-dealing the first loop would sacrifice four coins
 to gain the second loop, with a draw in either case.)
+
+\begin{figure}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_drawnloony.pdf_tex}
+  \caption{A drawn loony endgame position}
+  \label{drawnloony}
+\end{figure}
 
 Notice that the larger the value of $k$ (i.e. the bigger the big
 chain), the longer double-dealing remains the optimal strategy for

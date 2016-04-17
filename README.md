@@ -7,7 +7,7 @@ So far, the only thing here is a draft of a paper I am writing on the game.
 This needs a full installation of [LaTeX](http://latex-project.org/),
 as well as Python 3 and Inkscape to generate some of the diagrams, and
 `make` to coordinate the build. E.g. on Fedora, `dnf install texlive
-texlive-svg inkscape python3 make`, `cd` into this repository, and run
+texlive-svg inkscape pstoedit python3 make`, `cd` into this repository, and run
 `make`.
 
 I would be very grateful to learn of any errors in this material.
