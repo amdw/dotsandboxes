@@ -9,7 +9,7 @@ def main():
     pos = svg.StringsAndCoinsPosition()
     for _ in range(4):
         pos.add_horizontal_chain(3)
-        pos.default_y += pos.default_gap
+        pos.next_line()
     pos.add_horizontal_chain(5)
     print('<svg>')
     pos.render()

@@ -4,6 +4,7 @@
 \usepackage{amsthm}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{color}
 \usepackage{calc}
 
 \newtheorem{thm}{Theorem}[section]
@@ -152,12 +153,20 @@ this position is a $n$--$n$ draw, as $A$ must open one chain for $B$,
 who will take it and then be forced to open the other one for
 $A$. However this is not true: when $A$ opens the first chain, $B$ can
 take all but the last two boxes, and then sacrifice them with a
-\emph{double-dealing move} as shown in Figure TODO. Because this move
-does not win a coin, it ends $B$'s turn, and forces $A$ to make a
-move. $A$ might as well take the two sacrificed coins, because in
-either case, he is again forced to open the remaining chain for $B$,
-which $B$ then wins. Thus $B$ wins by $2n - 2$ points to 2, so $V(D_n)
-= 4-2n$.
+\emph{double-dealing move} as shown in Figure \ref{dddemo} (with
+$n=5$). Because this move does not win a coin, it ends $B$'s turn, and
+forces $A$ to make a move. $A$ might as well take the two sacrificed
+coins, because in either case, he is again forced to open the
+remaining chain for $B$, which $B$ then wins. Thus $B$ wins by $2n -
+2$ points to 2, so $V(D_n) = 4-2n$.
+
+\begin{figure}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_doubledeal.pdf_tex}
+  \caption{Maintaining control through double-dealing}
+  \label{dddemo}
+\end{figure}
 
 Notice that this only works with $n \ge 3$: a closed chain of length 2
 can be opened by removing the middle string, in which case a

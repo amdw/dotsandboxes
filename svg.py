@@ -5,10 +5,14 @@ files representing strings-and-coins positions.
 
 import sys
 
-def render_tag(tag, attribs, to):
+def render_tag(tag, attribs, to, content=None):
     """Print an XML tag"""
     attrib_text = ' '.join(['{0}="{1}"'.format(k, attribs[k]) for k in sorted(attribs)])
-    out = '<' + tag + ' ' + attrib_text + '/>'
+    out = '<' + tag + ' ' + attrib_text
+    if content:
+        out += '>' + content + '</' + tag + '>'
+    else:
+        out += '/>'
     print(out, file=to)
 
 class Coin:
@@ -99,12 +103,26 @@ class GroundLink:
         attribs["y1"] = f2_y
         render_tag("line", attribs, to)
 
+class TextElement:
+    """A text element to be placed in the output SVG"""
+    def __init__(self, text, x, y, colour="black"):
+        self.text = text
+        self.x = x
+        self.y = y
+        self.colour = colour
+
+    def render(self, to=sys.stdout):
+        """Render text as SVG"""
+        attribs = {"x": self.x, "y": self.y, "fill": self.colour}
+        render_tag("text", attribs, to, self.text)
+
 class StringsAndCoinsPosition:
     """Representation of a strings-and-coins position"""
     def __init__(self, default_coin_r=10, default_thickness=1, default_gap=50,
                  default_line_colour="black", default_fill_colour="white"):
         self.coins = []
         self.links = []
+        self.other_elements = []
         self.default_coin_r = default_coin_r
         self.default_thickness = default_thickness
         self.default_gap = default_gap
@@ -112,6 +130,10 @@ class StringsAndCoinsPosition:
         self.default_fill_colour = default_fill_colour
         self.default_x = 10
         self.default_y = 10
+
+    def next_line(self):
+        """Move default y value to the next line"""
+        self.default_y += self.default_gap
 
     def add_coin(self, coin):
         """Add a coin to the position"""
@@ -142,6 +164,18 @@ class StringsAndCoinsPosition:
                                  colour=self.default_line_colour,
                                  thickness=self.default_thickness))
 
+    def add_other_element(self, elem):
+        """Add another renderable element"""
+        self.other_elements.append(elem)
+
+    def add_default_text(self, text, x=None, y=None):
+        """Add text with default colour etc"""
+        if x is None:
+            x = self.default_x
+        if y is None:
+            y = self.default_y
+        self.add_other_element(TextElement(text, x, y, colour=self.default_line_colour))
+
     def render(self, to=sys.stdout):
         """Render position as SVG"""
         # Render links first, so the coins go on top
@@ -149,9 +183,11 @@ class StringsAndCoinsPosition:
             link.render(to)
         for coin in self.coins:
             coin.render(to)
+        for elem in self.other_elements:
+            elem.render(to)
 
-    def add_horizontal_row(self, num_coins, x_offset=0, y=None):
-        """Add a horizontal row of linked coins"""
+    def add_horizontal_unlinked_row(self, num_coins, x_offset=0, y=None):
+        """Add a horizontal row of unlinked coins"""
         if y is None:
             y = self.default_y
         coins = []
@@ -159,8 +195,24 @@ class StringsAndCoinsPosition:
             coin = self.default_coin(self.default_x + (i * self.default_gap) + x_offset, y)
             coins.append(coin)
             self.add_coin(coin)
-            if i > 0:
-                self.add_default_2clink(coins[i-1], coin)
+        return coins
+
+    def add_horizontal_row_links(self, coins, properties=None):
+        """Add links to a horizontal row"""
+        if not properties:
+            properties = [None] * len(coins)
+        for i in range(len(coins) - 1):
+            link_properties = properties[i]
+            if link_properties:
+                link = TwoCoinLink(coins[i], coins[i+1], **link_properties)
+                self.add_link(link)
+            else:
+                self.add_default_2clink(coins[i], coins[i+1])
+
+    def add_horizontal_row(self, num_coins, x_offset=0, y=None):
+        """Add a horizontal row of linked coins"""
+        coins = self.add_horizontal_unlinked_row(num_coins, x_offset=x_offset, y=y)
+        self.add_horizontal_row_links(coins)
         return coins
 
     def add_horizontal_chain(self, num_coins):
@@ -168,6 +220,13 @@ class StringsAndCoinsPosition:
         coins = self.add_horizontal_row(num_coins, self.default_gap)
         self.add_default_glink(coins[0], "left")
         self.add_default_glink(coins[-1], "right")
+        return coins
+
+    def add_horizontal_open_chain(self, num_coins):
+        """Add a horizontal chain open at the right end"""
+        coins = self.add_horizontal_row(num_coins, self.default_gap)
+        self.add_default_glink(coins[0], "left")
+        return coins
 
     def add_horizontal_loop(self, num_coins):
         """Add a horizontal loop with a specified number of coins"""
