@@ -55,6 +55,21 @@ class TwoCoinLink:
         self.colour = colour
         self.thickness = thickness
 
+    def is_link_to(self, coin):
+        """Indicate whether this is a link to a coin"""
+        return self.coin1 == coin or self.coin2 == coin
+
+    def is_link_between(self, coin1, coin2):
+        """Indicate whether this is a link between two coins, order-independent"""
+        match1 = (self.coin1 == coin1 and self.coin2 == coin2)
+        match2 = (self.coin2 == coin1 and self.coin1 == coin2)
+        return match1 or match2
+
+    # pylint: disable=R0201
+    def is_link_to_ground(self, _coin):
+        """Two-coin links never link to ground"""
+        return False
+
     def render(self, to=sys.stdout):
         """Render link as SVG"""
         attribs = {"x1": self.coin1.x, "y1": self.coin1.y,
@@ -72,6 +87,19 @@ class GroundLink:
         self.colour = colour
         self.thickness = thickness
         self.f_size = f_size if f_size else max(1, int(length / 5))
+
+    def is_link_to(self, coin):
+        """Indicate whether this is a link to a coin"""
+        return self.coin == coin
+
+    # pylint: disable=R0201
+    def is_link_between(self, _coin1, _coin2):
+        """Ground links never link two coins"""
+        return False
+
+    def is_link_to_ground(self, coin):
+        """Indicate whether this links a given coin to the ground"""
+        return self.coin == coin
 
     def dir_vector(self):
         """Unit vector pointing in the direction of the arrow"""
@@ -131,8 +159,15 @@ class TextElement:
         attribs = {"x": self.x, "y": self.y, "fill": self.colour}
         render_tag("text", attribs, to, self.text)
 
-class StringsAndCoinsPosition:
-    """Representation of a strings-and-coins position"""
+class Layout:
+    """
+    Representation of a layout on the page. Can have a mixture of
+    elements, including dots-and-boxes and strings-and-coins
+    positions.
+
+    This class knows how to lay out elements on a SVG diagram, but
+    not about the logic of the game.
+    """
     def __init__(self, default_coin_r=10, default_thickness=1, default_gap=50,
                  default_line_colour="black", default_fill_colour="white"):
         self.coins = []
@@ -143,18 +178,50 @@ class StringsAndCoinsPosition:
         self.default_gap = default_gap
         self.default_line_colour = default_line_colour
         self.default_fill_colour = default_fill_colour
-        self.default_x = 10
-        self.default_y = 10
+        self.x_base = 10
+        self.y_base = 10
 
-    def next_line(self):
-        """Move default y value to the next line"""
-        self.default_y += self.default_gap
+    def move_below(self):
+        """Move the y base below anything drawn so far"""
+        if not self.coins and not self.other_elements:
+            return
+        max_elt_y = max([c.y for c in self.coins] + [c.y for c in self.other_elements])
+        self.y_base = max_elt_y + self.default_gap
+
+        # If any coins at the bottom have downward-pointing ground links, need to move a bit further
+        lowest_coins = [c for c in self.coins if c.y == max_elt_y]
+        down_ground_links = [l for l in self.links for c in lowest_coins
+                             if l.is_link_to_ground(c) and l.direction == "down"]
+        if down_ground_links:
+            self.y_base += self.default_gap
 
     def add_coin(self, coin):
-        """Add a coin to the position"""
+        """
+        Add a coin to the layout.
+        Coordinates on the coin are expected to be relative to our own base.
+        This is also expected to hand over ownership of the coin to the layout,
+        so it can be modified.
+        """
+        coin.x += self.x_base
+        coin.y += self.y_base
         self.coins.append(coin)
 
-    def default_coin(self, x, y):
+    def add_link(self, link):
+        """Add a link to the position"""
+        self.links.append(link)
+
+    def add_other_element(self, elem):
+        """
+        Add another renderable element.
+        Coordinates are expected to be relative to our own base.
+        This is also expected to hand over ownership of the element to the layout,
+        so it can be modified.
+        """
+        elem.x += self.x_base
+        elem.y += self.y_base
+        self.other_elements.append(elem)
+
+    def make_default_coin(self, x, y):
         """Create coin with default size, colour etc"""
         return Coin(x, y,
                     r=self.default_coin_r,
@@ -162,33 +229,25 @@ class StringsAndCoinsPosition:
                     line_colour=self.default_line_colour,
                     thickness=self.default_thickness)
 
-    def add_link(self, link):
-        """Add a link to the position"""
-        self.links.append(link)
+    def make_default_2clink(self, coin1, coin2):
+        """Create a two-coin link with default colour, thickness etc"""
+        return TwoCoinLink(coin1, coin2,
+                           colour=self.default_line_colour,
+                           thickness=self.default_thickness)
 
-    def add_default_2clink(self, coin1, coin2):
-        """Add a two-coin link with default colour, thickness etc"""
-        self.add_link(TwoCoinLink(coin1, coin2,
-                                  colour=self.default_line_colour,
-                                  thickness=self.default_thickness))
-
-    def add_default_glink(self, coin, direction):
-        """Add a ground link with default colour, thickness etc"""
-        self.add_link(GroundLink(coin, direction,
-                                 length=self.default_gap,
-                                 colour=self.default_line_colour,
-                                 thickness=self.default_thickness))
-
-    def add_other_element(self, elem):
-        """Add another renderable element"""
-        self.other_elements.append(elem)
+    def make_default_glink(self, coin, direction):
+        """Create a ground link with default colour, thickness etc"""
+        return GroundLink(coin, direction,
+                          length=self.default_gap,
+                          colour=self.default_line_colour,
+                          thickness=self.default_thickness)
 
     def add_default_text(self, text, x=None, y=None):
         """Add text with default colour etc"""
         if x is None:
-            x = self.default_x
+            x = 0
         if y is None:
-            y = self.default_y
+            y = 0
         self.add_other_element(TextElement(text, x, y, colour=self.default_line_colour))
 
     def render(self, to=sys.stdout):
@@ -201,13 +260,56 @@ class StringsAndCoinsPosition:
         for elem in self.other_elements:
             elem.render(to)
 
-    def add_horizontal_unlinked_row(self, num_coins, x_offset=0, y=None):
+class StringsAndCoinsPosition:
+    """
+    Represent a strings-and-coins position.
+
+    Knows the logic of the game, and also how to lay out the elements
+    relative to one another (but not in absolute terms on the layout).
+    """
+    def __init__(self, layout=None):
+        self.coins = []
+        self.links = []
+        self.player_to_move = "A"
+        self.a_score = 0
+        self.b_score = 0
+        self.layout = layout if layout else Layout()
+        self.x_pos = 0
+        self.y_pos = 0
+
+    def next_line(self):
+        """Move relative position to the next line"""
+        self.y_pos += self.layout.default_gap
+
+    def move_to_right(self):
+        """Move relative position to right hand side of whatever we already have"""
+        if not self.coins:
+            return
+        self.x_pos = max([c.x for c in self.coins]) + self.layout.default_gap
+
+    def add_coin(self, coin):
+        """Add a coin to the position"""
+        self.coins.append(coin)
+
+    def add_link(self, link):
+        """Add a link to the position"""
+        self.links.append(link)
+
+    def add_default_glink(self, coin, direction):
+        """Add a ground link with default colour, thickness etc"""
+        self.add_link(self.layout.make_default_glink(coin, direction))
+
+    def add_default_2clink(self, coin1, coin2):
+        """Add a two-coin link with default colour, thickness etc"""
+        self.add_link(self.layout.make_default_2clink(coin1, coin2))
+
+    def add_horizontal_unlinked_row(self, num_coins, x_offset=0, y_offset=0):
         """Add a horizontal row of unlinked coins"""
-        if y is None:
-            y = self.default_y
         coins = []
         for i in range(num_coins):
-            coin = self.default_coin(self.default_x + (i * self.default_gap) + x_offset, y)
+            x = self.x_pos + (i * self.layout.default_gap) + x_offset
+            y = self.y_pos + y_offset
+            coin = self.layout.make_default_coin(x, y)
             coins.append(coin)
             self.add_coin(coin)
         return coins
@@ -224,23 +326,22 @@ class StringsAndCoinsPosition:
             else:
                 self.add_default_2clink(coins[i], coins[i+1])
 
-    def add_horizontal_row(self, num_coins, x_offset=0, y=None):
+    def add_horizontal_row(self, num_coins, x_offset=0, y_offset=0):
         """Add a horizontal row of linked coins"""
-        coins = self.add_horizontal_unlinked_row(num_coins, x_offset=x_offset, y=y)
+        coins = self.add_horizontal_unlinked_row(num_coins, x_offset=x_offset, y_offset=y_offset)
         self.add_horizontal_row_links(coins)
-        return coins
-
-    def add_horizontal_chain(self, num_coins):
-        """Add a horizontal chain of a specified number of coins"""
-        coins = self.add_horizontal_row(num_coins, self.default_gap)
-        self.add_default_glink(coins[0], "left")
-        self.add_default_glink(coins[-1], "right")
         return coins
 
     def add_horizontal_open_chain(self, num_coins):
         """Add a horizontal chain open at the right end"""
-        coins = self.add_horizontal_row(num_coins, self.default_gap)
+        coins = self.add_horizontal_row(num_coins, self.layout.default_gap)
         self.add_default_glink(coins[0], "left")
+        return coins
+
+    def add_horizontal_chain(self, num_coins):
+        """Add a horizontal chain of a specified number of coins"""
+        coins = self.add_horizontal_open_chain(num_coins)
+        self.add_default_glink(coins[-1], "right")
         return coins
 
     def add_horizontal_loop(self, num_coins):
@@ -248,7 +349,70 @@ class StringsAndCoinsPosition:
         if num_coins % 2 != 0:
             raise ValueError("Only even coin counts are currently supported: {0}".format(num_coins))
         row_length = int(num_coins / 2)
-        row1_coins = self.add_horizontal_row(row_length, y=self.default_y)
-        row2_coins = self.add_horizontal_row(row_length, y=self.default_y + self.default_gap)
+        row1_coins = self.add_horizontal_row(row_length)
+        row2_coins = self.add_horizontal_row(row_length, y_offset=self.layout.default_gap)
         self.add_default_2clink(row1_coins[0], row2_coins[0])
         self.add_default_2clink(row1_coins[-1], row2_coins[-1])
+        return row1_coins + row2_coins
+
+    def create_dotsandboxes_start(self, width, height):
+        """Lay out a dots-and-boxes position of the given dimensions"""
+        grid = []
+        for _i in range(height):
+            grid.append(self.add_horizontal_chain(width))
+            self.next_line()
+        for coin in grid[0]:
+            link = self.layout.make_default_glink(coin, "up")
+            self.add_link(link)
+        for coin in grid[-1]:
+            link = self.layout.make_default_glink(coin, "down")
+            self.add_link(link)
+        return grid
+
+    def _check_captures(self):
+        """
+        Check to see if any coins were captured by the last move; if so,
+        remove them and update the score and player to move
+        """
+        captured = False
+        for coin in self.coins:
+            links = [l for l in self.links if l.is_link_to(coin)]
+            if not links:
+                captured = True
+                self.coins.remove(coin)
+                if self.player_to_move == "A":
+                    self.a_score += 1
+                elif self.player_to_move == "B":
+                    self.b_score += 1
+        if not captured:
+            self.player_to_move = "A" if self.player_to_move == "B" else "B"
+
+    def cut_2coin_string(self, coin1, coin2):
+        """Make a move by cutting a string connecting two coins"""
+        links = [l for l in self.links if l.is_link_between(coin1, coin2)]
+        if not links:
+            raise ValueError("Position contains no link between {0} and {1}".format(coin1, coin2))
+        for link in links:
+            self.links.remove(link)
+        self._check_captures()
+
+    def cut_ground_string(self, coin):
+        """Cut a string connecting a coin to the ground"""
+        links = [l for l in self.links if l.is_link_to_ground(coin)]
+        if not links:
+            raise ValueError("Position contains no link from {0} to ground".format(coin))
+        for link in links:
+            self.links.remove(link)
+        self._check_captures()
+
+    def add_to_layout(self):
+        """Add elements to the given layout"""
+        for coin in self.coins:
+            self.layout.add_coin(coin)
+        for link in self.links:
+            self.layout.add_link(link)
+
+    def render(self, to=sys.stdout):
+        """Shortcut method to render layout when it contains only one position"""
+        self.add_to_layout()
+        self.layout.render(to)

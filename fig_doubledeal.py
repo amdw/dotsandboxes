@@ -19,58 +19,67 @@
 
 import svg
 
-def original(pos):
+def original(layout):
     """Render start position"""
-    pos.add_default_text("Original position:")
-    pos.next_line()
+    layout.add_default_text("Original position:")
+    layout.move_below()
+    pos = svg.StringsAndCoinsPosition(layout)
     pos.add_horizontal_chain(5)
     pos.next_line()
     pos.add_horizontal_chain(5)
     pos.next_line()
+    pos.add_to_layout()
+    layout.move_below()
 
-def opened(pos):
+def opened(layout):
     """Render first chain opening"""
-    pos.add_default_text("Player $A$ must open a chain:")
-    pos.next_line()
+    layout.add_default_text("Player $A$ must open a chain:")
+    layout.move_below()
+    pos = svg.StringsAndCoinsPosition(layout)
     pos.add_horizontal_chain(5)
     pos.next_line()
     coins = pos.add_horizontal_open_chain(5)
     pos.add_link(svg.GroundLink(coins[-1], "right", colour="lightgray", thickness=2))
-    pos.next_line()
+    pos.add_to_layout()
+    layout.move_below()
 
-def doubledeal(pos):
+def doubledeal(layout):
     """Render double-dealing move"""
-    pos.add_default_text("Player $B$ double-deals:")
-    pos.next_line()
+    layout.add_default_text("Player $B$ double-deals:")
+    layout.move_below()
+    pos = svg.StringsAndCoinsPosition(layout)
     pos.add_horizontal_chain(5)
     pos.next_line()
-    demo_coins = pos.add_horizontal_unlinked_row(5, x_offset=pos.default_gap)
+    demo_coins = pos.add_horizontal_unlinked_row(5, x_offset=layout.default_gap)
     highlight = {"colour": "lightgray", "thickness": 2}
     pos.add_horizontal_row_links(demo_coins, properties=[None, highlight, highlight, highlight])
     pos.add_link(svg.GroundLink(demo_coins[0], "left", **highlight))
-    pos.next_line()
+    pos.add_to_layout()
+    layout.move_below()
 
-def final(pos):
+def final(layout):
     """Render final position"""
-    pos.add_default_text("Player $A$ must now open the final chain:")
-    pos.next_line()
+    layout.add_default_text("Player $A$ must now open the final chain:")
+    layout.move_below()
+    pos = svg.StringsAndCoinsPosition(layout)
     pos.add_horizontal_chain(5)
     pos.next_line()
-    pos.add_horizontal_row(2, x_offset=pos.default_gap)
-    pos.next_line()
-    pos.add_default_text("Player $B$ wins 8--2.")
+    pos.add_horizontal_row(2, x_offset=layout.default_gap)
+    pos.add_to_layout()
+    layout.move_below()
+    layout.add_default_text("Player $B$ wins 8--2.")
 
 def main():
     """Entry point"""
-    pos = svg.StringsAndCoinsPosition()
+    layout = svg.Layout()
 
-    original(pos)
-    opened(pos)
-    doubledeal(pos)
-    final(pos)
+    original(layout)
+    opened(layout)
+    doubledeal(layout)
+    final(layout)
 
     print("<svg>")
-    pos.render()
+    layout.render()
     print("</svg>")
 
 if __name__ == "__main__":
