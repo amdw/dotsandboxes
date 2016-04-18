@@ -1,5 +1,4 @@
 figure_scripts := $(wildcard fig_*.py)
-generated_svgs := $(patsubst %.py,%.svg,$(figure_scripts))
 generated_figpdfs := $(patsubst %.py,%.pdf,$(figure_scripts))
 
 dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs)
