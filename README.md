@@ -19,7 +19,13 @@ I would be very grateful to learn of any errors in this material.
 
 # Licensing
 
-This work is licensed under a Creative Commons license as follows.
+All material in this repository is Copyright 2016 Andrew Medworth
+(github@medworth.org.uk).
+
+The Dots-and-Boxes paper is licensed under a Creative Commons license
+as follows.
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Dots-and-Boxes</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/amdw/dotsandboxes" property="cc:attributionName" rel="cc:attributionURL">Andrew Medworth</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.<br />Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="https://github.com/amdw/dotsandboxes" rel="dct:source">https://github.com/amdw/dotsandboxes</a>.
 
+The software in this repository is licensed under the GNU Affero
+General Public License, as per the file LICENSE.txt.
