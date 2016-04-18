@@ -44,7 +44,7 @@ def final(pos):
     pos.add_horizontal_row(2, x_offset=pos.default_gap)
     pos.next_line()
     pos.add_default_text("Player $B$ wins 8--2.")
-    
+
 def main():
     """Entry point"""
     pos = svg.StringsAndCoinsPosition()

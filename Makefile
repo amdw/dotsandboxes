@@ -12,6 +12,10 @@ fig_%.pdf: fig_%.svg
 fig_%.svg: fig_%.py svg.py
 	python3 $< > $@
 
-.PHONY: clean
+.PHONY: clean pylint
+
+pylint:
+	python3-pylint *.py
+
 clean:
 	-rm -v *.pdf* *.svg *.pyc
