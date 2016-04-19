@@ -29,3 +29,8 @@ as follows.
 
 The software in this repository is licensed under the GNU Affero
 General Public License, as per the file LICENSE.txt.
+
+I am happy to consider requests to re-license this software under a
+non-copyleft open source license. Just get in touch with me to let me
+know what you want to do and how the current license is
+inconveniencing you.
