@@ -18,6 +18,7 @@ Python functions to support the creation of SVG vector graphics
 files representing strings-and-coins positions.
 """
 
+import copy
 import sys
 
 def render_tag(tag, attribs, to, content=None):
@@ -70,6 +71,12 @@ class TwoCoinLink:
         """Two-coin links never link to ground"""
         return False
 
+    def replace_coins(self, new_coins):
+        """Replace coins with new ones from input map"""
+        self.coin1 = new_coins[self.coin1]
+        self.coin2 = new_coins[self.coin2]
+        return self
+
     def render(self, to=sys.stdout):
         """Render link as SVG"""
         attribs = {"x1": self.coin1.x, "y1": self.coin1.y,
@@ -100,6 +107,11 @@ class GroundLink:
     def is_link_to_ground(self, coin):
         """Indicate whether this links a given coin to the ground"""
         return self.coin == coin
+
+    def replace_coins(self, new_coins):
+        """Replace coin with new one from input map"""
+        self.coin = new_coins[self.coin]
+        return self
 
     def dir_vector(self):
         """Unit vector pointing in the direction of the arrow"""
@@ -276,6 +288,7 @@ class StringsAndCoinsPosition:
         self.layout = layout if layout else Layout()
         self.x_pos = 0
         self.y_pos = 0
+        self.pending_moves = []
 
     def next_line(self):
         """Move relative position to the next line"""
@@ -374,42 +387,67 @@ class StringsAndCoinsPosition:
         Check to see if any coins were captured by the last move; if so,
         remove them and update the score and player to move
         """
-        captured = False
+        captured = []
         for coin in self.coins:
             links = [l for l in self.links if l.is_link_to(coin)]
             if not links:
-                captured = True
-                self.coins.remove(coin)
+                captured.append(coin)
                 if self.player_to_move == "A":
                     self.a_score += 1
                 elif self.player_to_move == "B":
                     self.b_score += 1
         if not captured:
             self.player_to_move = "A" if self.player_to_move == "B" else "B"
+        for coin in captured:
+            self.coins.remove(coin)
 
-    def cut_2coin_string(self, coin1, coin2):
-        """Make a move by cutting a string connecting two coins"""
+    def make_pending_moves(self):
+        """Make any moves which are queued up"""
+        for link in self.pending_moves:
+            self.links.remove(link)
+        self.pending_moves = []
+        self._check_captures()
+
+    def highlight_pending_moves(self, colour="lightgray", thickness=2):
+        """Change the visual attributes of pending moves so they show up clearly"""
+        for link in self.pending_moves:
+            link.colour = colour
+            link.thickness = thickness
+
+    def cut_2coin_string(self, coin1, coin2, pending=False):
+        """
+        Make a move by cutting a string connecting two coins.
+        Setting pending=True will not make the move but will queue it up for later.
+        It is assumed that all pending moves will be by the same player.
+        """
         links = [l for l in self.links if l.is_link_between(coin1, coin2)]
         if not links:
             raise ValueError("Position contains no link between {0} and {1}".format(coin1, coin2))
-        for link in links:
-            self.links.remove(link)
-        self._check_captures()
+        self.pending_moves.extend(links)
+        if not pending:
+            self.make_pending_moves()
 
-    def cut_ground_string(self, coin):
-        """Cut a string connecting a coin to the ground"""
+    def cut_ground_string(self, coin, pending=False):
+        """
+        Cut a string connecting a coin to the ground.
+        Setting pending=True will not make the move but will queue it up for later.
+        It is assumed that all pending moves will be by the same player.
+        """
         links = [l for l in self.links if l.is_link_to_ground(coin)]
         if not links:
             raise ValueError("Position contains no link from {0} to ground".format(coin))
-        for link in links:
-            self.links.remove(link)
-        self._check_captures()
+        self.pending_moves.extend(links)
+        if not pending:
+            self.make_pending_moves()
 
     def add_to_layout(self):
-        """Add elements to the given layout"""
-        for coin in self.coins:
+        """Add elements to the given layout."""
+        # Copy the elements so the layout can take ownership
+        new_coins = dict(zip(self.coins, [copy.copy(c) for c in self.coins]))
+        new_links = [copy.copy(l).replace_coins(new_coins) for l in self.links]
+        for coin in new_coins.values():
             self.layout.add_coin(coin)
-        for link in self.links:
+        for link in new_links:
             self.layout.add_link(link)
 
     def render(self, to=sys.stdout):
