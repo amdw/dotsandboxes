@@ -11,9 +11,9 @@ texlive-svg inkscape pstoedit python3 make`, `cd` into this repository, and run
 `make`.
 
 To perform [Pylint](https://www.pylint.org/) checks on the Python
-scripts, run ```make pylint``` (requires ```python3-pylint```). It
+scripts, run `make pylint` (requires `python3-pylint`). It
 produces quite a bit of output so you may want to pipe it through
-```less```.
+`less`.
 
 I would be very grateful to learn of any errors in this material.
 
