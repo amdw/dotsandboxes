@@ -205,7 +205,7 @@ class Layout:
         down_ground_links = [l for l in self.links for c in lowest_coins
                              if l.is_link_to_ground(c) and l.direction == "down"]
         if down_ground_links:
-            self.y_base += int(self.default_gap * 1.1)
+            self.y_base += int(self.default_gap * 0.3)
 
     def move_right(self):
         """Move the x to the right of anything drawn so far"""
@@ -219,7 +219,7 @@ class Layout:
         right_ground_links = [l for l in self.links for c in rightmost_coins
                               if l.is_link_to_ground(c) and l.direction == "right"]
         if right_ground_links:
-            self.x_base += int(self.default_gap * 1.1)
+            self.x_base += int(self.default_gap * 0.3)
 
     def reset_to_left(self):
         """Move the x base back to the left"""
@@ -389,6 +389,7 @@ class StringsAndCoinsPosition:
     def create_dotsandboxes_start(self, width, height):
         """Lay out a dots-and-boxes position of the given dimensions"""
         grid = []
+        self.next_line() # Make room for the upward ground links
         for i in range(height):
             grid.append(self.add_horizontal_chain(width))
             if i > 0:
