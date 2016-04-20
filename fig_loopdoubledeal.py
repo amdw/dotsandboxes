@@ -73,7 +73,7 @@ def final(layout, pos, grid, other_grid):
     pos.highlight_pending_moves(colour="red")
     pos.add_to_layout()
     layout.move_below()
-    layout.add_default_text("Player $B$ wins 16--4.")
+    layout.add_default_text("Player $B$ takes and wins 16--4.")
 
 def main():
     """Entry point"""

@@ -66,7 +66,7 @@ def final(layout, pos, chain, other_chain):
     pos.highlight_pending_moves(colour="red")
     pos.add_to_layout()
     layout.move_below()
-    layout.add_default_text("Player $B$ wins 8--2.")
+    layout.add_default_text("Player $B$ takes and wins 8--2.")
 
 def main():
     """Entry point"""

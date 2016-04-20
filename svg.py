@@ -387,19 +387,31 @@ class StringsAndCoinsPosition:
         Check to see if any coins were captured by the last move; if so,
         remove them and update the score and player to move
         """
-        captured = []
-        for coin in self.coins:
-            links = [l for l in self.links if l.is_link_to(coin)]
-            if not links:
-                captured.append(coin)
-                if self.player_to_move == "A":
-                    self.a_score += 1
-                elif self.player_to_move == "B":
-                    self.b_score += 1
+        captured = self._would_capture()
+        if self.player_to_move == "A":
+            self.a_score += len(captured)
+        elif self.player_to_move == "B":
+            self.b_score += len(captured)
         if not captured:
             self.player_to_move = "A" if self.player_to_move == "B" else "B"
         for coin in captured:
             self.coins.remove(coin)
+
+    def _would_capture(self):
+        """
+        Check which coins would be captured by the current list of pending moves.
+        """
+        links_after = copy.copy(self.links)
+        for link in self.pending_moves:
+            links_after.remove(link)
+
+        captured = []
+        for coin in self.coins:
+            coin_links = [l for l in links_after if l.is_link_to(coin)]
+            if not coin_links:
+                captured.append(coin)
+
+        return captured
 
     def make_pending_moves(self):
         """Make any moves which are queued up"""
@@ -413,6 +425,10 @@ class StringsAndCoinsPosition:
         for link in self.pending_moves:
             link.colour = colour
             link.thickness = thickness
+        captured = self._would_capture()
+        for coin in captured:
+            coin.line_colour = colour
+            coin.thickness = thickness
 
     def cut_2coin_string(self, coin1, coin2, pending=False):
         """
