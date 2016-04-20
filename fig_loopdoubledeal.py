@@ -15,68 +15,74 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Generate SVG diagram for double-dealing demo"""
+"""Illustrate double-dealing move on a loop"""
 
 import svg
 
 def make_original_position(layout):
-    """Create original position with coins"""
+    """Create original position with loops"""
     pos = svg.StringsAndCoinsPosition(layout)
-    other_chain = pos.add_horizontal_chain(5)
+    other_grid = pos.add_horizontal_loop(10)
     pos.next_line()
-    chain = pos.add_horizontal_chain(5)
-    return [pos, chain, other_chain]
+    pos.next_line()
+    grid = pos.add_horizontal_loop(10)
+    return [pos, grid, other_grid]
 
 def original(layout, pos):
-    """Render start position"""
+    """Render original position"""
     layout.add_default_text("Original position:")
     layout.move_below()
     pos.add_to_layout()
     layout.move_below()
 
-def opened(layout, pos, chain):
-    """Render first chain opening"""
-    layout.add_default_text("Player $A$ must open a chain:")
+def opened(layout, pos, grid):
+    """Render position with loop opened"""
+    layout.add_default_text("Player $A$ must open a loop:")
     layout.move_below()
-    pos.cut_ground_string(chain[-1], pending=True)
+    pos.cut_2coin_string(grid[0][3], grid[0][4], pending=True)
     pos.highlight_pending_moves(colour="red")
     pos.add_to_layout()
     pos.make_pending_moves()
     layout.move_below()
 
-def doubledeal(layout, pos, chain):
+def doubledeal(layout, pos, grid):
     """Render double-dealing move"""
     layout.add_default_text("Player $B$ double-deals:")
     layout.move_below()
-    pos.cut_ground_string(chain[0], pending=True)
-    pos.cut_2coin_string(chain[1], chain[2], pending=True)
-    pos.cut_2coin_string(chain[2], chain[3], pending=True)
-    pos.cut_2coin_string(chain[3], chain[4], pending=True)
+    # Ends
+    pos.cut_2coin_string(grid[0][0], grid[1][0], pending=True)
+    pos.cut_2coin_string(grid[0][-1], grid[1][-1], pending=True)
+    # Horizontals (leaving [0][0] to [0][1] and [1][0] to [1][1])
+    pos.cut_2coin_string(grid[0][1], grid[0][2], pending=True)
+    pos.cut_2coin_string(grid[0][2], grid[0][3], pending=True)
+    pos.cut_2coin_string(grid[1][1], grid[1][2], pending=True)
+    pos.cut_2coin_string(grid[1][2], grid[1][3], pending=True)
+    pos.cut_2coin_string(grid[1][3], grid[1][4], pending=True)
     pos.highlight_pending_moves(colour="red")
     pos.add_to_layout()
     pos.make_pending_moves()
     layout.move_below()
 
-def final(layout, pos, chain, other_chain):
+def final(layout, pos, grid, other_grid):
     """Render final position"""
-    layout.add_default_text("Player $A$ must now open the final chain:")
+    layout.add_default_text("Player $A$ must now open the final loop:")
     layout.move_below()
-    pos.cut_2coin_string(chain[0], chain[1], pending=True)
-    pos.cut_2coin_string(other_chain[3], other_chain[4], pending=True)
+    pos.cut_2coin_string(grid[0][0], grid[0][1], pending=True)
+    pos.cut_2coin_string(grid[1][0], grid[1][1], pending=True)
+    pos.cut_2coin_string(other_grid[0][3], other_grid[0][4], pending=True)
     pos.highlight_pending_moves(colour="red")
     pos.add_to_layout()
     layout.move_below()
-    layout.add_default_text("Player $B$ wins 8--2.")
+    layout.add_default_text("Player $B$ wins 16--4.")
 
 def main():
     """Entry point"""
     layout = svg.Layout()
-    [pos, chain, other_chain] = make_original_position(layout)
-
+    [pos, grid, other_grid] = make_original_position(layout)
     original(layout, pos)
-    opened(layout, pos, chain)
-    doubledeal(layout, pos, chain)
-    final(layout, pos, chain, other_chain)
+    opened(layout, pos, grid)
+    doubledeal(layout, pos, grid)
+    final(layout, pos, grid, other_grid)
 
     print("<svg>")
     layout.render()

@@ -176,11 +176,20 @@ to open a closed $n$-chain without allowing a double-dealing move.
 A similar situation arises with loops, but with one important
 difference: when a loop is opened, in order to play a double-dealing
 move a player must sacrifice 4 boxes, rather than 2, as shown in
-Figure TODO. This is because an opened loop has no link to the ground,
-so the only way to avoid taking a coin at the end (and thus be forced
-to continue making moves) is to take the string between two connected
-pairs of coins, sacrificing both pairs. This means that a
-double-dealing move is only possible with an $n$-loop if $n \ge 4$.
+Figure \ref{loopdoubledeal}. This is because an opened loop has no
+link to the ground, so the only way to avoid taking a coin at the end
+(and thus be forced to continue making moves) is to take the string
+between two connected pairs of coins, sacrificing both pairs. This
+means that a double-dealing move is only possible with an $n$-loop if
+$n \ge 4$.
+
+\begin{figure}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_loopdoubledeal.pdf_tex}
+  \caption{Double-dealing on a loop}
+  \label{loopdoubledeal}
+\end{figure}
 
 Double-dealing moves are an absolutely central concept in
 strings-and-coins strategy, because they allow a player to maintain
@@ -238,7 +247,7 @@ first theorem.
 \begin{proof}
   Let $P$ be the position with the coins offered by the loony move
   removed.
-  
+
   The proof uses a technique called \emph{strategy-stealing}. It
   relies on the fact that from $L$, the player to move can choose
   whether to take all the coins on offer and play first in $P$, or
@@ -323,7 +332,7 @@ optimal move, and we will prove that now.
   The value of the position after the hard-hearted handout is
   $2+V(P)$, as the two coins should always be captured by Theorem
   \ref{freecoins}.
-  
+
   A half-hearted handout by $A$ gives $B$ the choice whether to take
   the two coins and play first in $P$, or to play a double-dealing
   move and force $A$ to play first in $P$. So the value of the

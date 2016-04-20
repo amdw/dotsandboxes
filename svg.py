@@ -366,7 +366,7 @@ class StringsAndCoinsPosition:
         row2_coins = self.add_horizontal_row(row_length, y_offset=self.layout.default_gap)
         self.add_default_2clink(row1_coins[0], row2_coins[0])
         self.add_default_2clink(row1_coins[-1], row2_coins[-1])
-        return row1_coins + row2_coins
+        return [row1_coins, row2_coins]
 
     def create_dotsandboxes_start(self, width, height):
         """Lay out a dots-and-boxes position of the given dimensions"""
