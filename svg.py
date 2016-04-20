@@ -123,9 +123,9 @@ class GroundLink:
         elif direction == 'right':
             x = 1
         elif direction == 'up':
-            y = 1
-        elif direction == 'down':
             y = -1
+        elif direction == 'down':
+            y = 1
         else:
             raise ValueError('Illegal direction "{0}"'.format(self.direction))
         return [x, y]
@@ -137,10 +137,10 @@ class GroundLink:
         point_x = self.coin.x + (self.length * dir_x)
         point_y = self.coin.y + (self.length * dir_y)
 
-        f1_x = point_x - (self.f_size * (dir_x if dir_x != 0 else 0.5))
-        f1_y = point_y - (self.f_size * (dir_y if dir_y != 0 else 0.5))
-        f2_x = point_x - (self.f_size * (dir_x if dir_x != 0 else -0.5))
-        f2_y = point_y - (self.f_size * (dir_y if dir_y != 0 else -0.5))
+        f1_x = int(point_x - (self.f_size * (dir_x if dir_x != 0 else 0.5)))
+        f1_y = int(point_y - (self.f_size * (dir_y if dir_y != 0 else 0.5)))
+        f2_x = int(point_x - (self.f_size * (dir_x if dir_x != 0 else -0.5)))
+        f2_y = int(point_y - (self.f_size * (dir_y if dir_y != 0 else -0.5)))
 
         return [point_x, point_y, f1_x, f1_y, f2_x, f2_y]
 
@@ -197,7 +197,7 @@ class Layout:
         """Move the y base below anything drawn so far"""
         if not self.coins and not self.other_elements:
             return
-        max_elt_y = max([c.y for c in self.coins] + [c.y for c in self.other_elements])
+        max_elt_y = max([c.y for c in self.coins] + [e.y for e in self.other_elements])
         self.y_base = max_elt_y + self.default_gap
 
         # If any coins at the bottom have downward-pointing ground links, need to move a bit further
@@ -205,7 +205,25 @@ class Layout:
         down_ground_links = [l for l in self.links for c in lowest_coins
                              if l.is_link_to_ground(c) and l.direction == "down"]
         if down_ground_links:
-            self.y_base += self.default_gap
+            self.y_base += int(self.default_gap * 1.1)
+
+    def move_right(self):
+        """Move the x to the right of anything drawn so far"""
+        if not self.coins and not self.other_elements:
+            return
+        max_elt_x = max([c.x for c in self.coins] + [e.x for e in self.other_elements])
+        self.x_base = max_elt_x + self.default_gap
+
+        # If any coins at the right have rightward-pointing ground links, need to move a bit further
+        rightmost_coins = [c for c in self.coins if c.x == max_elt_x]
+        right_ground_links = [l for l in self.links for c in rightmost_coins
+                              if l.is_link_to_ground(c) and l.direction == "right"]
+        if right_ground_links:
+            self.x_base += int(self.default_gap * 1.1)
+
+    def reset_to_left(self):
+        """Move the x base back to the left"""
+        self.x_base = 10
 
     def add_coin(self, coin):
         """
@@ -371,8 +389,12 @@ class StringsAndCoinsPosition:
     def create_dotsandboxes_start(self, width, height):
         """Lay out a dots-and-boxes position of the given dimensions"""
         grid = []
-        for _i in range(height):
+        for i in range(height):
             grid.append(self.add_horizontal_chain(width))
+            if i > 0:
+                for j in range(width):
+                    link = self.layout.make_default_2clink(grid[i-1][j], grid[i][j])
+                    self.add_link(link)
             self.next_line()
         for coin in grid[0]:
             link = self.layout.make_default_glink(coin, "up")
@@ -430,31 +452,27 @@ class StringsAndCoinsPosition:
             coin.line_colour = colour
             coin.thickness = thickness
 
-    def cut_2coin_string(self, coin1, coin2, pending=False):
+    def cut_2coin_string(self, coin1, coin2):
         """
         Make a move by cutting a string connecting two coins.
-        Setting pending=True will not make the move but will queue it up for later.
-        It is assumed that all pending moves will be by the same player.
+        This will not make the move but will queue it up for later.
+        make_pending_moves() must be called before starting to make moves for another player.
         """
         links = [l for l in self.links if l.is_link_between(coin1, coin2)]
         if not links:
             raise ValueError("Position contains no link between {0} and {1}".format(coin1, coin2))
-        self.pending_moves.extend(links)
-        if not pending:
-            self.make_pending_moves()
+        self.pending_moves.append(links[0])
 
-    def cut_ground_string(self, coin, pending=False):
+    def cut_ground_string(self, coin):
         """
         Cut a string connecting a coin to the ground.
-        Setting pending=True will not make the move but will queue it up for later.
-        It is assumed that all pending moves will be by the same player.
+        This will not make the move but will queue it up for later.
+        make_pending_moves() must be called before starting to make moves for another player.
         """
         links = [l for l in self.links if l.is_link_to_ground(coin)]
         if not links:
             raise ValueError("Position contains no link from {0} to ground".format(coin))
-        self.pending_moves.extend(links)
-        if not pending:
-            self.make_pending_moves()
+        self.pending_moves.append(links[0])
 
     def add_to_layout(self):
         """Add elements to the given layout."""
