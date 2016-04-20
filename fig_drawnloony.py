@@ -23,7 +23,7 @@ def main():
     """Entry point"""
     pos = svg.StringsAndCoinsPosition()
     pos.add_horizontal_loop(4)
-    pos.move_to_right()
+    pos.move_right()
     pos.add_horizontal_loop(4)
     print('<svg>')
     pos.render()

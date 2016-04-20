@@ -312,7 +312,7 @@ class StringsAndCoinsPosition:
         """Move relative position to the next line"""
         self.y_pos += self.layout.default_gap
 
-    def move_to_right(self):
+    def move_right(self):
         """Move relative position to right hand side of whatever we already have"""
         if not self.coins:
             return
