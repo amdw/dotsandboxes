@@ -26,14 +26,15 @@ def make_original_position(layout):
     pos.next_line()
     pos.next_line()
     grid = pos.add_horizontal_loop(10)
+    pos.next_line()
+    pos.next_line(small=True)
     return [pos, grid, other_grid]
 
 def original(layout, pos):
     """Render original position"""
     layout.add_default_text("Original position:")
     layout.next_grid_position()
-    pos.add_to_layout()
-    layout.next_grid_position()
+    pos.highlight_add_and_move()
 
 def opened(layout, pos, grid):
     """Render position with loop opened"""
@@ -66,7 +67,7 @@ def final(layout, pos, grid, other_grid):
     pos.cut_2coin_string(grid[1][0], grid[1][1])
     pos.cut_2coin_string(other_grid[0][3], other_grid[0][4])
     pos.highlight_add_and_move()
-    layout.add_default_text("Player $B$ takes and wins 16--4.")
+    layout.add_default_text("Player $B$ takes and wins 4--16.")
 
 def main():
     """Entry point"""

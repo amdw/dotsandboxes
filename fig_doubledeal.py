@@ -25,14 +25,14 @@ def make_original_position(layout):
     other_chain = pos.add_horizontal_chain(5)
     pos.next_line()
     chain = pos.add_horizontal_chain(5)
+    pos.next_line(small=True)
     return [pos, chain, other_chain]
 
 def original(layout, pos):
     """Render start position"""
     layout.add_default_text("Original position:")
     layout.next_grid_position()
-    pos.add_to_layout()
-    layout.next_grid_position()
+    pos.highlight_add_and_move()
 
 def opened(layout, pos, chain):
     """Render first chain opening"""
@@ -58,7 +58,7 @@ def final(layout, pos, chain, other_chain):
     pos.cut_2coin_string(chain[0], chain[1])
     pos.cut_2coin_string(other_chain[3], other_chain[4])
     pos.highlight_add_and_move()
-    layout.add_default_text("Player $B$ takes and wins 8--2.")
+    layout.add_default_text("Player $B$ takes and wins 2--8.")
 
 def main():
     """Entry point"""

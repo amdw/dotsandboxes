@@ -71,6 +71,10 @@ class TwoCoinLink:
         """Two-coin links never link to ground"""
         return False
 
+    def all_coins(self):
+        """All coins we link to"""
+        return [self.coin1, self.coin2]
+
     def replace_coins(self, new_coins):
         """Replace coins with new ones from input map"""
         self.coin1 = new_coins[self.coin1]
@@ -107,6 +111,10 @@ class GroundLink:
     def is_link_to_ground(self, coin):
         """Indicate whether this links a given coin to the ground"""
         return self.coin == coin
+
+    def all_coins(self):
+        """All coins we link to"""
+        return [self.coin]
 
     def replace_coins(self, new_coins):
         """Replace coin with new one from input map"""
@@ -223,7 +231,7 @@ class Layout:
         right_ground_links = [l for l in self.links for c in rightmost_coins
                               if l.is_link_to_ground(c) and l.direction == "right"]
         if right_ground_links:
-            self.x_base += int(self.default_gap * 0.3)
+            self.x_base += self.default_gap
 
     def next_grid_position(self):
         """Move the coordinates to the next position on the grid"""
@@ -325,9 +333,9 @@ class StringsAndCoinsPosition:
         self.y_pos = 0
         self.pending_moves = []
 
-    def next_line(self):
+    def next_line(self, small=False):
         """Move relative position to the next line"""
-        self.y_pos += self.layout.default_gap
+        self.y_pos += int(self.layout.default_gap * (0.7 if small else 1))
 
     def move_right(self):
         """Move relative position to right hand side of whatever we already have"""
@@ -420,6 +428,7 @@ class StringsAndCoinsPosition:
         for coin in grid[-1]:
             link = self.layout.make_default_glink(coin, "down")
             self.add_link(link)
+        self.next_line(small=True) # To clear the downward links
         return grid
 
     def _check_captures(self):
@@ -432,8 +441,13 @@ class StringsAndCoinsPosition:
             self.a_score += len(captured)
         elif self.player_to_move == "B":
             self.b_score += len(captured)
-        if not captured:
+
+        # The turn is completed iff at least one of the pending moves wasn't a capture
+        non_captures = [l for l in self.pending_moves
+                        if not [c for c in l.all_coins() if c in captured]]
+        if non_captures:
             self.player_to_move = "A" if self.player_to_move == "B" else "B"
+
         for coin in captured:
             self.coins.remove(coin)
 
@@ -455,10 +469,14 @@ class StringsAndCoinsPosition:
 
     def make_pending_moves(self):
         """Make any moves which are queued up"""
+        if not self.pending_moves:
+            return
+
+        self._check_captures()
         for link in self.pending_moves:
             self.links.remove(link)
+
         self.pending_moves = []
-        self._check_captures()
 
     def highlight_pending_moves(self, colour="lightgray", thickness=2):
         """Change the visual attributes of pending moves so they show up clearly"""
@@ -511,6 +529,8 @@ class StringsAndCoinsPosition:
         self.highlight_pending_moves(colour=colour)
         self.add_to_layout()
         self.make_pending_moves()
+        score_text = "$${0}$$, {1}--{2}".format(self.player_to_move, self.a_score, self.b_score)
+        self.layout.add_default_text(score_text, y=self.y_pos)
         self.layout.next_grid_position()
 
     def render(self, to=sys.stdout):
