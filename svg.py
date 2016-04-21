@@ -478,7 +478,7 @@ class StringsAndCoinsPosition:
 
         self.pending_moves = []
 
-    def highlight_pending_moves(self, colour="lightgray", thickness=2):
+    def highlight_pending_moves(self, colour, thickness):
         """Change the visual attributes of pending moves so they show up clearly"""
         for link in self.pending_moves:
             link.colour = colour
@@ -521,15 +521,16 @@ class StringsAndCoinsPosition:
         for link in new_links:
             self.layout.add_link(link)
 
-    def highlight_add_and_move(self, colour="lightgray"):
+    def highlight_add_and_move(self, colour="black", thickness=3):
         """
         Highlight pending moves, add the position to the layout, and move to
         the next grid position.
         """
-        self.highlight_pending_moves(colour=colour)
+        self.highlight_pending_moves(colour=colour, thickness=thickness)
         self.add_to_layout()
+        player_label = self.player_to_move
         self.make_pending_moves()
-        score_text = "$${0}$$, {1}--{2}".format(self.player_to_move, self.a_score, self.b_score)
+        score_text = "$${0}$$, {1}--{2}".format(player_label, self.a_score, self.b_score)
         self.layout.add_default_text(score_text, y=self.y_pos)
         self.layout.next_grid_position()
 

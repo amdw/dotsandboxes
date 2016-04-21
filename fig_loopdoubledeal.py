@@ -24,7 +24,7 @@ def make_original_position(layout):
     pos = svg.StringsAndCoinsPosition(layout)
     other_grid = pos.add_horizontal_loop(10)
     pos.next_line()
-    pos.next_line()
+    pos.next_line(small=True)
     grid = pos.add_horizontal_loop(10)
     pos.next_line()
     pos.next_line(small=True)
