@@ -26,9 +26,7 @@ def main():
         pos.add_horizontal_chain(3)
         pos.next_line()
     pos.add_horizontal_chain(5)
-    print('<svg>')
     pos.render()
-    print('</svg>')
 
 if __name__ == '__main__':
     main()

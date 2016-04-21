@@ -51,9 +51,7 @@ def main():
 
     # TODO complete
 
-    print("<svg>")
     layout.render()
-    print("</svg>")
 
 if __name__ == "__main__":
     main()

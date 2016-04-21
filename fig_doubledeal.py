@@ -78,9 +78,7 @@ def main():
     doubledeal(layout, pos, chain)
     final(layout, pos, chain, other_chain)
 
-    print("<svg>")
     layout.render()
-    print("</svg>")
 
 if __name__ == "__main__":
     main()

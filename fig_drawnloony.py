@@ -25,9 +25,7 @@ def main():
     pos.add_horizontal_loop(4)
     pos.move_right()
     pos.add_horizontal_loop(4)
-    print('<svg>')
     pos.render()
-    print('</svg>')
 
 if __name__ == "__main__":
     main()

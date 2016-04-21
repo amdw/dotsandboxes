@@ -84,9 +84,7 @@ def main():
     doubledeal(layout, pos, grid)
     final(layout, pos, grid, other_grid)
 
-    print("<svg>")
     layout.render()
-    print("</svg>")
 
 if __name__ == "__main__":
     main()

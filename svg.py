@@ -282,6 +282,7 @@ class Layout:
 
     def render(self, to=sys.stdout):
         """Render position as SVG"""
+        print("<svg>", file=to)
         # Render links first, so the coins go on top
         for link in self.links:
             link.render(to)
@@ -289,6 +290,7 @@ class Layout:
             coin.render(to)
         for elem in self.other_elements:
             elem.render(to)
+        print("</svg>", file=to)
 
 class StringsAndCoinsPosition:
     """
