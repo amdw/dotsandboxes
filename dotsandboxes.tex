@@ -72,17 +72,20 @@ Dots-and-boxes is a special case of a more general game called
     another move, her turn ending only when she removes a string which
     does not win any coins.
   \item The game ends when all coins are gone; the winner is the
-    player who has captured more coins.
+    player who has won more coins.
 \end{enumerate}
 
 The $m \times n$ game of dots-and-boxes is the special case of
 strings-and-coins where $mn$ coins are connected in a rectangular $m
-\times n$ grid, with the outer coins connected to the ground. The
-strings-and-coins game parallel to the dots-and-boxes game in Figure
-TODO is shown in Figure \ref{samplesnc}. Connections to the ground are
-indicated by arrows. In each position, the moves played are shown in
-bold. Underneath is the player making the move shown, along with the
-score following that move.
+\times n$ grid, with the outer coins connected to the ground (the four
+corner coins having two ground links each, and the other edge coins
+having one ground link each).
+
+The strings-and-coins game parallel to the dots-and-boxes game in
+Figure TODO is shown in Figure \ref{samplesnc}. Connections to the
+ground are indicated by arrows. In each position, the moves played are
+shown in bold. Underneath is the player making the move shown, along
+with the score following that move.
 
 \begin{figure*}
   \centering
@@ -92,10 +95,10 @@ score following that move.
   \label{samplesnc}
 \end{figure*}
 
-Strings-and-coins is a more general game, because it is possible to
-start with a graph (indeed, a multigraph, since the same pair of coins
-can be joined by more than one string) of any shape and connectivity
-whatsoever.
+Strings-and-coins is a more general game than dots-and-boxes, because
+in strings-and-coins it is possible to start with a graph of any shape
+and connectivity whatsoever (indeed, a multigraph, since the same pair
+of coins could be joined by more than one string).
 
 Anything we learn about strings-and-coins will also apply to
 dots-and-boxes; we will therefore mostly focus our attention on
