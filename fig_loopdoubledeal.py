@@ -31,24 +31,21 @@ def make_original_position(layout):
 def original(layout, pos):
     """Render original position"""
     layout.add_default_text("Original position:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.add_to_layout()
-    layout.move_below()
+    layout.next_grid_position()
 
 def opened(layout, pos, grid):
     """Render position with loop opened"""
     layout.add_default_text("Player $A$ must open a loop:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.cut_2coin_string(grid[0][3], grid[0][4])
-    pos.highlight_pending_moves(colour="red")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.move_below()
+    pos.highlight_add_and_move()
 
 def doubledeal(layout, pos, grid):
     """Render double-dealing move"""
     layout.add_default_text("Player $B$ double-deals:")
-    layout.move_below()
+    layout.next_grid_position()
     # Ends
     pos.cut_2coin_string(grid[0][0], grid[1][0])
     pos.cut_2coin_string(grid[0][-1], grid[1][-1])
@@ -58,21 +55,17 @@ def doubledeal(layout, pos, grid):
     pos.cut_2coin_string(grid[1][1], grid[1][2])
     pos.cut_2coin_string(grid[1][2], grid[1][3])
     pos.cut_2coin_string(grid[1][3], grid[1][4])
-    pos.highlight_pending_moves(colour="red")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.move_below()
+    pos.highlight_add_and_move(colour="red")
+
 
 def final(layout, pos, grid, other_grid):
     """Render final position"""
     layout.add_default_text("Player $A$ must now open the final loop:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.cut_2coin_string(grid[0][0], grid[0][1])
     pos.cut_2coin_string(grid[1][0], grid[1][1])
     pos.cut_2coin_string(other_grid[0][3], other_grid[0][4])
-    pos.highlight_pending_moves(colour="red")
-    pos.add_to_layout()
-    layout.move_below()
+    pos.highlight_add_and_move()
     layout.add_default_text("Player $B$ takes and wins 16--4.")
 
 def main():

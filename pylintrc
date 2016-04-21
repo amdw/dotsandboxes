@@ -99,7 +99,7 @@ disable=W1637,W1617,E1602,W1638,W1633,W1634,I0021,W1635,W1603,W1629,E1608,W1636,
 [SIMILARITIES]
 
 # Minimum lines number of a similarity.
-min-similarity-lines=4
+min-similarity-lines=5
 
 # Ignore comments when computing similarities.
 ignore-comments=yes
@@ -365,7 +365,7 @@ max-statements=50
 max-parents=7
 
 # Maximum number of attributes for a class (see R0902).
-max-attributes=10
+max-attributes=15
 
 # Minimum number of public methods for a class (see R0903).
 min-public-methods=1

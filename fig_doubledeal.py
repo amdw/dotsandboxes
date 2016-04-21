@@ -30,42 +30,34 @@ def make_original_position(layout):
 def original(layout, pos):
     """Render start position"""
     layout.add_default_text("Original position:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.add_to_layout()
-    layout.move_below()
+    layout.next_grid_position()
 
 def opened(layout, pos, chain):
     """Render first chain opening"""
     layout.add_default_text("Player $A$ must open a chain:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.cut_ground_string(chain[-1])
-    pos.highlight_pending_moves(colour="red")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.move_below()
+    pos.highlight_add_and_move()
 
 def doubledeal(layout, pos, chain):
     """Render double-dealing move"""
     layout.add_default_text("Player $B$ double-deals:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.cut_ground_string(chain[0])
     pos.cut_2coin_string(chain[1], chain[2])
     pos.cut_2coin_string(chain[2], chain[3])
     pos.cut_2coin_string(chain[3], chain[4])
-    pos.highlight_pending_moves(colour="red")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.move_below()
+    pos.highlight_add_and_move(colour="red")
 
 def final(layout, pos, chain, other_chain):
     """Render final position"""
     layout.add_default_text("Player $A$ must now open the final chain:")
-    layout.move_below()
+    layout.next_grid_position()
     pos.cut_2coin_string(chain[0], chain[1])
     pos.cut_2coin_string(other_chain[3], other_chain[4])
-    pos.highlight_pending_moves(colour="red")
-    pos.add_to_layout()
-    layout.move_below()
+    pos.highlight_add_and_move()
     layout.add_default_text("Player $B$ takes and wins 8--2.")
 
 def main():

@@ -181,7 +181,8 @@ class Layout:
     not about the logic of the game.
     """
     def __init__(self, default_coin_r=10, default_thickness=1, default_gap=50,
-                 default_line_colour="black", default_fill_colour="white"):
+                 default_line_colour="black", default_fill_colour="white",
+                 grid_width=1):
         self.coins = []
         self.links = []
         self.other_elements = []
@@ -192,6 +193,9 @@ class Layout:
         self.default_fill_colour = default_fill_colour
         self.x_base = 10
         self.y_base = 10
+        self.grid_width = grid_width
+        self.current_grid_x = 0
+        self.grid_left_xs = [self.x_base]
 
     def move_below(self):
         """Move the y base below anything drawn so far"""
@@ -221,9 +225,20 @@ class Layout:
         if right_ground_links:
             self.x_base += int(self.default_gap * 0.3)
 
-    def reset_to_left(self):
-        """Move the x base back to the left"""
-        self.x_base = 10
+    def next_grid_position(self):
+        """Move the coordinates to the next position on the grid"""
+        self.current_grid_x += 1
+        if self.current_grid_x >= self.grid_width:
+            # New row
+            self.current_grid_x = 0
+            self.move_below()
+
+        # Have we been in this column before? If so, use the same
+        if len(self.grid_left_xs) > self.current_grid_x:
+            self.x_base = self.grid_left_xs[self.current_grid_x]
+        else:
+            self.move_right()
+            self.grid_left_xs.append(self.x_base)
 
     def add_coin(self, coin):
         """
@@ -466,15 +481,16 @@ class StringsAndCoinsPosition:
             raise ValueError("Position contains no link between {0} and {1}".format(coin1, coin2))
         self.pending_moves.append(links[0])
 
-    def cut_ground_string(self, coin):
+    def cut_ground_string(self, coin, direction=None):
         """
         Cut a string connecting a coin to the ground.
         This will not make the move but will queue it up for later.
         make_pending_moves() must be called before starting to make moves for another player.
         """
-        links = [l for l in self.links if l.is_link_to_ground(coin)]
+        links = [l for l in self.links if l.is_link_to_ground(coin)
+                 and (direction is None or l.direction.lower() == direction.lower())]
         if not links:
-            raise ValueError("Position contains no link from {0} to ground".format(coin))
+            raise ValueError("Position contains no such link from {0} to ground".format(coin))
         self.pending_moves.append(links[0])
 
     def add_to_layout(self):
@@ -486,6 +502,16 @@ class StringsAndCoinsPosition:
             self.layout.add_coin(coin)
         for link in new_links:
             self.layout.add_link(link)
+
+    def highlight_add_and_move(self, colour="lightgray"):
+        """
+        Highlight pending moves, add the position to the layout, and move to
+        the next grid position.
+        """
+        self.highlight_pending_moves(colour=colour)
+        self.add_to_layout()
+        self.make_pending_moves()
+        self.layout.next_grid_position()
 
     def render(self, to=sys.stdout):
         """Shortcut method to render layout when it contains only one position"""

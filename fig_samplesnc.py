@@ -21,33 +21,33 @@ import svg
 
 def main():
     """Entry point"""
-    layout = svg.Layout()
+    layout = svg.Layout(grid_width=2)
     pos = svg.StringsAndCoinsPosition(layout)
     grid = pos.create_dotsandboxes_start(2, 2)
     pos.add_to_layout()
     pos.make_pending_moves()
-    layout.move_right()
-    right_col_x = layout.x_base
+    layout.next_grid_position()
 
     pos.cut_2coin_string(grid[0][0], grid[0][1])
-    pos.highlight_pending_moves(colour="lightgray")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.move_below()
-    layout.reset_to_left()
+    pos.highlight_add_and_move()
 
-    pos.cut_ground_string(grid[1][1])
-    pos.highlight_pending_moves(colour="lightgray")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.x_base = right_col_x
+    pos.cut_ground_string(grid[0][1], direction="right")
+    pos.highlight_add_and_move()
 
-    pos.cut_2coin_string(grid[0][1], grid[1][1])
-    pos.highlight_pending_moves(colour="lightgray")
-    pos.add_to_layout()
-    pos.make_pending_moves()
-    layout.move_below()
-    layout.reset_to_left()
+    pos.cut_2coin_string(grid[0][0], grid[1][0])
+    pos.highlight_add_and_move()
+
+    pos.cut_2coin_string(grid[1][0], grid[1][1])
+    pos.highlight_add_and_move()
+
+    pos.cut_ground_string(grid[1][1], direction="down")
+    pos.highlight_add_and_move()
+
+    pos.cut_ground_string(grid[0][0], direction="left")
+    pos.highlight_add_and_move()
+
+    pos.cut_ground_string(grid[0][0], direction="up")
+    pos.highlight_add_and_move()
 
     # TODO complete
 
