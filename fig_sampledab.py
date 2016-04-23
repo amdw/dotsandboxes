@@ -21,7 +21,7 @@ import svg
 
 def main():
     """Entry point"""
-    layout = svg.Layout(grid_width=4)
+    layout = svg.Layout(grid_width=4, grid_margin=100)
     pos = svg.DotsAndBoxesPosition(2, 2, layout=layout)
     pos.add_to_layout()
     layout.next_grid_position()

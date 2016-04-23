@@ -190,7 +190,7 @@ class Layout:
     """
     def __init__(self, default_coin_r=10, default_thickness=1, default_gap=50,
                  default_line_colour="black", default_fill_colour="white",
-                 grid_width=1):
+                 grid_width=1, grid_margin=50):
         self.coins = []
         self.links = []
         self.dots = []
@@ -205,6 +205,7 @@ class Layout:
         self.x_base = 10
         self.y_base = 10
         self.grid_width = grid_width
+        self.grid_margin = grid_margin
         self.current_grid_x = 0
         self.grid_left_xs = [self.x_base]
 
@@ -218,14 +219,14 @@ class Layout:
         if not all_coord_elements:
             return
         max_elt_y = max([e.y for e in all_coord_elements])
-        self.y_base = max_elt_y + self.default_gap
+        self.y_base = max_elt_y + self.grid_margin
 
         # If any coins at the bottom have downward-pointing ground links, need to move a bit further
         lowest_coins = [c for c in self.coins if c.y == max_elt_y]
         down_ground_links = [l for l in self.links for c in lowest_coins
                              if l.is_link_to_ground(c) and l.direction == "down"]
         if down_ground_links:
-            self.y_base += int(self.default_gap * 0.3)
+            self.y_base += self.default_gap
 
     def move_right(self):
         """Move the x to the right of anything drawn so far"""
@@ -233,7 +234,7 @@ class Layout:
         if not all_coord_elements:
             return
         max_elt_x = max([e.x for e in all_coord_elements])
-        self.x_base = max_elt_x + self.default_gap
+        self.x_base = max_elt_x + self.grid_margin
 
         # If any coins at the right have rightward-pointing ground links, need to move a bit further
         rightmost_coins = [c for c in self.coins if c.x == max_elt_x]
@@ -250,7 +251,7 @@ class Layout:
             self.current_grid_x = 0
             self.move_below()
 
-        # Have we been in this column before? If so, use the same
+        # Have we been in this column before? If so, reuse the same x coordinate
         if len(self.grid_left_xs) > self.current_grid_x:
             self.x_base = self.grid_left_xs[self.current_grid_x]
         else:
@@ -563,7 +564,7 @@ class StringsAndCoinsPosition:
         self.add_to_layout()
         player_label = self.player_to_move
         self.make_pending_moves()
-        score_text = "$${0}$$, {1}--{2}".format(player_label, self.a_score, self.b_score)
+        score_text = "${0}$, {1}--{2}".format(player_label, self.a_score, self.b_score)
         self.layout.add_default_text(score_text, y=self.y_pos)
         self.layout.next_grid_position()
 
@@ -628,7 +629,11 @@ class CompletedBox:
         """Render as SVG"""
         x = int((self.tl_dot.x + self.tr_dot.x) / 2)
         y = int((self.tl_dot.y + self.bl_dot.y) / 2)
-        attribs = {"x": x, "y": y, "fill": self.colour}
+        # Nasty hack to center the text vertically:
+        # SVG properties like dominant-baseline don't seem to be supported by Inkscape
+        y += 5
+        attribs = {"x": x, "y": y, "fill": self.colour,
+                   "text-anchor": "middle"}
         render_tag("text", attribs, to, content=self.player)
 
 class DotsAndBoxesPosition:
@@ -713,6 +718,7 @@ class DotsAndBoxesPosition:
         line = Line(dot1, dot2, self.layout.default_line_colour, 1)
         self.lines.append(line)
         self._check_captures(x, y, direction)
+        return line
 
     def add_to_layout(self):
         """Add all elements to the layout"""
@@ -727,8 +733,18 @@ class DotsAndBoxesPosition:
         for box in new_boxes:
             self.layout.add_completed_box(box)
 
-    def move_highlight_and_add(self, x, y, direction):
+    def move_highlight_and_add(self, x, y, direction, colour="black", thickness=3):
         """Make a move, highlight it, and add to the layout"""
-        self.make_move(x, y, direction)
+        player_moving = self.player_to_move
+        line = self.make_move(x, y, direction)
+        old_colour = line.colour
+        old_thickness = line.thickness
+        line.colour = colour
+        line.thickness = thickness
         self.add_to_layout()
+        line.colour = old_colour
+        line.thickness = old_thickness
+        lowest_y = self.dots[0][-1].y
+        caption_y = lowest_y + int(self.layout.default_gap * 0.7)
+        self.layout.add_default_text("${0}$".format(player_moving), y=caption_y)
         self.layout.next_grid_position()
