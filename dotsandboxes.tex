@@ -12,7 +12,7 @@
 \newtheorem{addcoins}[thm]{Lemma}
 \newtheorem{freecoins}[thm]{Theorem}
 \newtheorem{halfheartedbad}[thm]{Theorem}
-\newtheorem{hardheartedbeatsloony}[thm]{Theorem}
+\newtheorem{opensmallest}[thm]{Theorem}
 
 \begin{document}
 
@@ -143,6 +143,9 @@ connected to the ground or to a joint. An \emph{open chain} is one
 which can be immediately captured, i.e. a chain where one or both ends
 has valency 1. A $n$-chain is a chain consisting of $n$ coins.
 
+A chain is \emph{independent} if it is connected to the ground (rather
+than a joint) at both ends.
+
 The act of \emph{opening} a chain or loop is cutting it so that it
 becomes an open chain, which can then be captured.
 
@@ -157,7 +160,7 @@ positive, zero or negative, depending on whether $P$ is advantageous
 for the first player. $V(P)$ is also known as the \emph{minimax} value
 of $P$ and $V$ is the \emph{value function} of strings-and-coins.
 
-\subsection{Basics of loony endgames}
+\subsection{Endgame fundamentals}
 
 To understand the strategy of a game, it is often a good idea to begin
 with positions close to the end of the game, since the understanding
@@ -253,12 +256,13 @@ make a loony move, she is almost always winning. (We will discuss the
 exceptions shortly.)
 
 A \emph{loony endgame} is defined as a strings-and-coins position in
-which the only possible moves are loony moves.
+which the only possible moves are loony moves. A \emph{loony position}
+is defined as one in which a loony move has just been made.
 
 These central concepts of strings-and-coins strategy bring us to our
 first theorem.
 
-\begin{sstealing} \label{sstealing}
+\begin{sstealing}\label{sstealing}
   If a player has just made a loony move resulting in position $L$,
   her opponent can score at least half of the remaining points,
   regardless of the rest of the position: in other words, $V(L) \ge
@@ -344,7 +348,7 @@ optimal move, and we will prove that now.
   double-dealing move of their own.)
 \end{proof}
 
-\begin{halfheartedbad}
+\begin{halfheartedbad}\label{halfheartedbad}
   A half-hearted handout is never better than a hard-hearted handout.
 \end{halfheartedbad}
 \begin{proof}
@@ -359,6 +363,43 @@ optimal move, and we will prove that now.
   move and force $A$ to play first in $P$. So the value of the
   position after the half-hearted handout is $$\max(2+V(P),-2-V(P))
   \ge 2+V(P)$$ by definition of $\max$.
+\end{proof}
+
+Results like this, which prove that a certain type of move can never
+be worse than another type, are known as \emph{canonical play}
+results. These are extremely useful, because they can significantly
+simplify the calculations necessary to evaluate a position.
+
+For example, Theorem \ref{halfheartedbad} means we never have to
+consider half-hearted handouts, because we know they will never be
+better than the equivalent hard-hearted handout. If the choice is
+between a hard-hearted and a half-hearted handout, we can say the
+former is the \emph{canonical move}.
+
+Theorem \ref{freecoins} is even more powerful: it means that in many
+situations where there are capturable coins, we do not need to
+consider the possibility of not taking them. When a long chain or loop
+is opened, taking all but the last few coins (two for a chain, four
+for a loop) is \emph{canonical}, so we need only consider two
+possibilities: taking the whole chain and the double-dealing move.
+
+(One point worth noting is that canonical play results only prove that
+the \emph{optimal} value of a position cannot be affected by a certain
+type of move. However, in some cases, a non-canonical move can give
+the opponent more opportunities to go wrong, and so might be worth a
+try in a practical game if the position is losing anyway.)
+
+Here is another useful canonical play result.
+
+\begin{opensmallest}
+  For any two independent chains, or any two independent loops, it is
+  never better to open the larger one than the smaller one.
+\end{opensmallest}
+\begin{proof}
+  The proof uses a useful technique mentioned in \cite{berl} called
+  \emph{the man in the middle}.
+
+  TODO
 \end{proof}
 
 \subsection{Control}
