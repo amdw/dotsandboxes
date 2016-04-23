@@ -193,6 +193,9 @@ class Layout:
                  grid_width=1):
         self.coins = []
         self.links = []
+        self.dots = []
+        self.lines = []
+        self.completed_boxes = []
         self.other_elements = []
         self.default_coin_r = default_coin_r
         self.default_thickness = default_thickness
@@ -205,11 +208,16 @@ class Layout:
         self.current_grid_x = 0
         self.grid_left_xs = [self.x_base]
 
+    def _all_coord_elements(self):
+        """All elements which have direct coordinates specified"""
+        return self.coins + self.dots + self.other_elements
+
     def move_below(self):
         """Move the y base below anything drawn so far"""
-        if not self.coins and not self.other_elements:
+        all_coord_elements = self._all_coord_elements()
+        if not all_coord_elements:
             return
-        max_elt_y = max([c.y for c in self.coins] + [e.y for e in self.other_elements])
+        max_elt_y = max([e.y for e in all_coord_elements])
         self.y_base = max_elt_y + self.default_gap
 
         # If any coins at the bottom have downward-pointing ground links, need to move a bit further
@@ -221,9 +229,10 @@ class Layout:
 
     def move_right(self):
         """Move the x to the right of anything drawn so far"""
-        if not self.coins and not self.other_elements:
+        all_coord_elements = self._all_coord_elements()
+        if not all_coord_elements:
             return
-        max_elt_x = max([c.x for c in self.coins] + [e.x for e in self.other_elements])
+        max_elt_x = max([e.x for e in all_coord_elements])
         self.x_base = max_elt_x + self.default_gap
 
         # If any coins at the right have rightward-pointing ground links, need to move a bit further
@@ -262,6 +271,23 @@ class Layout:
     def add_link(self, link):
         """Add a link to the position"""
         self.links.append(link)
+
+    def add_dot(self, dot):
+        """
+        Add a dot to the layout. Coordinates expected to be relative.
+        Hands over ownership of the dot to the layout.
+        """
+        dot.x += self.x_base
+        dot.y += self.y_base
+        self.dots.append(dot)
+
+    def add_line(self, line):
+        """Add a line to the layout."""
+        self.lines.append(line)
+
+    def add_completed_box(self, box):
+        """Add a completed box to the layout."""
+        self.completed_boxes.append(box)
 
     def add_other_element(self, elem):
         """
@@ -311,6 +337,13 @@ class Layout:
             link.render(to)
         for coin in self.coins:
             coin.render(to)
+        # Render lines before dots
+        for line in self.lines:
+            line.render(to)
+        for dot in self.dots:
+            dot.render(to)
+        for box in self.completed_boxes:
+            box.render(to)
         for elem in self.other_elements:
             elem.render(to)
         print("</svg>", file=to)
@@ -538,3 +571,164 @@ class StringsAndCoinsPosition:
         """Shortcut method to render layout when it contains only one position"""
         self.add_to_layout()
         self.layout.render(to)
+
+class Dot:
+    """A dot element from dots-and-boxes"""
+    def __init__(self, x, y, colour="black", r=3):
+        self.x = x
+        self.y = y
+        self.colour = colour
+        self.r = r
+
+    def render(self, to):
+        """Render as SVG"""
+        attribs = {"cx": self.x, "cy": self.y, "r": self.r,
+                   "stroke": self.colour, "stroke-width": 1,
+                   "fill": self.colour}
+        render_tag("circle", attribs, to)
+
+class Line:
+    """A line element from dots-and-boxes"""
+    def __init__(self, dot1, dot2, colour="black", thickness=1):
+        self.dot1 = dot1
+        self.dot2 = dot2
+        self.colour = colour
+        self.thickness = thickness
+
+    def replace_dots(self, new_dots):
+        """Replace with copied dots"""
+        self.dot1 = new_dots[self.dot1]
+        self.dot2 = new_dots[self.dot2]
+        return self
+
+    def render(self, to):
+        """Render as SVG"""
+        attribs = {"x1": self.dot1.x, "y1": self.dot1.y,
+                   "x2": self.dot2.x, "y2": self.dot2.y,
+                   "stroke": self.colour, "stroke-width": self.thickness}
+        render_tag("line", attribs, to)
+
+class CompletedBox:
+    """A completed box in dots-and-boxes"""
+    def __init__(self, tl_dot, tr_dot, bl_dot, player, colour="black"):
+        self.tl_dot = tl_dot
+        self.tr_dot = tr_dot
+        self.bl_dot = bl_dot
+        self.player = player
+        self.colour = colour
+
+    def replace_dots(self, new_dots):
+        """Replace dot reference with copy"""
+        self.tl_dot = new_dots[self.tl_dot]
+        self.tr_dot = new_dots[self.tr_dot]
+        self.bl_dot = new_dots[self.bl_dot]
+        return self
+
+    def render(self, to):
+        """Render as SVG"""
+        x = int((self.tl_dot.x + self.tr_dot.x) / 2)
+        y = int((self.tl_dot.y + self.bl_dot.y) / 2)
+        attribs = {"x": x, "y": y, "fill": self.colour}
+        render_tag("text", attribs, to, content=self.player)
+
+class DotsAndBoxesPosition:
+    """Dots-and-boxes position which renders itself as such on the layout"""
+
+    def __init__(self, width, height, layout=None):
+        self.layout = layout if layout else Layout()
+        self.dots = []
+        for i in range(width + 1):
+            column = []
+            for j in range(height + 1):
+                dot = Dot(i * self.layout.default_gap, j * self.layout.default_gap,
+                          colour=self.layout.default_line_colour)
+                column.append(dot)
+            self.dots.append(column)
+        self.valencies = []
+        for i in range(width):
+            self.valencies.append([4] * height)
+        self.lines = []
+        self.completed_boxes = []
+        self.player_to_move = "A"
+        self.a_score = 0
+        self.b_score = 0
+
+    def _dots_for_move(self, x, y, direction):
+        """Return pair of dots connected by a move"""
+        direction = direction.lower()
+        if direction == "top":
+            return [self.dots[x][y], self.dots[x+1][y]]
+        elif direction == "bottom":
+            return [self.dots[x][y+1], self.dots[x+1][y+1]]
+        elif direction == "left":
+            return [self.dots[x][y], self.dots[x][y+1]]
+        elif direction == "right":
+            return [self.dots[x+1][y], self.dots[x+1][y+1]]
+        else:
+            raise ValueError("Illegal direction [{0}]".format(direction))
+
+    def _affected_boxes(self, x, y, direction):
+        """The one or two boxes affected by a given move"""
+        affected_boxes = [[x, y]]
+        direction = direction.lower()
+        if direction == "top":
+            if y > 0:
+                affected_boxes.append([x, y-1])
+        elif direction == "bottom":
+            if y < len(self.valencies[0]) - 1:
+                affected_boxes.append([x, y+1])
+        elif direction == "left":
+            if x > 0:
+                affected_boxes.append([x-1, y])
+        elif direction == "right":
+            if x < len(self.valencies) - 1:
+                affected_boxes.append([x+1, y])
+        else:
+            raise ValueError("Illegal direction [{0}]".format(direction))
+
+        return affected_boxes
+
+    def _check_captures(self, x, y, direction):
+        """Check if a move captured any boxes (and update valencies)"""
+        affected_boxes = self._affected_boxes(x, y, direction)
+        end_of_turn = True
+        for [box_x, box_y] in affected_boxes:
+            self.valencies[box_x][box_y] -= 1
+            if self.valencies[box_x][box_y] <= 0:
+                completed = CompletedBox(self.dots[x][y], self.dots[x+1][y],
+                                         self.dots[x][y+1], self.player_to_move)
+                self.completed_boxes.append(completed)
+                if self.player_to_move == "A":
+                    self.a_score += 1
+                elif self.player_to_move == "B":
+                    self.b_score += 1
+                end_of_turn = False
+
+        if end_of_turn:
+            self.player_to_move = "B" if self.player_to_move == "A" else "A"
+
+    def make_move(self, x, y, direction):
+        """Draw a line on the board"""
+        [dot1, dot2] = self._dots_for_move(x, y, direction)
+        line = Line(dot1, dot2, self.layout.default_line_colour, 1)
+        self.lines.append(line)
+        self._check_captures(x, y, direction)
+
+    def add_to_layout(self):
+        """Add all elements to the layout"""
+        dots_list = [dot for col in self.dots for dot in col]
+        new_dots = dict(zip(dots_list, [copy.copy(dot) for dot in dots_list]))
+        new_lines = [copy.copy(line).replace_dots(new_dots) for line in self.lines]
+        new_boxes = [copy.copy(box).replace_dots(new_dots) for box in self.completed_boxes]
+        for line in new_lines:
+            self.layout.add_line(line)
+        for dot in new_dots.values():
+            self.layout.add_dot(dot)
+        for box in new_boxes:
+            self.layout.add_completed_box(box)
+
+    def move_highlight_and_add(self, x, y, direction):
+        """Make a move, highlight it, and add to the layout"""
+        self.make_move(x, y, direction)
+        self.add_to_layout()
+        self.layout.next_grid_position()
