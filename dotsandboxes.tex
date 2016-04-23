@@ -47,14 +47,24 @@ Dots-and-boxes is a game for two players.
     is the player who has completed more boxes.
 \end{enumerate}
 
-An example game is shown in Figure \ref{sampledab}.
+An example game is shown in Figure \ref{sampledab}; each move played
+is shown in bold, with the letter under each position showing the
+player making that move.
 
 \begin{figure*}
   \centering
   \def\svgscale{0.7}
   \input{fig_sampledab.pdf_tex}
-  \caption{Sample dots-and-boxes game}
+  \caption{Sample dots-and-boxes game, which player $A$ wins 3--1}
   \label{sampledab}
+\end{figure*}
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_samplesnc.pdf_tex}
+  \caption{Sample strings-and-coins game equivalent to Figure \ref{sampledab}}
+  \label{samplesnc}
 \end{figure*}
 
 The rules of dots-and-boxes are very simple: the rules can be learned
@@ -94,14 +104,6 @@ Figure TODO is shown in Figure \ref{samplesnc}. Connections to the
 ground are indicated by arrows. In each position, the moves played are
 shown in bold. Underneath is the player making the move shown, along
 with the score following that move.
-
-\begin{figure*}
-  \centering
-  \def\svgscale{0.7}
-  \input{fig_samplesnc.pdf_tex}
-  \caption{Sample strings-and-coins game}
-  \label{samplesnc}
-\end{figure*}
 
 Strings-and-coins is a more general game than dots-and-boxes, because
 in strings-and-coins it is possible to start with a graph of any shape
