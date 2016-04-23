@@ -393,15 +393,95 @@ try in a practical game if the position is losing anyway.)
 
 Here is another useful canonical play result.
 
-\begin{opensmallest}
-  For any two independent chains, or any two independent loops, it is
-  never better to open the larger one than the smaller one.
+\begin{opensmallest}\label{opensmallest}
+  For any two independent chains, or any two independent loops, of
+  different sizes, it is never better to open the larger one than the
+  smaller one.
 \end{opensmallest}
 \begin{proof}
   The proof uses a useful technique mentioned in \cite{berl} called
-  \emph{the man in the middle}.
+  \emph{the man in the middle}. This is a form of proof by
+  contradiction.
 
-  TODO
+  Suppose someone claims that, contrary to this theorem, opening the
+  larger structure is better than opening the smaller one. We
+  challenge this person to two simultaneous games, both starting from
+  the same position. In Game 1, player $A$ is required to start by
+  opening the smaller structure; in Game 2, player $A$ must start by
+  opening the larger one. We take the role of player $A$ in Game 1,
+  and our imaginary antagonist does the same in Game 2: she gets the
+  position she prefers to play as $A$, and so do we.
+
+  In order to prove she is right, our opponent will have to get a
+  better result as player $A$ in Game 2 than we can achieve as player
+  $A$ in Game 1: if she cannot, then her claim fails and the theorem
+  is proven.
+
+  The ``man in the middle'' technique shows that our challenger's task
+  is indeed impossible, by taking the moves she plays in one game and
+  playing equivalent moves against her in the other game, according to
+  an equivalence we specify. The proof works by showing that
+  regardless of the strategy our opponent chooses, we can
+  \emph{always} find such equivalent moves, and that they will
+  \emph{always} result in us doing at least as well in Game 1 as she
+  does in Game 2. Our antagonist is essentially playing against
+  herself, and we are the ``man in the middle'', hence the name.
+
+  In this case, we see how our opponent responds to our opening of the
+  smaller structure in Game 1, before choosing how to respond to her
+  opening of the larger one in Game 2:
+
+  \begin{itemize}
+  \item If she takes the whole structure, we take the whole larger
+    structure in Game 2, leaving us ahead.
+  \item If she plays a double-dealing move, we play a double-dealing
+    move ourselves on the opened structure in Game 2 (which we can
+    always do, because the structure opened in Game 2 is larger). This
+    again leaves us ahead, because the structures are either both
+    chains or both loops, so the number of coins which must be
+    sacrificed to double-deal is the same, and our structure is
+    larger.
+  \item If she opens the larger structure, we open the smaller
+    structure in Game 2.
+  \item If she plays elsewhere in the position, we copy her move in
+    the other game.
+  \end{itemize}
+
+  We then await our opponent's response in Game 2, and make the
+  equivalent move in Game 1, according to the same scheme: any move
+  our opponent makes on the smaller structure in Game 2 we replicate
+  on the larger structure in Game 1, and if she moves in the rest of
+  the position, we simply copy her. We repeat this strategy until the
+  both games are over.
+
+  If $P$ is the position minus the two structures concerned, we will
+  always achieve exactly the same score in $P$ in Game 1 as our
+  opponent achieves in $P$ in Game 2, so any difference in outcomes
+  will boil down to the two structures themselves.
+
+  We may end up winning the larger structure in Game 1 or we may not;
+  if we do, then we do better in Game 1 than our opponent in Game 2,
+  because we win the larger structure and lose the smaller one in Game
+  1, whereas our opponent wins the smaller one and loses the larger
+  one in Game 2. (If our win of the larger structure is minus some
+  coins sacrificed by a double-dealing move, so will be our opponent's
+  win of the smaller structure in the other game.)
+
+  However, even if we lose the larger structure in Game 1, we will win
+  the smaller structure in Game 2, meaning both players win both
+  structures in their respective games (possibly minus the same number
+  of sacrificed coins), leaving the final outcomes the same.
+
+  This shows that regardless of how good a strategy our opponent
+  chooses in Game 2, we can always do \emph{at least} as well in Game
+  1, possibly better, thus it \emph{cannot} be better to open the
+  larger structure than the smaller one.
+
+  (This proof depends on the fact that the two structures are
+  independent of $P$, so no move played on them can affect our ability
+  to copy our opponent in $P$. It also depends on the fact that any
+  move played on a smaller structure can be copied on the larger one
+  with no net loss of coins.)
 \end{proof}
 
 \subsection{Control}
@@ -495,8 +575,9 @@ possible pair of moves from $V(P_{i,k})$ as described in table
   \label{vpikcomponents}
 \end{table*}
 
-$A$ never does better to open the $k$-chain than one of the 3-chains,
-so we can calculate $V(P_{i,k})$ as follows.
+By Theorem \ref{opensmallest}, $A$ never does better to open the
+$k$-chain than one of the 3-chains, so we can calculate $V(P_{i,k})$
+as follows.
 
 \begin{eqnarray*}
   V(P_{0,k}) & = & -k \\
