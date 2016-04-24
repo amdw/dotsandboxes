@@ -16,7 +16,7 @@
 figure_scripts := $(wildcard fig_*.py)
 generated_figpdfs := $(patsubst %.py,%.pdf,$(figure_scripts))
 
-dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs)
+dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs) vc.tex
 	# Invoke twice to fix cross-references
 	pdflatex dotsandboxes.tex
 	pdflatex dotsandboxes.tex
@@ -27,10 +27,14 @@ fig_%.pdf: fig_%.svg
 fig_%.svg: fig_%.py svg.py
 	python3 $< > $@
 
-.PHONY: clean pylint
+.PHONY: vc.tex clean pylint
+
+vc.tex:
+	bash vc -m
 
 pylint:
 	python3-pylint *.py
 
 clean:
-	-rm -v *.pdf* *.svg *.pyc
+	-rm -v *.pdf* *.svg *.pyc vc.tex
+
