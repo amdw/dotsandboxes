@@ -705,7 +705,40 @@ available.
 
 Recall that the defining characteristic of a short chain or loop is
 that it can be opened with a non-loony move; therefore, sacrificing it
-does not entail giving up control of the position.
+does not necessarily entail giving up control of the position.
+
+From Theorems \ref{halfheartedbad} and \ref{opensmallest}, we know
+that if we add a single short chain or loop of size $c$ to a loony
+endgame $P$ resulting in a position $P'$, the best move will be to
+open that short chain or loop (with a hard-hearted handout, if
+applicable), sacrificing all the coins in it, but forcing our opponent
+to play first in $P$, and thus $V(P') = -c-V(P)$.
+
+If we continue to add short chains or loops to the position, the sign
+of its value will flip back and forth, as the players will alternately
+open one of the short structures, until one of them is forced to play
+a loony move.
+
+To see how this works with a concrete example, consider a family of
+positions $S_{i,k}$ consisting of $i$ 2-chains plus one
+$k$-chain. Then:
+
+\begin{equation*}
+  V(S_{i,k}) =
+  \begin{cases}
+    -k & \text{if } i = 0,\\
+    -2-V(S_{i-1,k}) & \text{if } i > 0
+  \end{cases}
+\end{equation*}
+
+For the case $k=3$, this means the value of the position alternates
+between $-3$ (for even $i$) and $+1$ (for odd $i$), as either player
+$A$ loses two coins on the last 2-chain but wins the final 3-chain, or
+makes an even score on the 2-chains but has to give away the 3-chain.
+
+For larger $k$, the oscillations as $i$ is increased are even larger,
+as the significance of who wins the $k$-chain becomes greater. For
+example $V(S_{i,10})$ is $-10$ for even $i$ and $+8$ for odd $i$.
 
 \begin{thebibliography}{99}
   \bibitem{berl} Elwyn Berlekamp, \emph{The Dots-and-Boxes Game},
