@@ -115,9 +115,7 @@ dots-and-boxes; we will therefore mostly focus our attention on
 strings-and-coins, occasionally making reference to dots-and-boxes
 where something we learn has specific implications there.
 
-\section{Definitions and basic strategy}
-
-\subsection{Basic terminology}
+\section{Basic terminology}
 
 Where possible, I have tried to be consistent with the standard
 terminology of mathematical graph theory, and with existing literature
@@ -162,7 +160,9 @@ positive, zero or negative, depending on whether $P$ is advantageous
 for the first player. $V(P)$ is also known as the \emph{minimax} value
 of $P$ and $V$ is the \emph{value function} of strings-and-coins.
 
-\subsection{Endgame fundamentals}
+\section{Endgame fundamentals}
+
+\subsection{Control and loony moves}
 
 To understand the strategy of a game, it is often a good idea to begin
 with positions close to the end of the game, since the understanding
@@ -484,15 +484,15 @@ Here is another useful canonical play result.
   with no net loss of coins.)
 \end{proof}
 
-\subsection{Control}
+\subsection{Structure sizes and control}
 \label{smallchains}
 
 From the preceding discussion, it is clear that the concept of control
 is extremely important to understanding a strings-and-coins
 position. However, the winner in strings-and-coins is the player who
 wins most coins, not the player who makes the last move or controls
-the flow of the play. This section explores the relationship between
-these two concepts.
+the flow of the play. We now explore the relationship between these
+two concepts.
 
 First, suppose we have a position composed of an arbitrary
 sub-position $S$ and a single chain with more coins than in all of
