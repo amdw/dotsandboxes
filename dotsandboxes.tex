@@ -373,9 +373,9 @@ optimal move, and we will prove that now.
 
   A half-hearted handout by $A$ gives $B$ the choice whether to take
   the two coins and play first in $P$, or to play a double-dealing
-  move and force $A$ to play first in $P$. So the value of the
-  position after the half-hearted handout is $$\max(2+V(P),-2-V(P))
-  \ge 2+V(P)$$ by definition of $\max$.
+  move, which sacrifices two coins but forces $A$ to play first in
+  $P$. So the value of the position after the half-hearted handout
+  is $$\max(2+V(P),-2-V(P)) \ge 2+V(P)$$ by definition of $\max$.
 \end{proof}
 
 Results like this, which prove that a certain type of move can never
@@ -567,32 +567,16 @@ In $P_{i,k}$, $A$ can choose whether to open the $k$-chain or one of
 the 3-chains, and in response, $B$ can choose whether to take the
 whole chain or take all but two boxes and play a double-dealing move.
 
-When you remove one chain from $P_{i,k}$, you reach another position
-from the same family: removing the $k$-chain yields $P_{i-1,3}$ (which
-consists purely of $i$ 3-chains), and removing one of the 3-chains
-yields $P_{i-1,k}$. We can use this fact to compute the value of each
-possible pair of moves from $V(P_{i,k})$ as described in table
-\ref{vpikcomponents}.
-
-\begin{table*}[tp]
-  \centering
-  \begin{tabular}{c | c c}
-    & $A$ opens a 3-chain & $A$ opens the $k$-chain \\
-    \hline
-    $B$ takes & $-3-V(P_{i-1,k})$ & $-k-V(P_{i-1,3})$ \\
-    $B$ double-deals & $1+V(P_{i-1,k})$ & $-k+4+V(P_{i-1,3})$
-  \end{tabular}
-  \caption{Values to $A$ of moves from $P_{i,k}$}
-  \label{vpikcomponents}
-\end{table*}
-
 By Theorem \ref{opensmallest}, $A$ never does better to open the
-$k$-chain than one of the 3-chains, so we can calculate $V(P_{i,k})$
-as follows.
+$k$-chain than one of the 3-chains, so to compute $V(P_{i,k})$, we
+need only consider opening a 3-chain, followed by either taking or
+double-dealing in reply by $B$. Since removing one of the 3-chains
+from $P_{i,k}$ yields $P_{i-1,k}$, we can calculate $V(P_{i,k})$
+recursively as follows.
 
 \begin{eqnarray*}
   V(P_{0,k}) & = & -k \\
-  V(P_{i,k}) & = & \min(-3-V(P_{i-1,k}), 1+V(P_{i-1,k}))
+  V(P_{i+1,k}) & = & \min(-3-V(P_{i,k}), 1+V(P_{i,k}))
 \end{eqnarray*}
 
 Example calculations for $k=3$, $k=4$ and $k=10$ can be seen in tables
