@@ -182,9 +182,9 @@ take all but the last two boxes, and then sacrifice them with a
 \emph{double-dealing move} as shown in Figure \ref{dddemo} (with
 $n=5$). Because this move does not win a coin, it ends $B$'s turn, and
 forces $A$ to make a move. $A$ might as well take the two sacrificed
-coins, because in either case, he is again forced to open the
-remaining chain for $B$, which $B$ then wins. Thus $B$ wins by $2n -
-2$ points to 2, so $V(D_n) = 4-2n$.
+coins, because in either case, he is also forced to open the remaining
+chain for $B$, which $B$ then wins. Thus $B$ wins by $2n - 2$ points
+to 2, so $V(D_n) = 4-2n$.
 
 \begin{figure}
   \centering
@@ -233,12 +233,23 @@ opened without allowing a double-dealing move. By contrast a
 specific technical meaning like this can often be confusing. However
 they are standard in the dots-and-boxes literature, so throughout this
 paper I have tried to consistently use ``long'' and ``short'' in this
-technical sense, preferring ``big'' and ``small'' in more informal
+technical sense, preferring ``large'' and ``small'' in more informal
 contexts.)
 
-Further, a \emph{loony move} is defined as a move which allows the
-opponent to play a double-dealing move. There are four types of loony
-move:
+If there are more than two $n$-chains, notice that player $B$ can
+maintain control all the way to the end of the game, by taking all but
+two coins of each chain and then playing a double-dealing move,
+forcing $A$ to open the next chain at the cost of two coins, and
+repeating this for each chain except the last, which he can capture in
+its entirety. This strategy will certainly win the game if $n>3$; if
+$n=3$ then the situation is slightly more complex, because sacrificing
+two coins from a 3-chain results in a net loss of one coin. A similar
+observation holds true for loops which are sufficiently large to allow
+a double-dealing move without net loss. We will explore this topic in
+more detail in section \ref{smallchains}.
+
+A \emph{loony move} is defined as a move which allows the opponent to
+play a double-dealing move. There are four types of loony move:
 
 \begin{enumerate}
   \item Opening a long chain
