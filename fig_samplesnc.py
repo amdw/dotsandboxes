@@ -26,16 +26,16 @@ def main():
     grid = pos.create_dotsandboxes_start(2, 2)
     pos.highlight_add_and_move()
 
-    pos.cut_2coin_string(grid[0][0], grid[0][1])
-    pos.highlight_add_and_move()
-
-    pos.cut_ground_string(grid[0][1], direction="right")
-    pos.highlight_add_and_move()
-
     pos.cut_2coin_string(grid[0][0], grid[1][0])
     pos.highlight_add_and_move()
 
-    pos.cut_2coin_string(grid[1][0], grid[1][1])
+    pos.cut_ground_string(grid[1][0], direction="right")
+    pos.highlight_add_and_move()
+
+    pos.cut_2coin_string(grid[0][0], grid[0][1])
+    pos.highlight_add_and_move()
+
+    pos.cut_2coin_string(grid[0][1], grid[1][1])
     pos.highlight_add_and_move()
 
     pos.cut_ground_string(grid[1][1], direction="down")
@@ -47,19 +47,19 @@ def main():
     pos.cut_ground_string(grid[0][0], direction="up")
     pos.highlight_add_and_move()
 
-    pos.cut_ground_string(grid[1][0], direction="left")
+    pos.cut_ground_string(grid[0][1], direction="left")
     pos.highlight_add_and_move()
 
-    pos.cut_ground_string(grid[1][0], direction="down")
+    pos.cut_ground_string(grid[0][1], direction="down")
     pos.highlight_add_and_move()
 
     pos.cut_ground_string(grid[1][1], direction="right")
     pos.highlight_add_and_move()
 
-    pos.cut_2coin_string(grid[0][1], grid[1][1])
+    pos.cut_2coin_string(grid[1][0], grid[1][1])
     pos.highlight_add_and_move()
 
-    pos.cut_ground_string(grid[0][1], direction="up")
+    pos.cut_ground_string(grid[1][0], direction="up")
     pos.highlight_add_and_move()
 
     layout.render()

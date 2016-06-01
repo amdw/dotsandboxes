@@ -463,7 +463,8 @@ class StringsAndCoinsPosition:
             link = self.layout.make_default_glink(coin, "down")
             self.add_link(link)
         self.next_line(small=True) # To clear the downward links
-        return grid
+        # Transpose the grid so it can be indexed [x][y] like the svg coordinates
+        return [list(t) for t in zip(*grid)]
 
     def _check_captures(self):
         """
