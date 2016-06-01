@@ -15,6 +15,8 @@
 \newtheorem{opensmallest}[thm]{Theorem}
 \newtheorem{gamelength}[thm]{Theorem}
 \newtheorem{dnbgamelength}[thm]{Corollary}
+\newtheorem{parityruleofthumb}[thm]{Rule}
+\newtheorem{dnbparityruleofthumb}[thm]{Rule}
 
 \begin{document}
 
@@ -793,20 +795,148 @@ exactly how\footnote{I have never seen this theorem stated in quite
   proof of this result.)
 \end{proof}
 
+Applying this to dots-and-boxes gives the following elegant
+corollary\footnote{This is the result given in most of the
+  dots-and-boxes literature, including \cite{berl} and \cite{wwdab}.}.
+
 \begin{dnbgamelength}\label{dnbgamelength}
   The number of turns in a game of dots-and-boxes in which $D$
   double-crossed moves occur is equal to the number of dots in the
   grid plus $D$.
 \end{dnbgamelength}
 \begin{proof}
-  If the dots-and-boxes game is played on a grid of $m \times n$
-  boxes, the number of coins in the equivalent strings-and-coins
-  position is $mn$, and the number of strings is $$m(n+1) + n(m+1)$$
+  If a dots-and-boxes game is played on a grid of $m$ rows and $n$
+  columns of boxes, the number of coins in the equivalent
+  strings-and-coins position is $mn$. There are $m(n+1)$ horizontal
+  strings and $n(m+1)$ vertical ones, so the total number of strings
+  is $$2mn + m + n$$
 
-  Substituting these numbers into Theorem \ref{gamelength} and
-  simplifying shows that the game will have $$(m+1)(n+1) + D$$ turns,
-  and since the board has $(m+1)(n+1)$ dots, we have our result.
+  Substituting these into Theorem \ref{gamelength} and simplifying
+  shows that the game will have $$(m+1)(n+1) + D$$ turns.  Since the
+  board has $(m+1)(n+1)$ dots, we have our result.
 \end{proof}
+
+\subsection{Chain parity rules}
+
+These results allow us, in many practical situations, to work out
+quite a long way in advance which player is going to make the last
+move of the game.
+
+In a well-played game, there will typically be no double-crossed moves
+until a loony endgame is reached, and there will be enough very long
+chains and loops that whoever can gain control and make the last move
+will win. If that happens, the player who gains control will play a
+double-dealing move on each long chain or loop except the last one,
+which means there will be one double-crossed move per long chain and
+two double-crossed moves per long loop, except for the last turn of
+the game, where there will be no double-crossed moves if it is a chain
+being taken, and one if it is a loop.
+
+This in turn means that if the number of long chains $L$ is
+\emph{odd}, the number of double-crossed moves will be \emph{even},
+and vice versa. (The number of long \emph{loops}, interestingly, is
+irrelevant.)
+
+Theorem \ref{gamelength} then tells us that if we started with $S$
+strings and $C$ coins and $S-C+L$ is \emph{odd}, the total number of
+turns in the game will be \emph{odd}, whereas if $S-C+L$ is
+\emph{even}, the total number of turns will also be \emph{even}. This
+gives us the following rule of thumb.
+
+\begin{parityruleofthumb}
+  If player $A$ plays the odd-numbered turns in a game starting with
+  $S$ strings and $C$ coins, and player $B$ the even-numbered turns,
+  both players should try to reach an endgame position with a number
+  of long chains $L$ of a certain parity. Player $A$ will try to
+  control $L$ so as to make $S-C+L$ \emph{odd}, whereas $B$ will try
+  to make $S-C+L$ \emph{even}.
+\end{parityruleofthumb}
+
+The equivalent result for dots-and-boxes is as follows.
+
+\begin{dnbparityruleofthumb}
+  In a dots-and-boxes game played on a board with $T$ dots, both
+  players should try to reach an endgame position with a number of
+  long chains $L$ of a certain parity. Player $A$ will try to make
+  $T+L$ \emph{even}, whereas player $B$ will try to make it
+  \emph{odd}.
+
+  (Most dots-and-boxes games are played on a grid with an odd number
+  of boxes, in which case $T$ is even and so player $A$ should try to
+  aim for an even number of long chains, while player $B$ should try
+  to aim for an odd number.)
+\end{dnbparityruleofthumb}
+
+These rules will work provided (a) there are sufficient very long
+chains that making the last move is enough to guarantee winning the
+game, and (b) the pattern of double-crossed moves does not deviate
+from that described above (which normally only happens in expert play
+when one player realises they are losing and tries to sacrifice some
+boxes to confuse their opponent).
+
+\subsection{Examples}
+
+We now examine a couple of examples of these rules in operation, taken
+from the exercises in \cite{berl}.
+
+In Figure \ref{ex3p1}, we see a $3 \times 3$ dots-and-boxes position
+with 10 moves having been made, and no captures, so player $A$ is to
+move. The position has been divided into two structures, one to the
+top and left (which is clearly going to become a long chain) and one
+in the bottom right, which could become either a chain or a loop. By
+Rule \ref{dnbparityruleofthumb}, player $A$ is aiming for an
+\emph{even} number of long chains, so the correct move is to play the
+highlighted move to turn the bottom right structure into a long
+chain. Any other move loses, as $B$ will respond by taking any coins
+on offer and then playing one of the ground strings in the bottom
+right. It is worth playing the position through a few times to confirm
+this.
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_ex3p1.pdf_tex}
+  \caption{Exercise 3.1 from \cite{berl}: $A$ to move, solution highlighted}
+  \label{ex3p1}
+\end{figure*}
+
+In Figure \ref{ex3p12}, we see a more complex case: a $5 \times 5$
+dots-and-boxes position with 28 moves having been made, and no
+captures, so again player $A$ is to move. The only part of the
+position which has not been resolved into a chain or a loop is the
+four coins in the top right, so we immediately suspect a need to move
+in this area --- but should we make it into a chain or a loop?
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_ex3p12.pdf_tex}
+  \caption{Exercise 3.12 from \cite{berl}: $A$ to move, solution highlighted}
+  \label{ex3p12}
+\end{figure*}
+
+To answer that question, we must count the chains in the rest of the
+position. This is slightly trickier than the previous case, because
+most of the coins are joined together into a single mass, containing
+two joints: the second coin of the first row, and the second coin of
+the fourth row. However, once we see the joints, it is clear that
+there are three long chains: one extending down and to the left from
+the first joint, one extending right and down from the second joint,
+and one connecting the two joints.
+
+Since $A$ wants an even number of long chains, the correct move is to
+turn the top right into a chain as indicated; other moves lose,
+because $B$ would take any coins on offer and then take one of the
+ground strings in the top right, turning it into a loop.
+
+It should be clear that the chain-parity rules discussed in this
+section are enormously helpful in analysing these late-middlegame
+positions. Figure \ref{ex3p12}, in particular, would be very
+time-consuming to analyse by brute force. Julian West's analysis of
+some expert-level dots-and-boxes games in \cite{nochance} makes
+repeated reference to these rules, and understanding how to apply them
+is a vital step in the development of anyone who wants to improve
+their skills at this game.
 
 \appendix
 
