@@ -843,7 +843,7 @@ turns in the game will be \emph{odd}, whereas if $S-C+L$ is
 \emph{even}, the total number of turns will also be \emph{even}. This
 gives us the following rule of thumb.
 
-\begin{parityruleofthumb}
+\begin{parityruleofthumb}\label{parityruleofthumb}
   If player $A$ plays the odd-numbered turns in a game starting with
   $S$ strings and $C$ coins, and player $B$ the even-numbered turns,
   both players should try to reach an endgame position with a number
@@ -854,7 +854,7 @@ gives us the following rule of thumb.
 
 The equivalent result for dots-and-boxes is as follows.
 
-\begin{dnbparityruleofthumb}
+\begin{dnbparityruleofthumb}\label{dnbparityruleofthumb}
   In a dots-and-boxes game played on a board with $T$ dots, both
   players should try to reach an endgame position with a number of
   long chains $L$ of a certain parity. Player $A$ will try to make
@@ -937,6 +937,44 @@ some expert-level dots-and-boxes games in \cite{nochance} makes
 repeated reference to these rules, and understanding how to apply them
 is a vital step in the development of anyone who wants to improve
 their skills at this game.
+
+\subsection{$3 \times 3$ dots-and-boxes}
+
+In \cite{berl}, Berlekamp gives a winning strategy for player $B$ in
+$3 \times 3$ dots-and-boxes. By Rule \ref{dnbparityruleofthumb}, $B$
+is aiming for an odd number of long chains; the idea is to force a
+single long chain passing through the centre square by making the
+moves shown in the pattern in Figure \ref{3by3strategy} (or its mirror
+image).
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_3by3strategy.pdf_tex}
+  \caption{Player $B$'s winning strategy in $3 \times 3$ dots-and-boxes}
+  \label{3by3strategy}
+\end{figure*}
+
+A sample game played according to this strategy may be found in Figure
+\ref{3by3samplegame}.
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.5}
+  \input{fig_3by3samplegame.pdf_tex}
+  \caption{Sample $3 \times 3$ game played according to Berlekamp's
+    strategy}
+  \label{3by3samplegame}
+\end{figure*}
+
+The end of the game is not shown, but it is clear that $A$ has been
+forced to open the long chain of five boxes at the bottom, and that
+$B$ will thus win 6--3. Particularly noteworthy is the sacrifice of
+the middle right box by $B$ at the eighth move; this is done in order
+to prevent the bottom right being turned into a loop. The sixth move
+is also essential in order to prevent the top row being turned into a
+second long chain. With those moves in place, the outcome of the game
+is secured by basic endgame technique.
 
 \appendix
 
