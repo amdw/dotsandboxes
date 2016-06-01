@@ -41,12 +41,13 @@ Dots-and-boxes is a game for two players.
 
 \begin{enumerate}
   \item The game is played on a rectangular grid of dots.
-  \item The players take it in turns to draw a line of their choice
+  \item A move consists of drawing a line of the player's choice
     connecting a pair of horizontally or vertically adjacent dots.
-  \item If a player completes a $1 \times 1$ box, she scores a point
-    (normally recorded by writing her initial inside it) and
-    \emph{must} make another move: a player's turn only comes to an
-    end when she makes a move which does not complete a box.
+  \item If a player's move completes any $1 \times 1$ boxes, she
+    scores one point for each (normally recorded by writing her
+    initial inside it) and \emph{must} make another move: a player's
+    turn comes to an end when she makes a move which does not complete
+    any boxes.
   \item The game ends when all boxes have been completed; the winner
     is the player who has completed more boxes.
 \end{enumerate}
@@ -61,14 +62,6 @@ player making that move.
   \input{fig_sampledab.pdf_tex}
   \caption{Sample dots-and-boxes game, which player $A$ wins 3--1}
   \label{sampledab}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \def\svgscale{0.7}
-  \input{fig_samplesnc.pdf_tex}
-  \caption{Sample strings-and-coins game equivalent to Figure \ref{sampledab}}
-  \label{samplesnc}
 \end{figure*}
 
 The rules of dots-and-boxes are very simple: the rules can be learned
@@ -87,12 +80,11 @@ Dots-and-boxes is a special case of a more general game called
   \item This game begins with a set of coins, and a set of strings
     each connecting a pair of coins; some coins may also have one or
     more strings connecting them to the ground.
-  \item The players take it in turns to remove a string of their
-    choice.
-  \item If a player removes the last string connected to a coin, she
-    wins the coin, removing it from the game, and \emph{must} play
-    another move, her turn ending only when she removes a string which
-    does not win any coins.
+  \item A move consists of removing a string of the player's choice.
+  \item If a player's move removes the last string connected to any
+    coins, she wins those coins, removing them from the game, and
+    \emph{must} play another move, her turn ending when she removes a
+    string which does not win any coins.
   \item The game ends when all coins are gone; the winner is the
     player who has won more coins.
 \end{enumerate}
@@ -108,6 +100,14 @@ Figure \ref{sampledab} is shown in Figure \ref{samplesnc}. Connections
 to the ground are indicated by arrows. In each position, the moves
 played are shown in bold. Underneath is the player making the move
 shown, along with the score following that move.
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_samplesnc.pdf_tex}
+  \caption{Sample strings-and-coins game equivalent to Figure \ref{sampledab}}
+  \label{samplesnc}
+\end{figure*}
 
 Strings-and-coins is a more general game than dots-and-boxes, because
 in strings-and-coins it is possible to start with a graph of any shape
