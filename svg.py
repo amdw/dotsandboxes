@@ -713,10 +713,14 @@ class DotsAndBoxesPosition:
         if end_of_turn:
             self.player_to_move = "B" if self.player_to_move == "A" else "A"
 
-    def make_move(self, x, y, direction):
+    def make_move(self, x, y, direction, colour=None, thickness=None):
         """Draw a line on the board"""
+        if not colour:
+            colour = self.layout.default_line_colour
+        if not thickness:
+            thickness = self.layout.default_thickness
         [dot1, dot2] = self._dots_for_move(x, y, direction)
-        line = Line(dot1, dot2, self.layout.default_line_colour, 1)
+        line = Line(dot1, dot2, colour, thickness)
         self.lines.append(line)
         self._check_captures(x, y, direction)
         return line
@@ -749,3 +753,8 @@ class DotsAndBoxesPosition:
         caption_y = lowest_y + int(self.layout.default_gap * 0.7)
         self.layout.add_default_text("${0}$".format(player_moving), y=caption_y)
         self.layout.next_grid_position()
+
+    def render(self, to=sys.stdout):
+        """Shortcut to render using layout when it only contains one position"""
+        self.add_to_layout()
+        self.layout.render(to)
