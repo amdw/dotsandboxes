@@ -26,9 +26,13 @@
 \maketitle
 
 \begin{abstract}
-  An introduction to the game dots-and-boxes, and the more general game
-  strings-and-coins. Aims to explain why the game is interesting, and discuss
-  some strategic techniques, giving mathematical proofs where appropriate.
+  An introduction to the game dots-and-boxes, and to the more general
+  game strings-and-coins. Aims to explain why these games are
+  interesting, and to discuss some principles of strategy. Intended
+  for readers with mathematical inclinations: assertions made are
+  given proofs wherever possible, or at least references to proofs in
+  other mathematical literature, and relationships with various areas
+  of standard mathematics are noted throughout.
 \end{abstract}
 
 \tableofcontents
@@ -43,11 +47,12 @@ Dots-and-boxes is a game for two players.
   \item The game is played on a rectangular grid of dots.
   \item A move consists of drawing a line of the player's choice
     connecting a pair of horizontally or vertically adjacent dots.
-  \item If a player's move completes any $1 \times 1$ boxes, she
-    scores one point for each (normally recorded by writing her
-    initial inside it) and \emph{must} make another move: a player's
-    turn comes to an end when she makes a move which does not complete
-    any boxes.
+  \item It is possible for a player's move to complete either one or
+    two $1 \times 1$ boxes. When this happens, the player scores one
+    point for each completed box (normally recorded by writing her
+    initial inside each one) and \emph{must} make another move: a
+    player's turn comes to an end when she makes a move which does not
+    complete any boxes.
   \item The game ends when all boxes have been completed; the winner
     is the player who has completed more boxes.
 \end{enumerate}
@@ -64,7 +69,7 @@ player making that move.
   \label{sampledab}
 \end{figure*}
 
-The rules of dots-and-boxes are very simple: the rules can be learned
+The rules of dots-and-boxes are very simple: the game can be learned
 in moments, and it can be played purely with pencil and paper. The
 size of the board can be varied to alter the simplicity and length of
 the game: the board with $5 \times 5$ boxes is already quite deep. The
@@ -77,23 +82,19 @@ Dots-and-boxes is a special case of a more general game called
 \emph{strings-and-coins}.
 
 \begin{enumerate}
-  \item This game begins with a set of coins, and a set of strings
-    each connecting a pair of coins; some coins may also have one or
-    more strings connecting them to the ground.
+  \item This game begins with a set of \emph{coins}, and a set of
+    \emph{strings} each connecting a pair of coins; some coins may
+    also have one or more strings connecting them to the
+    \emph{ground}.
   \item A move consists of removing a string of the player's choice.
-  \item If a player's move removes the last string connected to any
-    coins, she wins those coins, removing them from the game, and
+  \item It is possible for a player's move to remove the last string
+    connected to either one or two coins. When this happens, the
+    player wins those coins, removing them from the game, and
     \emph{must} play another move, her turn ending when she removes a
     string which does not win any coins.
   \item The game ends when all coins are gone; the winner is the
     player who has won more coins.
 \end{enumerate}
-
-The $m \times n$ game of dots-and-boxes is the special case of
-strings-and-coins where $mn$ coins are connected in a rectangular $m
-\times n$ grid, with the outer coins connected to the ground (the four
-corner coins having two ground links each, and the other edge coins
-having one ground link each).
 
 The strings-and-coins game parallel to the dots-and-boxes game in
 Figure \ref{sampledab} is shown in Figure \ref{samplesnc}. Connections
@@ -109,10 +110,26 @@ shown, along with the score following that move.
   \label{samplesnc}
 \end{figure*}
 
+For those familiar with mathematical graph theory, a strings-and-coins
+position forms a \emph{multigraph}, with the vertices being the coins
+and the edges being the strings. The ground can be thought of as a
+special vertex which cannot be captured. (A position is a multigraph
+rather than an ordinary graph because a coin can have more than one
+string connecting it to the ground, or indeed another coin.)
+
+The $m \times n$ game of dots-and-boxes is the special case of
+strings-and-coins where $mn$ coins are connected in a rectangular $m
+\times n$ grid, with the outer coins connected to the ground (the four
+corner coins having two ground links each, and the other edge coins
+having one ground link each).
+
 Strings-and-coins is a more general game than dots-and-boxes, because
-in strings-and-coins it is possible to start with a graph of any shape
-and connectivity whatsoever (indeed, a multigraph, since the same pair
-of coins could be joined by more than one string).
+in strings-and-coins it is possible to start with a position of any
+shape and connectivity whatsoever, whereas in dots-and-boxes, the
+``coins'' are fixed in a rectangular grid, and all strings have length
+1 and are either vertical or horizontal. For example, in
+strings-and-coins it is possible to have a loop of three coins,
+whereas this is not possible in dots-and-boxes.
 
 Anything we learn about strings-and-coins will also apply to
 dots-and-boxes; we will therefore mostly focus our attention on
@@ -122,8 +139,8 @@ where something we learn has specific implications there.
 \section{Basic terminology}
 
 Where possible, I have tried to be consistent with the standard
-terminology of mathematical graph theory, and with existing literature
-such as \cite{berl}.
+terminology of graph theory, and with existing literature such as
+\cite{berl}.
 
 We will call the two players $A$ and $B$, with $A$ generally moving
 first in a given position.
