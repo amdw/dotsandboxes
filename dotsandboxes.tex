@@ -816,7 +816,7 @@ exactly how\footnote{I have never seen this theorem stated in quite
 
 Applying this to dots-and-boxes gives the following elegant
 corollary\footnote{This is the result given in most of the
-  dots-and-boxes literature, including \cite{berl} and \cite{wwdab}.}.
+  dots-and-boxes literature, including \cite{berl} and \cite{wways}.}.
 
 \begin{dnbgamelength}\label{dnbgamelength}
   The number of turns in a game of dots-and-boxes in which $D$
@@ -994,6 +994,78 @@ to prevent the bottom right being turned into a loop. The sixth move
 is also essential in order to prevent the top row being turned into a
 second long chain. With those moves in place, the outcome of the game
 is secured by basic endgame technique.
+
+\section{Nimstring and Combinatorial Game Theory}
+
+\subsection{Introduction}
+
+In previous sections, we have built up a considerable body of
+knowledge about strings-and-coins. In order to improve our
+understanding further, it is now necessary to look at the game in the
+context of the broader mathematical theory of games of this type.
+
+There is a rich mathematical literature on Combinatorial Game Theory,
+or CGT. The key founding text of this theory is \cite{onag}, but the
+best introductory survey I am aware of is Richard Guy's papers in
+\cite{nochance}. \cite{lip} is also an excellent introductory
+textbook.
+
+CGT focuses on games which:
+
+\begin{enumerate}
+  \item have two players, often called Left and Right, or $L$ and $R$,
+    who move alternately;
+  \item have (at most) two possible types of outcome: $L$ wins and $R$
+    loses, or $R$ wins and $L$ loses (there are extensions to CGT
+    which cover games which can be drawn or tied);
+  \item are games of complete information, so both players know
+    exactly what the game state is at all times;
+  \item have no element of chance, so the possible moves from any
+    position are always known deterministically, and there are no dice
+    rolls, coin flips, or other random factors influencing the
+    outcome; and
+  \item are governed by the \emph{normal play convention}, where a
+    player loses if, and only if, they have no legal options available
+    when required to move.
+\end{enumerate}
+
+Many popular games satisfy the first four conditions (particularly if
+draws are allowed), such as chess, draughts, go, and
+strings-and-coins. Games which satisfy the normal play convention are
+somewhat rarer: for example in chess, a player unable to move does not
+necessarily lose (as stalemate is a draw).
+
+Strings-and-coins also does not follow this convention, as the winner
+is whichever player has captured most coins during the game, which is
+not necessarily the player who captured the final coin.
+
+However, CGT can often be helpful even for analysing games which do
+not follow the normal play convention: for example, \cite{nochance}
+shows some applications to chess and go, and \cite{wways} contains
+many interesting examples also. We should not be surprised that CGT
+can give useful insights about strings-and-coins, given how often the
+game does in fact boil down to which player can arrange to make the
+last move.
+
+In this section, we will study a new game called
+\emph{Nimstring}. Nimstring is identical to strings-and-coins in every
+way except one: the winner is not the player who takes more coins but
+the player who takes the \emph{last} coin. Nimstring satisfies all the
+conditions above and is therefore ideally suited to analysis using
+CGT.
+
+We will begin by introducing the basic concepts and principles of CGT,
+with a strong focus on laying the foundations for Nimstring. We will
+then discuss that game in the context of what we have learned. Readers
+interested in going into CGT in more depth (an exercise well worth
+doing) should consult the bibliography.
+
+\subsection{Fundamentals of Combinatorial Game Theory}
+
+In CGT, the term \emph{game} is defined in a very abstract way: it is
+simply two sets of options, one defining the choices available to $L$
+if it is $L$'s move, and the other defining the choices available to
+$R$ if it is $R$'s move.
 
 \appendix
 
@@ -1218,14 +1290,50 @@ $1+S-C+D$. These sub-cases are summarised in Table
 
 There are no remaining cases, and thus the proof is complete.
 
+\section{A note on sources}
+
+This paper was the product of some difficulties I experienced with
+existing sources on dots-and-boxes.
+
+\cite{berl} is the only major work I know of focusing solely on the
+game. It contains many important results and useful exercises, and
+this paper would have been impossible without it, but it does not give
+proofs for many key assertions, or go into as much depth as I would
+have liked. This paper started as an attempt to prove some of the
+results in that book, and to understand its contents more deeply
+through my own analysis.
+
+\cite{wways} contains a chapter on dots-and-boxes which has a
+considerable overlap with \cite{berl} (even containing some identical
+illustrations and formulations). While it does contain some valuable
+non-overlapping material, I find the work as a whole, while it
+contains much material of great interest, has many of the same
+structural and stylistic problems as that book.
+
+\cite{nochance} contains many excellent essays on Combinatorial Game
+Theory, but has only a very cursory treatment of dots-and-boxes (a
+single paper analysing a couple of games played by experts).
+
+\cite{lip} is an excellent textbook on Combinatorial Game Theory which
+I became aware of only recently. It has some material on
+dots-and-boxes, but its focus is on the mathematics rather than one
+specific game. (It also has the virtue, alone among these sources at
+the time of writing, of being available on Amazon Kindle!)
+
 \begin{thebibliography}{99}
   \bibitem{berl} Elwyn R.\ Berlekamp, \emph{The Dots-and-Boxes Game},
     A~K~Peters 2000
-  \bibitem{wwdab} Elwyn R.\ Berkelamp, John H.\ Conway, Richard K.\ Guy,
-    \emph{Winning Ways for Your Mathematical Plays}, Volume 3, Chapter
-    16, A~K~Peters 2003
+  \bibitem{wways} Elwyn R.\ Berkelamp, John H.\ Conway, Richard
+    K.\ Guy, \emph{Winning Ways for Your Mathematical Plays},
+    A~K~Peters 2003 (dots-and-boxes is discussed in Volume 3, Chapter
+    16)
   \bibitem{nochance} Richard J.\ Nowakowski ed., \emph{Games of No
     Chance}, Cambridge University Press 1998
+  \bibitem{onag} John H.\ Conway, \emph{On Numbers and Games},
+    A~K~Peters 2000
+  \bibitem{lip} Michael H.\ Albert, Richard J.\ Nowakowski, David
+    Wolfe, \emph{Lessons in Play: An Introduction to Combinatorial
+      Game Theory}, A~K~Peters 2007
 \end{thebibliography}
 
 \section*{Copyright notice}
