@@ -1067,6 +1067,24 @@ simply two sets of options, one defining the choices available to $L$
 if it is $L$'s move, and the other defining the choices available to
 $R$ if it is $R$'s move.
 
+Formally, a game $G$ is recursively defined as an ordered pair of sets
+of games: $$G = \{\{G^{L_1}, G^{L_2}, \ldots\} \,|\, \{G^{R_1},
+G^{R_2}, \ldots\}\}$$ where $G^{L_1}$ etc are the games (with $R$ to
+move) which $L$ can choose to move to if it is $L$'s move, and
+$G^{R_1}$ etc are the games (with $L$ to move) which $R$ can choose to
+move to if it is $R$'s move. These two sets of options can be empty,
+finite or infinite.
+
+To keep the notation compact, the inner braces are often omitted:
+$$G = \{G^{L_1}, G^{L_2}, \ldots \:|\: G^{R_1}, G^{R_2}, \ldots\}$$
+
+The game $\{\:|\:\}$, where neither player has any legal moves, is
+called the \emph{zero game} and is often just written as $0$. So the
+game $\{0\:|\:\}$ is the game where $L$ has one legal move leading to
+the zero game and $R$ has no legal moves; $\{\:|\:0\}$ is the game
+where $R$ has one legal move leading to the zero game and $R$ has no
+legal moves, etc.
+
 \appendix
 
 \section{Proof of Theorem \ref{gamelength}}\label{gamelengthproof}
