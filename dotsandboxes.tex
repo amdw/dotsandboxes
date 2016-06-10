@@ -1069,21 +1069,90 @@ $R$ if it is $R$'s move.
 
 Formally, a game $G$ is recursively defined as an ordered pair of sets
 of games: $$G = \{\{G^{L_1}, G^{L_2}, \ldots\} \,|\, \{G^{R_1},
-G^{R_2}, \ldots\}\}$$ where $G^{L_1}$ etc are the games (with $R$ to
-move) which $L$ can choose to move to if it is $L$'s move, and
-$G^{R_1}$ etc are the games (with $L$ to move) which $R$ can choose to
-move to if it is $R$'s move. These two sets of options can be empty,
+G^{R_2}, \ldots\}\}$$ where $G^{L_1}$ etc are the games which $L$ can
+choose to move to (with $R$ to move) if it is $L$'s move, and
+$G^{R_1}$ etc are the games which $R$ can choose to move to (with $L$
+to move) if it is $R$'s move. These two sets of options can be empty,
 finite or infinite.
 
 To keep the notation compact, the inner braces are often omitted:
 $$G = \{G^{L_1}, G^{L_2}, \ldots \:|\: G^{R_1}, G^{R_2}, \ldots\}$$
+and sometimes the options are written as sets, i.e. $$G = \{G^L \:|\:
+G^R\}$$ where $G^L = \{G^{L_1}, G^{L_2}, \ldots\}$ and similarly for
+$G^R$.
 
 The game $\{\:|\:\}$, where neither player has any legal moves, is
-called the \emph{zero game} and is often just written as $0$. So the
-game $\{0\:|\:\}$ is the game where $L$ has one legal move leading to
-the zero game and $R$ has no legal moves; $\{\:|\:0\}$ is the game
-where $R$ has one legal move leading to the zero game and $R$ has no
-legal moves, etc.
+called the \emph{zero game} and is often just written as $0$. So for
+example, the game $\{0\:|\:\}$ is the game where $L$ has one legal
+move leading to the zero game and $R$ has no legal moves; $\{\:|\:0\}$
+is the game where $R$ has one legal move leading to the zero game and
+$R$ has no legal moves, etc.
+
+The true power of CGT lies in its ability to combine two games
+together to make a new game. The \emph{sum} of two games is defined as
+a new game with both games ``played side-by-side'', where each move
+consists of choosing one of the games and making a move in
+it. Formally, if $G = \{G^L \:|\: G^R\}$ and $H = \{H^L \:|\: H^R\}$,
+then the left options of $G+H$ are $$\{G'+H : G' \in G^L\} \cup \{G+H'
+: H' \in H^L\}$$ and the right options are $$\{G'+H : G' \in G^R\}
+\cup \{G+H' : H' \in H^R\}$$ In each case, the left part of the union
+is the set of options where the player plays in $G$ (leaving $H$
+untouched), and the right part is the set where the player plays in
+$H$ (leaving $G$ untouched).
+
+Further, the \emph{negative} of a game is defined as the game where
+the options of $L$ and $R$ are (recursively) reversed, so if again $G
+= \{G^L \:|\: G^R\}$ then $$-G = \{\{-G' : G' \in G^R\} \:|\: \{-G' :
+G' \in G^L\}\}$$
+
+Once we can add two games and negate an individual game, we can very
+easily subtract games as well: $$G - H = G + (-H)$$
+
+The next step is to define a notion of \emph{equality} for games. The
+zero game is a loss for whichever player is to move, which is to say a
+win for the second player; all games $G$ where the second player can
+force a win are defined to be equal to the zero game (and we write $G
+= 0$). Then, we say two games $G$ and $H$ are equal (and write simply
+$G = H$) if $G - H = 0$ in this sense.
+
+So $\{0 \:|\:\} + \{\:|\: 0\} = 0$ even though the sets of options of
+the left and right sides are not literally identical, because both are
+wins for the second player. And of course, we then also have $\{0
+\:|\:\} = -\{\:|\: 0\}$.
+
+We can already see that games are, in a certain sense, behaving like
+numbers:
+
+\begin{itemize}
+  \item They can be identified as equal or unequal to each other.
+  \item They can be added and subtracted.
+  \item There is a zero game such that $G + 0 = 0 + G = G$ for all $G$.
+  \item Addition obeys the same commutative and associative laws as
+    numerical addition ($G+H = H+G$ and $G+(H+I)=(G+H)+I$ for all
+    games).
+  \item Every game $G$ has an inverse $-G$ such that $G + (-G) = 0$.
+\end{itemize}
+
+In the terminology of abstract algebra, games form a structure called
+a \emph{commutative group} (when each game is considered as
+interchangeable with other equal games). This group is extremely rich
+and interesting: there are games which behave like the integers ($\{0
+\:|\:\}$ is like $1$ and $\{\:|\:0\}$ is like $-1$), and there are
+even games which behave like arbitrary fractions! There are also games
+which do not behave like numbers at all.
+
+\subsection{Impartial games}
+
+Thankfully, we can leave a full discussion of the group of games to
+textbooks such as \cite{lip}, because we are only interested in
+Nimstring, which belongs to a very special class of games, called the
+\emph{impartial} games.
+
+An impartial game $G$ is one where the same set of options is
+available to both players, i.e.\ $G = \{G^E \:|\: G^E\}$ for some set
+$G^E$. (A game which is not impartial is called a \emph{partizan}
+game.) Nimstring is an impartial game, because either player can
+remove any string when it is his turn to move.
 
 \appendix
 
