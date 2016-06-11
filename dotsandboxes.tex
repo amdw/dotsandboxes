@@ -7,6 +7,8 @@
 \usepackage{color}
 \usepackage{calc}
 
+\DeclareMathOperator{\mex}{mex}
+
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
 \newtheorem{addcoins}[thm]{Lemma}
@@ -1172,6 +1174,11 @@ the left and right sides are not literally identical, because both are
 wins for the second player. And of course, we then also have $\{0
 \:|\:\} = -\{\:|\: 0\}$.
 
+It can be shown that if $G = H$, then $G$ and $H$ have exactly the
+same characteristics when played out (e.g.\ if $G$ is always a win for
+$L$ then so is $H$), and they have exactly the same effect on a third
+game $I$ when added to it, i.e.\ $G+I = H+I$ for all $I$.
+
 We can already see that games are, in a certain sense, behaving like
 numbers:
 
@@ -1209,6 +1216,127 @@ for example, chess is a partizan game, because one player controls the
 White pieces, and the other the Black.) Nimstring is an impartial
 game, because either player can remove any string when it is his turn
 to move.
+
+Any impartial game must either be a win for the first player or the
+second player: unlike a partizan game, it cannot always be a win for
+$L$ or always a win for $R$ regardless of who is to move, because the
+options for the two players are always the same, so one player can
+always ``steal'' the other's winning strategy if the player to move is
+reversed (remember the proof technique from Theorem \ref{sstealing}).
+
+The game of \emph{Nim} is central to the theory of impartial games,
+for a reason we will see shortly. In Nim, a position consists of a
+finite number of \emph{heaps} of ``beans''; the two players take it in
+turns to select one of the heaps and remove any number of beans from
+it (at least one, up to and including the whole heap). The winner
+(under the normal play convention) is the player who takes the last
+bean.
+
+Clearly, any one-heap game of Nim is a win for the first player,
+because she can just take all the beans immediately. Similarly, a game
+of two equal heaps is a win for the second player, because whatever
+move the first player makes, her opponent can simply copy it in the
+other heap.
+
+Nim is ideally suited for analysis using the concepts of CGT we saw in
+the previous sub-section. A game of Nim with $n$ heaps behaves exactly
+like the sum of $n$ separate one-heap games. From a single heap with
+$n$ beans, both players have the same set of $n$ choices: they can
+take any number of beans from $1$ up to $n$. We therefore use the
+shorthand $*n$ for a single Nim-heap of size $n$; formally, $*n$ is
+defined inductively as follows:
+
+\begin{eqnarray*}
+  *0 & = & 0 \\
+  *(n+1) & = & \{*0, *1, \ldots, *n \:|\: *0, *1, \ldots, *n\}
+\end{eqnarray*}
+
+In CGT, these games are referred to as \emph{nimbers}. All non-zero
+nimbers are first-player wins, because the first player can always
+move to the zero game. Also, all nimbers are self-inverse: $*n + *n =
+0$ for all $n$, because a game of two equal heaps is a second-player
+win as we saw above.
+
+Nim was solved by the American mathematician Charles L.\ Bouton in
+1901. Though the terminology of ``nimbers'' and other CGT concepts was
+not invented until later, Bouton effectively showed that:
+
+\begin{enumerate}
+  \item The sum of any two nimbers is another nimber, so any Nim
+    position behaves exactly like a single Nim-heap.
+  \item For any nimbers $*m$ and $*n$, the way to find $*m + *n$ is to
+    represent $m$ and $n$ as binary numbers and exclusive-or them
+    together (or equivalently, add the two binary numbers together
+    without performing any carrying).
+  \item Any Nim position equal to $0$ is a win for the second player;
+    all other Nim positions are a win for the first player.
+  \item The winning strategy in any Nim position which is not equal to
+    $0$ is to find and play a move to a $0$ position, which is always
+    possible.
+\end{enumerate}
+
+(From our earlier discussion of CGT and the definition of nimbers, we
+can see that the last two points are implied by the first two.)
+
+Here are some examples of nimber addition:
+
+\begin{itemize}
+  \item $*1 + *2 = *3$, since $1 = 01_2$, $2 = 10_2$ and $01_2 \oplus
+    10_2 = 11_2 = 3$
+  \item $*1 + *3 = *2$ since $3 = 11_2$ and $01_2 \oplus 11_2 = 10_2 =
+    2$
+  \item $*2 + *7 = *5$ since $2 = 010_2$, $7 = 111_2$ and $010_2
+    \oplus 111_2 = 101_2 = 5$.
+\end{itemize}
+
+As an example of the winning strategy for Nim, suppose we start with
+three heaps, of 13, 23 and 28 counters. Now:
+
+\begin{eqnarray*}
+  13 & = & 01101_2 \\
+  23 & = & 10111_2 \\
+  28 & = & 11100_2 \\
+  13 \oplus 23 \oplus 28 & = & 00110_2 = 6
+\end{eqnarray*}
+
+So the whole position is equal to $*6$ and one winning move would be
+to take $6 = 00110_2$ coins from the 23-heap, since $*13 + *17 + *28 =
+0$.
+
+Now why, in a paper about dots-and-boxes, did we spend time studying
+Nim, which appears on the surface to be a completely different game?
+The answer is that in the 1930s, the German mathematician Roland
+P.\ Sprague and the English mathematician Patrick M.\ Grundy
+independently discovered that, crucially, \emph{any} impartial game
+played according to the normal play convention\footnote{Surprisingly,
+  if we reverse the normal play convention so that the last move
+  loses, which is called \emph{mis\`ere play}, the situation is much
+  more complicated.} is equal to a nimber. This means that any
+impartial game whatsoever is equivalent to a single Nim heap.
+
+Specifically, the Sprague-Grundy Theorem states that if $$G = \{*a,
+*b, *c, \ldots \:|\: *a, *b, *c, \ldots\}$$ then $G = *n$ where $$n =
+\mex(a, b, c, \ldots)$$ where the function $\mex$ (short for
+\emph{minimal excludant}) is defined as the smallest non-negative
+integer which is not a member of $\{a, b, c, \ldots\}$.
+
+For example:
+
+\begin{eqnarray*}
+  \mex() & = & 0 \\
+  \mex(0, 1, 2) & = & 3 \\
+  \mex(1, 2) & = & 0 \\
+  \mex(0, 2, 3) & = & 1
+\end{eqnarray*}
+
+This is a remarkable result, because it shows that, in a certain very
+important sense, all impartial games are actually the same ---
+although there is no guarantee that it will be easy, in any given
+case, to calculate the value of a position or find a winning move
+(i.e.\ one which reaches a zero position).
+
+The Sprague-Grundy Theorem shows why the name Nimstring was chosen for
+our normal-play variant of strings-and-coins.
 
 \appendix
 
