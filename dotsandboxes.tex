@@ -1117,9 +1117,9 @@ finite or infinite.
 
 To keep the notation compact, the inner braces are often omitted:
 $$G = \{G^{L_1}, G^{L_2}, \ldots \:|\: G^{R_1}, G^{R_2}, \ldots\}$$
-and sometimes the options are written as sets, i.e. $$G = \{G^L \:|\:
-G^R\}$$ where $G^L = \{G^{L_1}, G^{L_2}, \ldots\}$ and similarly for
-$G^R$.
+and sometimes the options are written as sets, i.e. $$G =
+\{\mathcal{G}^L \:|\: \mathcal{G}^R\}$$ where $\mathcal{G}^L =
+\{G^{L_1}, G^{L_2}, \ldots\}$ and similarly for $\mathcal{G}^R$.
 
 The game $\{\:|\:\}$, where neither player has any legal moves, is
 called the \emph{zero game} and is often just written as $0$. So for
@@ -1132,13 +1132,14 @@ The true power of CGT lies in its ability to combine two games
 together to make a new game. The \emph{sum} of two games is defined as
 a new game with both games ``played side-by-side'', where each move
 consists of choosing one of the games and making a move in
-it. Formally, if $G = \{G^L \:|\: G^R\}$ and $H = \{H^L \:|\: H^R\}$,
-then the left options of $G+H$ are $$\{G'+H : G' \in G^L\} \cup \{G+H'
-: H' \in H^L\}$$ and the right options are $$\{G'+H : G' \in G^R\}
-\cup \{G+H' : H' \in H^R\}$$ In each case, the left part of the union
-is the set of options where the player plays in $G$ (leaving $H$
-untouched), and the right part is the set where the player plays in
-$H$ (leaving $G$ untouched).
+it. Formally, if $G = \{\mathcal{G}^L \:|\: \mathcal{G}^R\}$ and $H =
+\{\mathcal{H}^L \:|\: \mathcal{H}^R\}$, then the left options of $G+H$
+are $$\{G'+H : G' \in \mathcal{G}^L\} \cup \{G+H' : H' \in
+\mathcal{H}^L\}$$ and the right options are $$\{G'+H : G' \in
+\mathcal{G}^R\} \cup \{G+H' : H' \in \mathcal{H}^R\}$$ In each case,
+the left part of the union is the set of options where the player
+plays in $G$ (leaving $H$ untouched), and the right part is the set
+where the player plays in $H$ (leaving $G$ untouched).
 
 (It may initially appear strange to define a particular position as
 being ``the same game'' regardless of which side is to move. After
@@ -1153,8 +1154,8 @@ the other.)
 
 Further, the \emph{negative} of a game is defined as the game where
 the options of $L$ and $R$ are (recursively) reversed, so if again $G
-= \{G^L \:|\: G^R\}$ then $$-G = \{\{-G' : G' \in G^R\} \:|\: \{-G' :
-G' \in G^L\}\}$$
+= \{\mathcal{G}^L \:|\: \mathcal{G}^R\}$ then $$-G = \{\{-G' : G' \in
+\mathcal{G}^R\} \:|\: \{-G' : G' \in \mathcal{G}^L\}\}$$
 
 Once we can add two games and negate an individual game, we can very
 easily subtract games as well: $$G - H = G + (-H)$$
@@ -1200,13 +1201,14 @@ Nimstring, which belongs to a very special class of games, called the
 \emph{impartial} games.
 
 An impartial game $G$ is one where the same set of options is
-available to both players, i.e.\ $G = \{G^E \:|\: G^E\}$ for some set
-$G^E$. (A game which is not impartial is called a \emph{partizan}
-game. In a partizan game, the options available to the two players in
-a partizan game are different; for example, chess is a partizan game,
-because one player controls the White pieces, and the other the
-Black.) Nimstring is an impartial game, because either player can
-remove any string when it is his turn to move.
+available to both players, i.e.\ $G = \{\mathcal{G}^E \:|\:
+\mathcal{G}^E\}$ for some set $\mathcal{G}^E$. (A game which is not
+impartial is called a \emph{partizan} game. In a partizan game, the
+options available to the two players in a partizan game are different;
+for example, chess is a partizan game, because one player controls the
+White pieces, and the other the Black.) Nimstring is an impartial
+game, because either player can remove any string when it is his turn
+to move.
 
 \appendix
 
