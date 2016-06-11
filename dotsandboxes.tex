@@ -1140,6 +1140,17 @@ is the set of options where the player plays in $G$ (leaving $H$
 untouched), and the right part is the set where the player plays in
 $H$ (leaving $G$ untouched).
 
+(It may initially appear strange to define a particular position as
+being ``the same game'' regardless of which side is to move. After
+all, it makes an enormous difference whose turn it is in a game: for
+example, in chess, changing the side to move can easily have a bigger
+effect than adding or removing pawns or pieces. This concept of sums
+of games explains why a game is defined this way: when two games are
+added together, the moves of the two players in a given sub-game may
+not actually alternate any more, as one side may play consecutive
+moves in one sub-game while the other side plays consecutive moves in
+the other.)
+
 Further, the \emph{negative} of a game is defined as the game where
 the options of $L$ and $R$ are (recursively) reversed, so if again $G
 = \{G^L \:|\: G^R\}$ then $$-G = \{\{-G' : G' \in G^R\} \:|\: \{-G' :
