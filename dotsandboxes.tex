@@ -999,16 +999,56 @@ is secured by basic endgame technique.
 
 \subsection{Introduction}
 
-In previous sections, we have built up a considerable body of
-knowledge about strings-and-coins. In order to improve our
-understanding further, it is now necessary to look at the game in the
-context of the broader mathematical theory of games of this type.
+Chain counting, as described in the previous section, is a powerful
+technique for assessing middlegame positions. However, it is not
+sufficient on its own when the position consists of multiple areas
+where the number of long chains is not yet resolved.
 
-There is a rich mathematical literature on Combinatorial Game Theory,
-or CGT. The key founding text of this theory is \cite{onag}, but the
-best introductory survey I am aware of is Richard Guy's papers in
-\cite{nochance}. \cite{lip} is also an excellent introductory
-textbook.
+For example, if there are two such areas, it may be undesirable to
+make a move which resolves the chain count in either area, as our
+opponent might then be able to resolve the count in the other area in
+her favour. In other situations with multiple unresolved regions,
+there may be a winning move available, but it might be quite difficult
+to work out what it is.
+
+For example, consider Figure \ref{nimstringmotivation} (taken from
+\cite{berl}, p.\ 50). Here the top of the board is going to become a
+single long chain; however, the two areas at the bottom are
+unresolved. Fifteen moves have been made, so player $B$ is to move,
+and she has a winning move here --- however, with only the techniques
+we have learned so far, it is not easy to find.
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_nimstringmotivation.pdf_tex}
+  \caption{A $4 \times 5$ dots-and-boxes position with two
+    unresolved regions}
+  \label{nimstringmotivation}
+\end{figure*}
+
+All games of dots-and-boxes end up with the position being split into
+multiple separate regions, as in Figure \ref{nimstringmotivation} ---
+or at least, the players must consider the possibility of such splits
+at many points during the game. What we would ideally like is a way of
+analysing the separate parts of split positions independently, and
+then combining those analyses together to assess the whole position
+and choose the best move.
+
+To find such a method, we will take a step back, and look at
+strings-and-coins in the context of a broader mathematical theory of
+games of this type. This is called Combinatorial Game Theory,
+or CGT, and there is a very large and rich mathematical literature on
+it.
+
+The theory was founded in the early twentieth century, with the study
+of games such as Nim (which we will meet soon). However, the key
+founding text of modern CGT, which took the study of games to a
+completely new level, is John Conway's book \cite{onag}, originally
+published in the 1970s. \cite{wways} was also an important early
+contribution. Today, the best introductory survey I am aware of is
+Richard Guy's papers in \cite{nochance}; \cite{lip} is also an
+excellent student-friendly textbook.
 
 CGT focuses on games which:
 
@@ -1050,9 +1090,9 @@ last move.
 In this section, we will study a new game called
 \emph{Nimstring}. Nimstring is identical to strings-and-coins in every
 way except one: the winner is not the player who takes more coins but
-the player who takes the \emph{last} coin. Nimstring satisfies all the
-conditions above and is therefore ideally suited to analysis using
-CGT.
+the player who takes the \emph{last} coin (which players captured the
+earlier coins is irrelevant). Nimstring satisfies all the conditions
+above and is therefore ideally suited to analysis using CGT.
 
 We will begin by introducing the basic concepts and principles of CGT,
 with a strong focus on laying the foundations for Nimstring. We will
