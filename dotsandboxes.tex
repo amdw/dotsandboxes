@@ -1139,6 +1139,19 @@ move leading to the zero game and $R$ has no legal moves; $\{\:|\:0\}$
 is the game where $R$ has one legal move leading to the zero game and
 $R$ has no legal moves, etc.
 
+It can be shown that any game must belong to one of four \emph{outcome
+  classes}, assuming best play from both players:
+
+\begin{itemize}
+  \item A win for $L$, regardless of who moves first (example: $\{0
+    \:|\:\}$)
+  \item A win for $R$, regardless of who moves first (example:
+    $\{\:|\: 0\}$)
+  \item A win for whichever player moves first (example: $\{0 \:|\:
+    0\}$)
+  \item A win for whichever player moves second (example: $0$)
+\end{itemize}
+
 The true power of CGT lies in its ability to combine two games
 together to make a new game. The \emph{sum} of two games is defined as
 a new game with both games ``played side-by-side'', where each move
@@ -1155,7 +1168,7 @@ where the player plays in $H$ (leaving $G$ untouched).
 (It may initially appear strange to define a particular position as
 being ``the same game'' regardless of which side is to move. After
 all, it makes an enormous difference whose turn it is in a game: for
-example, in chess, changing the side to move can easily have a bigger
+example, in chess, changing the side to move can often have a bigger
 effect than adding or removing pawns or pieces. This concept of sums
 of games explains why a game is defined this way: when two games are
 added together, the moves of the two players in a given sub-game may
@@ -1183,10 +1196,12 @@ the left and right sides are not literally identical, because both are
 wins for the second player. And of course, we then also have $\{0
 \:|\:\} = -\{\:|\: 0\}$.
 
-It can be shown that if $G = H$, then $G$ and $H$ have exactly the
-same characteristics when played out (e.g.\ if $G$ is always a win for
-$L$ then so is $H$), and they have exactly the same effect on a third
-game $I$ when added to it, i.e.\ $G+I = H+I$ for all $I$.
+It can be shown that if $G = H$, then $G$ and $H$ are always in the
+same outcome class (e.g.\ if $G$ is always a win for $L$ then so is
+$H$), and moreover, for all games $X$, $G+X$ and $H+X$ are also always
+in the same outcome class (indeed $G+X = H+X$), so the two games have
+exactly the same effect on the outcome class when added to any third
+game.
 
 We can already see that games are, in a certain sense, behaving like
 numbers:
@@ -1227,11 +1242,12 @@ game, because either player can remove any string when it is his turn
 to move.
 
 Any impartial game must either be a win for the first player or the
-second player: unlike a partizan game, it cannot always be a win for
-$L$ or always a win for $R$ regardless of who is to move, because the
+second player: unlike a partizan game, the outcome classes ``always a
+win for $L$'' and ``always a win for $R$'' are impossible, because the
 options for the two players are always the same, so one player can
-always ``steal'' the other's winning strategy if the player to move is
-reversed (remember the proof technique from Theorem \ref{sstealing}).
+always ``steal'' the other's winning strategy if the players' roles
+are reversed (remember the proof technique from Theorem
+\ref{sstealing}).
 
 The game of \emph{Nim} is central to the theory of impartial games,
 for a reason we will see shortly. In Nim, a position consists of a
@@ -1274,9 +1290,9 @@ not invented until later, Bouton effectively showed that:
   \item The sum of any two nimbers is another nimber, so any Nim
     position behaves exactly like a single Nim-heap.
   \item For any nimbers $*m$ and $*n$, the way to find $*m + *n$ is to
-    represent $m$ and $n$ as binary numbers and exclusive-or them
-    together (or equivalently, add the two binary numbers together
-    without performing any carrying).
+    represent $m$ and $n$ as binary numbers and exclusive-or
+    ($\oplus$) them together (or equivalently, add the two binary
+    numbers together without performing any carrying).
   \item Any Nim position equal to $0$ is a win for the second player;
     all other Nim positions are a win for the first player.
   \item The winning strategy in any Nim position which is not equal to
@@ -1321,7 +1337,8 @@ played according to the normal play convention\footnote{Surprisingly,
   if we reverse the normal play convention so that the last move
   loses, which is called \emph{mis\`ere play}, the situation is much
   more complicated.} is equal to a nimber. This means that any
-impartial game whatsoever is equivalent to a single Nim heap.
+normal-play impartial game whatsoever is equivalent to a single Nim
+heap.
 
 Specifically, the Sprague-Grundy Theorem states that if $$G = \{*a,
 *b, *c, \ldots \:|\: *a, *b, *c, \ldots\}$$ then $G = *n$ where $$n =
