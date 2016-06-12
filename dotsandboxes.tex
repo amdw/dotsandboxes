@@ -1362,7 +1362,71 @@ case, to calculate the value of a position or find a winning move
 (i.e.\ one which reaches a zero position).
 
 The Sprague-Grundy Theorem shows why the name Nimstring was chosen for
-our normal-play variant of strings-and-coins.
+our normal-play variant of strings-and-coins: like all impartial
+games, Nimstring has a profound connection with Nim.
+
+\subsection{Complimenting moves and loony values}
+
+To calculate the value of any Nimstring position, all we need to do is
+to recursively calculate the value of each option of that position,
+and then calculate the $\mex$ of the results. For example, if the
+moves from a given Nimstring position are to positions of value $*1$,
+$*2$, $*2$ and $0$, then the position has value $\mex(1, 2, 2, 0) =
+*3$.
+
+We can easily see that any Nimstring position where only loony moves
+remain is a second-player win and thus has a value of $0$: the
+argument is virtually identical to Theorem \ref{sstealing}, and in
+fact is even simpler, because we do not have to worry about numerical
+comparison of scores. Either the remainder of the position is a
+first-player win (if it equals a non-zero nimber) or a second-player
+win (if it equals zero), and a loony move gives us a free choice of
+whether to move first or second.
+
+The problem is that not all Nimstring positions can be evaluated so
+easily. If done na\"ively, the computational cost of the calculation
+grows exponentially in the size of the position, because we must do
+one recursive computation for each option. It would make the
+calculation much simpler if, as discussed in the introduction to this
+section, we could separately calculate the values of the independent
+components of a Nimstring position and cheaply combine them together
+to reach the value of the position as a whole.
+
+It might initially appear that Sprague-Grundy theory gives us exactly
+what we are looking for. All we now need to do, one might think, is
+calculate the nimber value of each separate component, and then use
+nimber addition, just as we did for Nim.
+
+Unfortunately, however, there is a serious problem. If $G$ and $H$ are
+Nimstring positions (with at least one coin), there is a very
+important difference between (a) playing a single Nimstring position
+with $G$ and $H$ as independent components, and (b) playing the game
+$G+H$. In Nimstring, if $G$ is the first component to have its last
+coin captured, the player doing so must continue her turn with a move
+in $H$, which means that moves in both $G$ and $H$ have been made
+\emph{as part of the same turn}. In the game $G+H$, this would not be
+allowed: each move in a sum game must be confined to one of the
+components of the sum. This means that the value of a combined
+Nimstring position is \emph{not}, in general, equal to the nim-sum of
+its independent components.
+
+For example, suppose $G$ is a loony position; then the combined
+Nimstring position is also a loony position, and therefore a
+first-player win (not equal to $0$) \emph{regardless} of the value of
+$H$. There is no nimber $*m$ such that $*m + *n \neq 0$ for all $*n$
+(since all nimbers are self-inverse, i.e.\ $*m + *m = 0$), so nimber
+addition simply does not seem to behave the way we need it to. It
+appears we are stuck with the exponential calculation for the full
+position, and that breaking the position down into components does not
+help.
+
+In CGT, moves which allow the same player to play again are called
+\emph{complimenting moves}. In Nimstring, capturing a coin is a
+complimenting move.
+
+Fortunately, it is possible to extend Sprague-Grundy theory to support
+impartial games with complimenting moves, such as Nimstring. The
+method comes from Chapter 12 in Volume 2 of \cite{wways}.
 
 \appendix
 
