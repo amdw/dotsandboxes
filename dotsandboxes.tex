@@ -6,8 +6,10 @@
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{calc}
+\usepackage{wasysym}
 
 \DeclareMathOperator{\mex}{mex}
+\newcommand{\loony}{\rightmoon}
 
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
@@ -1426,7 +1428,18 @@ complimenting move.
 
 Fortunately, it is possible to extend Sprague-Grundy theory to support
 impartial games with complimenting moves, such as Nimstring. The
-method comes from Chapter 12 in Volume 2 of \cite{wways}.
+method comes from Chapter 12 in Volume 2 of \cite{wways}. The key is
+to introduce a new special game value, $\loony$, for loony
+positions, with the following properties:
+
+\begin{eqnarray*}
+  \loony + *n & = & \loony \\
+  \loony + \loony & = & \loony \\
+  \mex(a, b, \ldots, \loony) & = & \mex(a, b, \ldots)
+\end{eqnarray*}
+
+This turns out to give us exactly what we need. We will now take a
+brief look at how and why this works.
 
 \appendix
 
