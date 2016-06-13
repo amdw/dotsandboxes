@@ -10,6 +10,7 @@
 
 \DeclareMathOperator{\mex}{mex}
 \newcommand{\loony}{\rightmoon}
+\newcommand{\cgtgame}[2]{\{#1 \:|\: #2\}}
 
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{sstealing}[thm]{Theorem}
@@ -1136,35 +1137,35 @@ if it is $L$'s move, and the other defining the choices available to
 $R$ if it is $R$'s move.
 
 Formally, a game $G$ is recursively defined as an ordered pair of sets
-of games: $$G = \{\{G^{L_1}, G^{L_2}, \ldots\} \,|\, \{G^{R_1},
-G^{R_2}, \ldots\}\}$$ where $G^{L_1}$ etc are the games which $L$ can
+of games: $$G = \cgtgame{\{G^{L_1}, G^{L_2}, \ldots\}}{\{G^{R_1},
+  G^{R_2}, \ldots\}}$$ where $G^{L_1}$ etc are the games which $L$ can
 choose to move to if it is $L$'s move, and $G^{R_1}$ etc are the games
 which $R$ can choose to move to if it is $R$'s move. These two sets of
 options can be empty, finite or infinite.
 
 To keep the notation compact, the inner braces are often omitted:
-$$G = \{G^{L_1}, G^{L_2}, \ldots \:|\: G^{R_1}, G^{R_2}, \ldots\}$$
+$$G = \cgtgame{G^{L_1}, G^{L_2}, \ldots}{G^{R_1}, G^{R_2}, \ldots}$$
 and sometimes the options are written as sets, i.e. $$G =
-\{\mathcal{G}^L \:|\: \mathcal{G}^R\}$$ where $\mathcal{G}^L =
+\cgtgame{\mathcal{G}^L}{\mathcal{G}^R}$$ where $\mathcal{G}^L =
 \{G^{L_1}, G^{L_2}, \ldots\}$ and similarly for $\mathcal{G}^R$.
 
-The game $\{\:|\:\}$, where neither player has any legal moves, is
+The game $\cgtgame{}{}$, where neither player has any legal moves, is
 called the \emph{zero game} and is often just written as $0$. So for
-example, the game $\{0\:|\:\}$ is the game where $L$ has one legal
-move leading to the zero game and $R$ has no legal moves; $\{\:|\:0\}$
-is the game where $R$ has one legal move leading to the zero game and
-$R$ has no legal moves, etc.
+example, the game $\cgtgame{0}{}$ is the game where $L$ has one legal
+move leading to the zero game and $R$ has no legal moves;
+$\cgtgame{}{0}$ is the game where $R$ has one legal move leading to
+the zero game and $R$ has no legal moves, etc.
 
 It can be shown that any game must belong to one of four \emph{outcome
   classes}, assuming best play from both players:
 
 \begin{itemize}
-  \item A win for $L$, regardless of who moves first (example: $\{0
-    \:|\:\}$)
+  \item A win for $L$, regardless of who moves first (example:
+    $\cgtgame{0}{}$)
   \item A win for $R$, regardless of who moves first (example:
-    $\{\:|\: 0\}$)
-  \item A win for whichever player moves first (example: $\{0 \:|\:
-    0\}$)
+    $\cgtgame{}{0}$)
+  \item A win for whichever player moves first (example:
+    $\cgtgame{0}{0}$)
   \item A win for whichever player moves second (example: $0$)
 \end{itemize}
 
@@ -1172,9 +1173,9 @@ The true power of CGT lies in its ability to combine two games
 together to make a new game. The \emph{sum} of two games is defined as
 a new game with both games ``played side-by-side'', where each move
 consists of choosing one of the games and making a move in
-it. Formally, if $G = \{\mathcal{G}^L \:|\: \mathcal{G}^R\}$ and $H =
-\{\mathcal{H}^L \:|\: \mathcal{H}^R\}$, then the left options of $G+H$
-are $$\{G'+H : G' \in \mathcal{G}^L\} \cup \{G+H' : H' \in
+it. Formally, if $G = \cgtgame{\mathcal{G}^L}{\mathcal{G}^R}$ and $H =
+\cgtgame{\mathcal{H}^L}{\mathcal{H}^R}$, then the left options of
+$G+H$ are $$\{G'+H : G' \in \mathcal{G}^L\} \cup \{G+H' : H' \in
 \mathcal{H}^L\}$$ and the right options are $$\{G'+H : G' \in
 \mathcal{G}^R\} \cup \{G+H' : H' \in \mathcal{H}^R\}$$ In each case,
 the left part of the union is the set of options where the player
@@ -1194,8 +1195,8 @@ the other.)
 
 Further, the \emph{negative} of a game is defined as the game where
 the options of $L$ and $R$ are (recursively) reversed, so if again $G
-= \{\mathcal{G}^L \:|\: \mathcal{G}^R\}$ then $$-G = \{\{-G' : G' \in
-\mathcal{G}^R\} \:|\: \{-G' : G' \in \mathcal{G}^L\}\}$$
+= \cgtgame{\mathcal{G}^L}{\mathcal{G}^R}$ then $$-G = \cgtgame{\{-G' :
+  G' \in \mathcal{G}^R\}}{\{-G' : G' \in \mathcal{G}^L\}}$$
 
 Once we can add two games and negate an individual game, we can very
 easily subtract games as well: $$G - H = G + (-H)$$
@@ -1207,10 +1208,10 @@ force a win are defined to be equal to the zero game (and we write $G
 = 0$). Then, we say two games $G$ and $H$ are equal (and write simply
 $G = H$) if $G - H = 0$ in this sense.
 
-So $\{0 \:|\:\} + \{\:|\: 0\} = 0$ even though the sets of options of
-the left and right sides are not literally identical, because both are
-wins for the second player. And of course, we then also have $\{0
-\:|\:\} = -\{\:|\: 0\}$.
+So $\cgtgame{0}{} + \cgtgame{}{0} = 0$ even though the sets of options
+of the left and right sides are not literally identical, because both
+are wins for the second player. And of course, we then also have
+$\cgtgame{0}{} = -\cgtgame{}{0}$.
 
 It can be shown that if $G = H$, then $G$ and $H$ are always in the
 same outcome class (e.g.\ if $G$ is always a win for $L$ then so is
@@ -1235,10 +1236,10 @@ numbers:
 In the terminology of abstract algebra, games form a structure called
 a \emph{commutative group} (when each game is considered as
 interchangeable with other equal games). This group is extremely rich
-and interesting: there are games which behave like the integers ($\{0
-\:|\:\}$ is like $1$ and $\{\:|\:0\}$ is like $-1$), and there are
-even games which behave like arbitrary fractions! There are also games
-which do not behave like numbers at all.
+and interesting: there are games which behave like the integers
+($\cgtgame{0}{}$ is like $1$ and $\cgtgame{}{0}$ is like $-1$), and
+there are even games which behave like arbitrary fractions! There are
+also games which do not behave like numbers at all.
 
 \subsection{Impartial games}
 
@@ -1248,14 +1249,15 @@ Nimstring, which belongs to a very special class of games, called the
 \emph{impartial} games.
 
 An impartial game $G$ is one where the same set of options is
-available to both players, i.e.\ $G = \{\mathcal{G}^E \:|\:
-\mathcal{G}^E\}$ for some set $\mathcal{G}^E$ which itself contains
-only impartial games. (A game which is not impartial is called a
-\emph{partizan} game. In a partizan game, the options available to the
-two players in a partizan game are different; for example, chess is a
-partizan game, because one player controls the White pieces, and the
-other the Black.) Nimstring is an impartial game, because either
-player can remove any string when it is his turn to move.
+available to both players, i.e.\ $G =
+\cgtgame{\mathcal{G}^E}{\mathcal{G}^E}$ for some set $\mathcal{G}^E$
+which itself contains only impartial games. (A game which is not
+impartial is called a \emph{partizan} game. In a partizan game, the
+options available to the two players in a partizan game are different;
+for example, chess is a partizan game, because one player controls the
+White pieces, and the other the Black.) Nimstring is an impartial
+game, because either player can remove any string when it is his turn
+to move.
 
 Any impartial game must either be a win for the first player or the
 second player: unlike a partizan game, the outcome classes ``always a
@@ -1289,7 +1291,7 @@ defined inductively as follows:
 
 \begin{eqnarray*}
   *0 & = & 0 \\
-  *(n+1) & = & \{*0, *1, \ldots, *n \:|\: *0, *1, \ldots, *n\}
+  *(n+1) & = & \cgtgame{*0, *1, \ldots, *n}{*0, *1, \ldots, *n}
 \end{eqnarray*}
 
 In CGT, these games are referred to as \emph{nimbers}. All non-zero
@@ -1356,10 +1358,10 @@ played according to the normal play convention\footnote{Surprisingly,
 normal-play impartial game whatsoever is equivalent to a single Nim
 heap.
 
-Specifically, the Sprague-Grundy Theorem states that if $$G = \{*a,
-*b, *c, \ldots \:|\: *a, *b, *c, \ldots\}$$ then $G = *n$ where $$n =
-\mex(a, b, c, \ldots)$$ where the function $\mex$ (short for
-\emph{minimal excludant}) is defined as the smallest non-negative
+Specifically, the Sprague-Grundy Theorem states that if $$G =
+\cgtgame{*a, *b, *c, \ldots}{*a, *b, *c, \ldots}$$ then $G = *n$
+where $$n = \mex(a, b, c, \ldots)$$ where the function $\mex$ (short
+for \emph{minimal excludant}) is defined as the smallest non-negative
 integer which is not a member of $\{a, b, c, \ldots\}$.
 
 For example:
