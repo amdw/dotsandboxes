@@ -1508,6 +1508,19 @@ essentially ``well-behaved'' theory.\footnote{Since $\loony$ has no
 We now have the tools we need for understanding a Nimstring position
 as (quite literally) the sum of its parts.
 
+Figure \ref{nimstringexamples} shows some examples of Nimstring
+positions with their values. In particular, note that any long chain
+or loop has a value of $0$, because all options from it are loony, so
+when calculating the value of a position, they can be ignored.
+
+\begin{figure*}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_nimstringexamples.pdf_tex}
+  \caption{Examples of simple Nimstring values}
+  \label{nimstringexamples}
+\end{figure*}
+
 \appendix
 
 \section{Proof of Theorem \ref{gamelength}}\label{gamelengthproof}

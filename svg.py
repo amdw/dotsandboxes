@@ -190,7 +190,7 @@ class Layout:
     """
     def __init__(self, default_coin_r=10, default_thickness=1, default_gap=50,
                  default_line_colour="black", default_fill_colour="white",
-                 grid_width=1, grid_margin=50):
+                 grid_width=1, grid_margin=50, min_grid_column=0):
         self.coins = []
         self.links = []
         self.dots = []
@@ -206,6 +206,7 @@ class Layout:
         self.y_base = 10
         self.grid_width = grid_width
         self.grid_margin = grid_margin
+        self.min_grid_column = min_grid_column
         self.current_grid_x = 0
         self.grid_left_xs = [self.x_base]
 
@@ -234,7 +235,7 @@ class Layout:
         if not all_coord_elements:
             return
         max_elt_x = max([e.x for e in all_coord_elements])
-        self.x_base = max_elt_x + self.grid_margin
+        self.x_base = max(self.x_base + self.min_grid_column, max_elt_x) + self.grid_margin
 
         # If any coins at the right have rightward-pointing ground links, need to move a bit further
         rightmost_coins = [c for c in self.coins if c.x == max_elt_x]
@@ -322,12 +323,13 @@ class Layout:
                           colour=self.default_line_colour,
                           thickness=self.default_thickness)
 
-    def add_default_text(self, text, x=None, y=None):
+    def add_default_text(self, text, x=None, y=None, y_gap_offset=0):
         """Add text with default colour etc"""
         if x is None:
             x = 0
         if y is None:
             y = 0
+        y += (self.default_gap * y_gap_offset)
         self.add_other_element(TextElement(text, x, y, colour=self.default_line_colour))
 
     def render(self, to=sys.stdout):
