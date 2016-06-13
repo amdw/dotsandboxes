@@ -1097,21 +1097,36 @@ not follow the normal play convention: for example, \cite{nochance}
 shows some applications to chess and go, and \cite{wways} contains
 many interesting examples also. We should not be surprised that CGT
 can give useful insights about strings-and-coins, given how often the
-game does in fact boil down to which player can arrange to make the
+game does in fact boil down to which player can control who makes the
 last move.
 
 In this section, we will study a new game called
 \emph{Nimstring}. Nimstring is identical to strings-and-coins in every
 way except one: the winner is not the player who takes more coins but
-the player who takes the \emph{last} coin (which players captured the
-earlier coins is irrelevant). Nimstring satisfies all the conditions
-above and is therefore ideally suited to analysis using CGT.
+the player who forces his opponent to take the \emph{last}
+coin. Nimstring satisfies all the conditions above (it is a
+normal-play game because whoever takes the last coin is required to
+play another move, but cannot) and is therefore ideally suited to
+analysis using CGT.
 
-We will begin by introducing the basic concepts and principles of CGT,
+Nimstring is actually a subset of strings-and-coins: any Nimstring
+position $G$ can be converted to a strings-and-coins position simply
+by adding a single long chain containing more coins than $G$. The
+winner of this strings-and-coins game will be whichever player can win
+the long chain, which will be precisely the player who can force his
+opponent to capture the last coin in $G$.
+
+There are a great many other strings-and-coins positions which can
+also be won using Nimstring techniques. This should not be surprising,
+as the ability to force your opponent to take the last coin in
+Nimstring is virtually identical to the concept of control in
+strings-and-coins which we have examined in earlier sections.
+
+Now, we will first introduce the basic concepts and principles of CGT,
 with a strong focus on laying the foundations for Nimstring. We will
 then discuss that game in the context of what we have learned. Readers
-interested in going into CGT in more depth (an exercise well worth
-doing) should consult the bibliography.
+interested in going into general CGT in more depth (an exercise well
+worth doing) should consult the bibliography.
 
 \subsection{Fundamentals of Combinatorial Game Theory}
 
@@ -1123,10 +1138,9 @@ $R$ if it is $R$'s move.
 Formally, a game $G$ is recursively defined as an ordered pair of sets
 of games: $$G = \{\{G^{L_1}, G^{L_2}, \ldots\} \,|\, \{G^{R_1},
 G^{R_2}, \ldots\}\}$$ where $G^{L_1}$ etc are the games which $L$ can
-choose to move to (with $R$ to move) if it is $L$'s move, and
-$G^{R_1}$ etc are the games which $R$ can choose to move to (with $L$
-to move) if it is $R$'s move. These two sets of options can be empty,
-finite or infinite.
+choose to move to if it is $L$'s move, and $G^{R_1}$ etc are the games
+which $R$ can choose to move to if it is $R$'s move. These two sets of
+options can be empty, finite or infinite.
 
 To keep the notation compact, the inner braces are often omitted:
 $$G = \{G^{L_1}, G^{L_2}, \ldots \:|\: G^{R_1}, G^{R_2}, \ldots\}$$
@@ -1369,21 +1383,25 @@ games, Nimstring has a profound connection with Nim.
 
 \subsection{Complimenting moves and loony values}
 
-To calculate the value of any Nimstring position, all we need to do is
-to recursively calculate the value of each option of that position,
-and then calculate the $\mex$ of the results. For example, if the
-moves from a given Nimstring position are to positions of value $*1$,
-$*2$, $*2$ and $0$, then the position has value $\mex(1, 2, 2, 0) =
-*3$.
+As with any impartial game, to calculate the value\footnote{When we
+  talk about the \emph{value} of a Nimstring position, we mean the
+  Sprague-Grundy value, which is not to be confused with the minimax
+  coin-score value function $V$ we introduced for strings-and-coins
+  earlier.} of any Nimstring position, all we need to do is to
+recursively calculate the value of each option of that position, and
+then calculate the $\mex$ of the results. For example, if the moves
+from a given Nimstring position are to positions of value $*1$, $*2$,
+$*2$ and $0$, then the position has value $\mex(1, 2, 2, 0) = *3$.
 
 We can easily see that any Nimstring position where only loony moves
-remain is a second-player win and thus has a value of $0$: the
-argument is virtually identical to Theorem \ref{sstealing}, and in
-fact is even simpler, because we do not have to worry about numerical
-comparison of scores. Either the remainder of the position is a
-first-player win (if it equals a non-zero nimber) or a second-player
-win (if it equals zero), and a loony move gives us a free choice of
-whether to move first or second.
+remain is a second-player win and thus has a value of $0$: we can see
+that any loony Nimstring position is a first-player win by an argument
+virtually identical to Theorem \ref{sstealing}. In fact, the analysis
+for Nimstring is even simpler, because we do not have to worry about
+numerical comparison of scores. Either the remainder of the position
+is a first-player win (if it equals a non-zero nimber) or a
+second-player win (if it equals zero), and a loony move gives us a
+free choice of whether to move first or second.
 
 The problem is that not all Nimstring positions can be evaluated so
 easily. If done na\"ively, the computational cost of the calculation
@@ -1403,20 +1421,19 @@ Unfortunately, however, there is a serious problem. If $G$ and $H$ are
 Nimstring positions (with at least one coin), there is a very
 important difference between (a) playing a single Nimstring position
 with $G$ and $H$ as independent components, and (b) playing the game
-$G+H$. In Nimstring, if $G$ is the first component to have its last
-coin captured, the player doing so must continue her turn with a move
-in $H$, which means that moves in both $G$ and $H$ have been made
-\emph{as part of the same turn}. In the game $G+H$, this would not be
-allowed: each move in a sum game must be confined to one of the
-components of the sum. This means that the value of a combined
-Nimstring position is \emph{not}, in general, equal to the nim-sum of
-its independent components.
+$G+H$. In Nimstring, if a player captures a coin in $G$, she can
+continue with a move in $H$, which would mean that moves in both $G$
+and $H$ have been made \emph{as part of the same turn}. In the game
+$G+H$, this would not be allowed: each move in a sum game must be
+confined to one of the components of the sum. This means that the
+value of a combined Nimstring position is \emph{not}, in general,
+equal to the nim-sum of its independent components.
 
 For example, suppose $G$ is a loony position; then the combined
 Nimstring position is also a loony position, and therefore a
 first-player win (not equal to $0$) \emph{regardless} of the value of
-$H$. There is no nimber $*m$ such that $*m + *n \neq 0$ for all $*n$
-(since all nimbers are self-inverse, i.e.\ $*m + *m = 0$), so nimber
+$H$. There is no nimber $*g$ such that $*g + *h \neq 0$ for all $*h$
+(since all nimbers are self-inverse, i.e.\ $*g + *g = 0$), so nimber
 addition simply does not seem to behave the way we need it to. It
 appears we are stuck with the exponential calculation for the full
 position, and that breaking the position down into components does not
@@ -1428,18 +1445,66 @@ complimenting move.
 
 Fortunately, it is possible to extend Sprague-Grundy theory to support
 impartial games with complimenting moves, such as Nimstring. The
-method comes from Chapter 12 in Volume 2 of \cite{wways}. The key is
-to introduce a new special game value, $\loony$, for loony
-positions, with the following properties:
+method comes from Chapter 12 in Volume 2 of \cite{wways}, but the
+analysis there also supports other game features which Nimstring does
+not have, so we do not need to introduce the full theory here.
+
+For Nimstring, all we need is to introduce a new special game value,
+$\loony$, for loony positions, with the following properties:
 
 \begin{eqnarray*}
-  \loony + *n & = & \loony \\
+  \loony + *n & = & \loony \quad (\forall n)\\
   \loony + \loony & = & \loony \\
   \mex(a, b, \ldots, \loony) & = & \mex(a, b, \ldots)
 \end{eqnarray*}
 
-This turns out to give us exactly what we need. We will now take a
-brief look at how and why this works.
+(The first two definitions are easily justified by our earlier
+observation that a loony position is still a loony position regardless
+of what other positions are added. The third comes from the fact that
+in Nimstring, any loony move is a losing move, so when evaluating a
+position, loony moves can be ignored: if only loony moves are
+available, the first player is losing, so the value of the position is
+$0 = \mex()$.)
+
+We can then calculate the value of any Nimstring position as follows:
+
+\begin{enumerate}
+  \item The value of the empty position is $0$.
+  \item The value of a position where a double-dealing move is
+    possible is $\loony$.
+  \item The value of a position where there are capturable coins but
+    no available double-dealing moves is the same as the value of the
+    position with those coins removed.
+  \item The value of any other position is equal to the nim-sum of
+    each of its options.
+\end{enumerate}
+
+The first two of these are clear.
+
+The third can be seen by imagining such a position $G$ added to
+another position $H$ identical to $G$ except with the capturable coins
+removed. This is a zero game, because the first player must end with
+some move available in both $G$ and $H$ (either with or without
+capturing some of the coins in $G$ beforehand). If this is a loony
+move, the first player has conceded defeat immediately; if not, the
+second player can respond by capturing any of the originally
+capturable coins in $G$ which still remain, followed by mirroring his
+opponent's final move in the other component, resulting in two
+identical non-loony components, which have total value $0$ since all
+nimbers are self-inverse.
+
+The fourth follows from the Sprague-Grundy Theorem for ``ordinary''
+impartial games, plus our earlier observation that loony moves can be
+ignored when evaluating a position.
+
+We can easily see that addition in our extended value system still
+obeys the commutative and associative laws, and thus we have an
+essentially ``well-behaved'' theory.\footnote{Since $\loony$ has no
+  inverse, technically our extended set of values is no longer a group
+  but a commutative monoid, but that has no real significance.}
+
+We now have the tools we need for understanding a Nimstring position
+as (quite literally) the sum of its parts.
 
 \appendix
 
