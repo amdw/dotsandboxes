@@ -2,12 +2,18 @@
 
 This repository is dedicated to the dots-and-boxes game.
 
-So far, the only thing here is a draft of a paper I am writing on the game.
+So far, the only thing here is a draft of a paper I am writing on the
+game. A PDF version of this paper is available
+[here](https://drive.google.com/file/d/0B6taft2ONgxhVTVHZXM5UG9kbFk/view?usp=sharing),
+though this may not always be up-to-date with the head of this
+repository (the commit used to generate the PDF may be found in the
+footnote at the end).
 
-This needs a full installation of [LaTeX](http://latex-project.org/),
-as well as Python 3 and Inkscape to generate some of the diagrams, and
-`make` to coordinate the build. E.g. on Fedora, `dnf install texlive
-texlive-svg inkscape pstoedit python3 make`, `cd` into this repository, and run
+To build the PDF from the source in this repository, you need a full
+installation of [LaTeX](http://latex-project.org/), as well as Python
+3 and Inkscape to generate some of the diagrams, and `make` to
+coordinate the build. E.g. on Fedora, `dnf install texlive texlive-svg
+inkscape pstoedit python3 make`, `cd` into this repository, and run
 `make`.
 
 To perform [Pylint](https://www.pylint.org/) checks on the Python
