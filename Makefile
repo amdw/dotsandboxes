@@ -17,9 +17,7 @@ figure_scripts := $(wildcard fig_*.py)
 generated_figpdfs := $(patsubst %.py,%.pdf,$(figure_scripts))
 
 dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs) vc.tex
-	# Invoke twice to fix cross-references
-	pdflatex dotsandboxes.tex
-	pdflatex dotsandboxes.tex
+	./genpdf.py
 
 fig_%.pdf: fig_%.svg
 	inkscape -D -z --file=$< --export-pdf=$@ --export-latex
