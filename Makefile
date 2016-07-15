@@ -36,5 +36,4 @@ pylint:
 	python3-pylint *.py
 
 clean:
-	-rm -v *.pdf* *.svg *.pyc vc.tex
-
+	-rm -v *.pdf* *.svg *.pyc vc.tex *.log *.aux *.toc
