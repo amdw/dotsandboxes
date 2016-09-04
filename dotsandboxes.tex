@@ -175,9 +175,10 @@ than a joint) at both ends.
 The act of \emph{opening} a chain or loop is cutting it so that it
 becomes an open chain, which can then be captured.
 
-A \emph{double-cross move} is a move which wins two coins at once
-(because the string removed connected two coins of valency 1). These
-moves are of strategic importance for reasons we will see later.
+A \emph{double-cross move} (or \emph{double-crossed move}) is a move
+which wins two coins at once (because the string removed connected two
+coins of valency 1). These moves are of strategic importance for
+reasons we will see later.
 
 Let $V(P)$ be the net value of a position $P$, assuming optimal play
 from both sides, from the perspective of the player who has to play
@@ -186,7 +187,7 @@ positive, zero or negative, depending on whether $P$ is advantageous
 for the first player. $V(P)$ is also known as the \emph{minimax} value
 of $P$ and $V$ is the \emph{value function} of strings-and-coins.
 
-\section{Endgame fundamentals}
+\section{Endgame fundamentals}\label{endgamesection}
 
 \subsection{Control and loony moves}
 
@@ -855,20 +856,36 @@ These results allow us, in many practical situations, to work out
 quite a long way in advance which player is going to make the last
 move of the game.
 
-In a well-played game, there will typically be no double-crossed moves
-until a loony endgame is reached, and there will be enough very long
-chains and loops that whoever can gain control and make the last move
-will win. If that happens, the player who gains control will play a
-double-dealing move on each long chain or loop except the last one,
-which means there will be one double-crossed move per long chain and
-two double-crossed moves per long loop, except for the last turn of
-the game, where there will be no double-crossed moves if it is a chain
-being taken, and one if it is a loop.
+The theorems of section \ref{endgamesection} tell us that strong
+players will generally avoid making loony moves when an alternative is
+available, and immediately capture any free coins which do not affect
+their ability to play a double-cross move: for example, when a long
+chain is opened, they will always take all but the last two coins, or
+if a long loop is opened, they will always take all but the last four,
+and then decide whether to take the rest or double-deal. (The
+exceptions occur when the position is dominated by not-very-long
+chains and loops, or when the player believes he is losing and is
+trying to confuse the situation.)
+
+In most games, there will be enough very long chains and loops that
+whoever can gain control and make the last move will win. In that
+case, there will be one double-crossed move per long chain and two
+double-crossed moves per long loop, except for the last turn of the
+game, where there will be no double-crossed moves if it is a chain
+being taken, and one if it is a loop (since a loop cannot be captured
+without at least one double-cross move).
 
 This in turn means that if the number of long chains $L$ is
 \emph{odd}, the number of double-crossed moves will be \emph{even},
-and vice versa. (The number of long \emph{loops}, interestingly, is
-irrelevant.)
+and vice versa.
+
+(The number of long \emph{loops} is irrelevant, because each loop
+which is not the last structure taken will have two double-crossed
+moves, which is an even number. If a loop is the last structure taken,
+it will have a single double-crossed move, but that will not change
+the parity either: if the last structure taken had been a different
+structure instead, there would be two parity changes, one on each
+structure affected, so no change in the parity overall.)
 
 Theorem \ref{gamelength} then tells us that if we started with $S$
 strings and $C$ coins and $S-C+L$ is \emph{odd}, the total number of
