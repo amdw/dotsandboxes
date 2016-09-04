@@ -49,7 +49,8 @@
 Dots-and-boxes is a game for two players.
 
 \begin{enumerate}
-  \item The game is played on a rectangular grid of dots.
+  \item The game is played on a rectangular grid of dots, of a size
+    agreed prior to the game.
   \item A move consists of drawing a line of the player's choice
     connecting a pair of horizontally or vertically adjacent dots.
   \item It is possible for a player's move to complete either one or
@@ -62,23 +63,28 @@ Dots-and-boxes is a game for two players.
     is the player who has completed more boxes.
 \end{enumerate}
 
-An example game is shown in Figure \ref{sampledab}; each move played
-is shown in bold, with the letter under each position showing the
-player making that move.
+An example game on a $2 \times 2$ grid is shown in Figure
+\ref{sampledab}; each move played is shown in bold, with the letter
+under each position showing the player making that move. (Grid
+dimensions are generally quoted in the number of \emph{boxes}.)
 
 \begin{figure*}
   \centering
   \def\svgscale{0.7}
   \input{fig_sampledab.pdf_tex}
-  \caption{Sample dots-and-boxes game, which player $A$ wins 3--1}
+  \caption{Sample dots-and-boxes game on a $2 \times 2$ grid, which
+    player $A$ wins 3--1}
   \label{sampledab}
 \end{figure*}
 
 The rules of dots-and-boxes are very simple: the game can be learned
 in moments, and it can be played purely with pencil and paper. The
-size of the board can be varied to alter the simplicity and length of
-the game: the board with $5 \times 5$ boxes is already quite deep. The
-strategy of the game is complex and interesting, and the aim of this
+size of the board can be varied to alter the complexity and length of
+the game: games are normally played on grids larger than the one in
+the example, at least $5 \times 5$. (An odd number of boxes is often
+chosen to prevent ties.)
+
+The strategy of the game is deep and interesting, and the aim of this
 paper is to explore it in more detail.
 
 \subsection{Strings-and-coins}
@@ -90,7 +96,8 @@ Dots-and-boxes is a special case of a more general game called
   \item This game begins with a set of \emph{coins}, and a set of
     \emph{strings} each connecting a pair of coins; some coins may
     also have one or more strings connecting them to the
-    \emph{ground}.
+    \emph{ground}. The exact starting position is agreed before the
+    game.
   \item A move consists of removing a string of the player's choice.
   \item It is possible for a player's move to remove the last string
     connected to either one or two coins. When this happens, the
