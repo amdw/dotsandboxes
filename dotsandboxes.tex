@@ -1229,38 +1229,66 @@ The next step is to define a notion of \emph{equality} for games. The
 zero game is a loss for whichever player is to move, which is to say a
 win for the second player; all games $G$ where the second player can
 force a win are defined to be equal to the zero game (and we write $G
-= 0$). Then, we say two games $G$ and $H$ are equal (and write simply
-$G = H$) if $G - H = 0$ in this sense.
+= 0$). Then, we say two games $G$ and $H$ are equal, or have the same
+\emph{value}, and write simply $G = H$, if $G - H = 0$ in this sense.
 
-So $\cgtgame{0}{} + \cgtgame{}{0} = 0$ even though the sets of options
-of the left and right sides are not literally identical, because both
-are wins for the second player. And of course, we then also have
-$\cgtgame{0}{} = -\cgtgame{}{0}$.
+To take a simple example, $\cgtgame{0}{} = -\cgtgame{}{0}$, since
+$\cgtgame{0}{} + \cgtgame{}{0}$ is a win for the second player and
+hence is equal to $0$.
 
 It can be shown that if $G = H$, then $G$ and $H$ are always in the
 same outcome class (e.g.\ if $G$ is always a win for $L$ then so is
 $H$), and moreover, for all games $X$, $G+X$ and $H+X$ are also always
 in the same outcome class (indeed $G+X = H+X$), so the two games have
 exactly the same effect on the outcome class when added to any third
-game.
+game. (Some sources \emph{define} equality in this way: it does not
+matter as it is equivalent to the definition given above.)
 
-We can already see that games are, in a certain sense, behaving like
+It is important to distinguish between the CGT definition of
+\emph{value} given above, and the notion of minimax coin-score value
+of a strings-and-coins position (the value function $V(P)$ of a
+position $P$) used in previous sections. CGT games do not have scores,
+only a win-or-loss outcome, so any CGT game position has only two
+possible minimax values, ``win'' or ``loss''. The set of CGT values is
+much richer, and is designed to classify not only what the best-play
+outcome is of one particular game, but also what effect it has when
+added to other games.
+
+It should also be noted that CGT sources have a strong tendency to
+blur the distinction between games and game values. Games are called
+``equal'' if they have the same value, even if they have completely
+different sets of options: in the example we saw above, $\cgtgame{0}{}
++ \cgtgame{}{0}$ does not have literally the same set of options as
+the zero game, but it is still equal to $0$, because it is a win for
+the second player.
+
+In effect, CGT values partition literal games into equivalence classes
+(sets of equal game value), and for most purposes within CGT, games
+are treated as interchangeable with others of the same value. The
+justification for this is that while the specific options available
+from two equal games may differ, and thus the optimal strategy will
+not be the same, the final outcome of the two is the same with best
+play, and the effect of each when added to any third game is also
+identical.
+
+We can already see that game values, in a certain sense, behave like
 numbers:
 
 \begin{itemize}
   \item They can be identified as equal or unequal to each other.
   \item They can be added and subtracted.
-  \item There is a zero game such that $G + 0 = 0 + G = G$ for all $G$.
+  \item There is a zero game value such that $G + 0 = 0 + G = G$ for
+    all $G$.
   \item Addition obeys the same commutative and associative laws as
     numerical addition ($G+H = H+G$ and $G+(H+I)=(G+H)+I$ for all
     games).
-  \item Every game $G$ has an inverse $-G$ such that $G + (-G) = 0$.
+  \item Every game value $G$ has an inverse $-G$ such that $G + (-G) =
+    0$.
 \end{itemize}
 
-In the terminology of abstract algebra, games form a structure called
-a \emph{commutative group} (when each game is considered as
-interchangeable with other equal games). This group is extremely rich
-and interesting: there are games which behave like the integers
+In the terminology of abstract algebra, game values form a structure
+called a \emph{commutative group}. This group is extremely rich and
+interesting: there are games which behave like the integers
 ($\cgtgame{0}{}$ is like $1$ and $\cgtgame{}{0}$ is like $-1$), and
 there are even games which behave like arbitrary fractions! There are
 also games which do not behave like numbers at all.
@@ -1318,11 +1346,11 @@ defined inductively as follows:
   *(n+1) & = & \cgtgame{*0, *1, \ldots, *n}{*0, *1, \ldots, *n}
 \end{eqnarray*}
 
-In CGT, these games are referred to as \emph{nimbers}. All non-zero
-nimbers are first-player wins, because the first player can always
-move to the zero game. Also, all nimbers are self-inverse: $*n + *n =
-0$ for all $n$, because a game of two equal heaps is a second-player
-win as we saw above.
+In CGT, these game values are referred to as \emph{nimbers}. All
+non-zero nimbers are first-player wins, because the first player can
+always move to the zero game. Also, all nimbers are self-inverse: $*n
++ *n = 0$ for all $n$, because a game of two equal heaps is a
+second-player win as we saw above.
 
 Nim was solved by the American mathematician Charles L.\ Bouton in
 1901. Though the terminology of ``nimbers'' and other CGT concepts was
@@ -1409,15 +1437,12 @@ games, Nimstring has a profound connection with Nim.
 
 \subsection{Complimenting moves and loony values}
 
-As with any impartial game, to calculate the value\footnote{When we
-  talk about the \emph{value} of a Nimstring position, we mean the
-  Sprague-Grundy value, which is not to be confused with the minimax
-  coin-score value function $V$ we introduced for strings-and-coins
-  earlier.} of any Nimstring position, all we need to do is to
-recursively calculate the value of each option of that position, and
-then calculate the $\mex$ of the results. For example, if the moves
-from a given Nimstring position are to positions of value $*1$, $*2$,
-$*2$ and $0$, then the position has value $\mex(1, 2, 2, 0) = *3$.
+As with any impartial game, to calculate the value of any Nimstring
+position, all we need to do is to recursively calculate the value of
+each option of that position, and then calculate the $\mex$ of the
+results. For example, if the moves from a given Nimstring position are
+to positions of value $*1$, $*2$, $*2$ and $0$, then the position has
+value $\mex(1, 2, 2, 0) = *3$.
 
 We can easily see that any Nimstring position where only loony moves
 remain is a second-player win and thus has a value of $0$: we can see
