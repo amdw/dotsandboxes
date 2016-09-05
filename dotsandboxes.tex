@@ -1393,9 +1393,19 @@ three heaps, of 13, 23 and 28 counters. Now:
   13 \oplus 23 \oplus 28 & = & 00110_2 = 6
 \end{eqnarray*}
 
-So the whole position is equal to $*6$ and one winning move would be
-to take $6 = 00110_2$ coins from the 23-heap, since $*13 + *17 + *28 =
-0$.
+So the whole position is equal to $*6$ (in other words it has the same
+CGT value as a single Nim-heap of six beans), and one winning move
+would be to take $6 = 00110_2$ coins from the 23-heap, since $*13 +
+*17 + *28 = 0$.
+
+(Note that there are moves available to higher nimbers from this
+position: for example we could take 16 coins from the 28-heap leaving
+a position of value $*22$. The canonical definition of nimbers says
+that $*6$ should have no options to move to higher nimbers, but in
+fact, because no move to $*6$ itself is available, the higher-nimber
+options have no effect on the game value: they are said to be
+``dominated''. This is another example of a situation where games of
+equal value do not necessarily have identical sets of options.)
 
 Now why, in a paper about dots-and-boxes, did we spend time studying
 Nim, which appears on the surface to be a completely different game?
@@ -1425,10 +1435,11 @@ For example:
 \end{eqnarray*}
 
 This is a remarkable result, because it shows that, in a certain very
-important sense, all impartial games are actually the same ---
-although there is no guarantee that it will be easy, in any given
-case, to calculate the value of a position or find a winning move
-(i.e.\ one which reaches a zero position).
+important sense (namely the CGT values which we have been discussing),
+all impartial games are actually the same --- although there is no
+guarantee that it will be easy, in any given case, to calculate the
+value of a position or find a winning move (i.e.\ one which reaches a
+zero position).
 
 The Sprague-Grundy Theorem shows why the name Nimstring was chosen for
 our normal-play variant of strings-and-coins: like all impartial
