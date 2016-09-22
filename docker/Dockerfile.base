@@ -1,0 +1,2 @@
+FROM fedora:24
+RUN dnf install texlive texlive-svg inkscape pstoedit python3-pylint make git -y

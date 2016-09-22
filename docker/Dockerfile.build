@@ -1,0 +1,3 @@
+FROM dabbase
+COPY . /dotsandboxes
+WORKDIR /dotsandboxes
