@@ -187,12 +187,14 @@ which wins two coins at once (because the string removed connected two
 coins of valency 1). These moves are of strategic importance for
 reasons we will see later.
 
-Let $V(P)$ be the net value of a position $P$, assuming optimal play
-from both sides, from the perspective of the player who has to play
-first in it. Clearly $V(P)$ will be an integer, and could be either
-positive, zero or negative, depending on whether $P$ is advantageous
-for the first player. $V(P)$ is also known as the \emph{minimax} value
-of $P$ and $V$ is the \emph{value function} of strings-and-coins.
+Let $V(P)$ be the net value of a position $P$ from the perspective of
+the player to move, assuming optimal play from both sides, and
+independent of how $P$ was reached (i.e.\ the value of the remaining
+coins, ignoring any coins taken earlier in the game). Clearly $V(P)$
+will be an integer, and could be either positive, zero or negative,
+according to whether $P$ is favourable or unfavourable for the player
+to move. $V(P)$ is also known as the \emph{minimax} value of $P$ and
+$V$ is the \emph{value function} of strings-and-coins.
 
 \section{Endgame fundamentals}\label{endgamesection}
 
@@ -298,9 +300,9 @@ play a double-dealing move. There are four types of loony move:
 \end{enumerate}
 
 When a player makes a loony move, it hands over control of the
-position to the opponent, and so if a player can force her opponent to
-make a loony move, she is almost always winning. (We will discuss the
-exceptions shortly.)
+position to the opponent, and so in a practical game, the first player
+to force their opponent to make a loony move is almost always the
+winner. (We will discuss the exceptions shortly.)
 
 A \emph{loony endgame} is defined as a strings-and-coins position in
 which the only possible moves are loony moves. A \emph{loony position}
@@ -347,8 +349,8 @@ double-dealing move) is the correct one. The position $P$ might be
 very complex, and it could be difficult to work out whether it is more
 favourable to play first or second in it. The strategy-stealing
 argument simply shows that since the first player has a free choice
-between these two options, and one of them must win, a loony position
-must be a win for the first player.
+between these two options, and one of them must avoid a net loss of
+coins, a loony position cannot be unfavourable for the first player.
 
 This shows that it is \emph{generally} undesirable to make a loony
 move; that is not always the case, though, as sometimes the
