@@ -803,14 +803,28 @@ Having established some basic principles of endgame play, we now
 consider how to aim towards a winning endgame while still in the
 middlegame.
 
+We have seen that provided there are enough long chains and loops in 
+a position, the winner will be the player who establishes control by 
+forcing his opponent to play a loony move. This suggests the following
+general procedure for winning a game of strings-and-coins:
+
+\begin{enumerate}
+  \item Ensure there are enough long chains and loops in the position
+  \item Force your opponent to make a loony move
+  \item Win the endgame using the techniques we have already seen
+\end{enumerate}
+
+This is how most games are won in practice. In this section we will focus
+on the second element: how do we ensure that our opponent will run out of
+non-loony moves before we do?
+
 \subsection{How long is a game?}
 
-While it is not true that the player who makes the last move
-necessarily wins a game of strings-and-coins (or dots-and-boxes),
-these situations are relatively rare exceptions, resulting from cases
-where the position is dominated by smaller chains and loops. Most
-games of dots-and-boxes have enough very-long chains and loops that
-the issue of control is decisive.
+When we succeed in playing according to the above procedure, we will 
+generally play the last move of the game, having forced our opponent to
+open the last chain or loop for us. (The only exception will be if the
+position is dominated by not-very-long structures, as we saw in section
+\ref{smallchains}.)
 
 It is therefore important to consider whether there are any general
 guidelines we can use to determine which player will make the last
@@ -827,7 +841,8 @@ double-crossed moves made during the course of the game, in a way
 which is perhaps slightly surprising. The following theorem shows
 exactly how\footnote{I have never seen this theorem stated in quite
   this way in the dots-and-boxes literature, but I would be surprised
-  if it is a new result.}.
+  if it is a new result, as it is merely a generalization to
+  strings-and-coins of a well-known result for dots-and-boxes.}.
 
 \begin{gamelength}\label{gamelength}
   For any game of strings-and-coins starting from a position with $C$
