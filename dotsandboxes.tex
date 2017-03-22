@@ -1146,16 +1146,54 @@ can give useful insights about strings-and-coins, given how often the
 game does in fact boil down to which player can control who makes the
 last move.
 
+\subsection{Nimstring}
+
 In this section, we will study a new game called
 \emph{Nimstring}. Nimstring is identical to strings-and-coins in every
 way except one: the winner is not the player who takes more coins but
 the player who forces his opponent to take the \emph{last}
-coin. Nimstring satisfies all the conditions above (it is a
-normal-play game because whoever takes the last coin is required to
-play another move, but cannot) and is therefore ideally suited to
-analysis using CGT.
+coin.
 
-Nimstring is actually a subset of strings-and-coins: any Nimstring
+In other words, Nimstring is simply strings-and-coins modified to
+follow the normal-play convention (whoever takes the last coin is required
+to play another move, but cannot), and thus to satisfy all the requirements
+of CGT.
+
+Nimstring and strings-and-coins are closely related. Many of the results
+we have already proved about strings-and-coins also apply to Nimstring,
+in a simplified form with fewer caveats and complications. For example:
+
+\begin{itemize}
+  \item The concept of loony moves in Nimstring is identical to
+  strings-and-coins.
+  \item The winning procedure in a loony Nimstring endgame is to keep
+  control all the way to the end using double-dealing moves. There is
+  no need to worry about whether there is a net loss of coins.
+  \item Because of this, there is no practical difference between long
+  and very-long structures in Nimstring. In fact, all long chains are
+  basically the same in Nimstring, and so are all long loops, because the
+  number of coins does not matter, only who can gain control.
+  \item All loony Nimstring positions are a win for the first player
+  (similar to Theorem \ref{sstealing}). However in Nimstring, since there
+  is no score-keeping, there are no special situations where you win by
+  playing a loony move which wins more coins than it sacrifices.
+  In Nimstring, a loony move is \emph{always} a losing move.
+  \item The same canonical play results hold. For example, any coins
+  which can be captured without affecting the ability to make a
+  double-dealing move can be taken without affecting the evaluation
+  of the position (similar to Theorem \ref{freecoins}), and a half-hearted
+  handout is never better than a hard-hearted one (similar to Theorem
+  \ref{halfheartedbad}).
+  \item Theorem \ref{gamelength} regarding the number of turns in a game
+  applies to Nimstring as well, so the same chain-parity guidelines hold.
+  The difference is that in Nimstring, since coin counts do not matter,
+  there are no caveats about ensuring there are enough long chains and loops
+  around to compensate for any coins sacrificed to keep control. In
+  Nimstring, whoever can resolve the long chain count in their favour
+  will win the game if they play correctly.
+\end{itemize}
+
+In fact, Nimstring is a subset of strings-and-coins: any Nimstring
 position $G$ can be converted to an equivalent strings-and-coins position
 simply by adding a single long chain containing more coins than $G$. The
 winner of this strings-and-coins game will be whichever player can win
@@ -1164,10 +1202,14 @@ opponent to capture the last coin in $G$ (in other words, win the Nimstring
 game $G$).
 
 There are a great many other strings-and-coins positions which can
-also be won using Nimstring techniques. This should not be surprising,
-as the ability to force your opponent to take the last coin in
-Nimstring is virtually identical to the concept of control in
-strings-and-coins which we have examined in earlier sections.
+also be won using Nimstring techniques. We have observed that most
+strings-and-coins games boil down to ensuring there are enough long chains
+and loops around and forcing your opponent to make a loony move. This
+basically means treating the game like a Nimstring game, while ensuring the
+resulting control yields enough profit to outweigh any earlier sacrifices.
+The ability to force your opponent to take the last coin in Nimstring is
+virtually identical to the concept of control in strings-and-coins which we
+examined in earlier sections.
 
 Now, we will first introduce the basic concepts and principles of CGT,
 with a strong focus on laying the foundations for Nimstring. We will
@@ -1465,7 +1507,10 @@ zero position).
 
 The Sprague-Grundy Theorem shows why the name Nimstring was chosen for
 our normal-play variant of strings-and-coins: like all impartial
-games, Nimstring has a profound connection with Nim.
+games, Nimstring has a profound connection with Nim. All Nimstring
+positions are equal to some nimber: $0$ for positions winning for the
+second player (such as loony endgames), and ``positive'' nimbers for
+those winning for the first player.
 
 \subsection{Complimenting moves and loony values}
 
@@ -1474,26 +1519,19 @@ position, all we need to do is to recursively calculate the value of
 each option of that position, and then calculate the $\mex$ of the
 results. For example, if the moves from a given Nimstring position are
 to positions of value $*1$, $*2$, $*2$ and $0$, then the position has
-value $\mex(1, 2, 2, 0) = *3$.
+value $*3$, since $\mex(1, 2, 2, 0) = 3$.
 
-We can easily see that any Nimstring position where only loony moves
-remain is a second-player win and thus has a value of $0$: we can see
-that any loony Nimstring position is a first-player win by an argument
-virtually identical to Theorem \ref{sstealing}. In fact, the analysis
-for Nimstring is even simpler, because we do not have to worry about
-numerical comparison of scores. Either the remainder of the position
-is a first-player win (if it equals a non-zero nimber) or a
-second-player win (if it equals zero), and a loony move gives us a
-free choice of whether to move first or second.
-
-The problem is that not all Nimstring positions can be evaluated so
-easily. If done na\"ively, the computational cost of the calculation
-grows exponentially in the size of the position, because we must do
-one recursive computation for each option. It would make the
-calculation much simpler if, as discussed in the introduction to this
-section, we could separately calculate the values of the independent
+The problem is that the computational cost of this calculation can be very
+high. If done na\"ively, it grows exponentially in the size of the
+position, because we must do one recursive computation for each option.
+We must therefore look for any possible opportunity to simplify the
+calculation. It would help greatly if, as discussed in the introduction
+to this section, we could separately calculate the values of the independent
 components of a Nimstring position and cheaply combine them together
-to reach the value of the position as a whole.
+to reach the value of the position as a whole.\footnote{There are
+standard computer science techniques we could apply here: for example,
+dynamic programming would avoid repeatedly calculating the values of
+identical sub-positions. However, we will focus on CGT-specific ideas here.}
 
 It might initially appear that Sprague-Grundy theory gives us exactly
 what we are looking for. All we now need to do, one might think, is
