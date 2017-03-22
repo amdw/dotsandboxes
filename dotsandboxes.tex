@@ -1156,11 +1156,12 @@ play another move, but cannot) and is therefore ideally suited to
 analysis using CGT.
 
 Nimstring is actually a subset of strings-and-coins: any Nimstring
-position $G$ can be converted to a strings-and-coins position simply
-by adding a single long chain containing more coins than $G$. The
+position $G$ can be converted to an equivalent strings-and-coins position
+simply by adding a single long chain containing more coins than $G$. The
 winner of this strings-and-coins game will be whichever player can win
 the long chain, which will be precisely the player who can force his
-opponent to capture the last coin in $G$.
+opponent to capture the last coin in $G$ (in other words, win the Nimstring
+game $G$).
 
 There are a great many other strings-and-coins positions which can
 also be won using Nimstring techniques. This should not be surprising,
