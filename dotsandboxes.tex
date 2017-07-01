@@ -13,9 +13,9 @@
 \newcommand{\cgtgame}[2]{\{#1 \:|\: #2\}}
 
 \newtheorem{thm}{Theorem}[section]
-\newtheorem{sstealing}[thm]{Theorem}
-\newtheorem{addcoins}[thm]{Lemma}
 \newtheorem{freecoins}[thm]{Theorem}
+\newtheorem{loonyoptions}[thm]{Theorem}
+\newtheorem{loonynonneg}[thm]{Theorem}
 \newtheorem{halfheartedbad}[thm]{Theorem}
 \newtheorem{opensmallest}[thm]{Theorem}
 \newtheorem{gamelength}[thm]{Theorem}
@@ -284,7 +284,7 @@ observation holds true for loops which are sufficiently large to allow
 a double-dealing move without net loss. We will explore this topic in
 more detail in section \ref{smallchains}.
 
-\subsection{Loony moves}
+\subsection{Loony moves and positions}
 
 A \emph{loony move} is defined as a move which allows the opponent to
 play a double-dealing move. There are four types of loony move:
@@ -301,48 +301,103 @@ play a double-dealing move. There are four types of loony move:
     made a loony move of their own.
 \end{enumerate}
 
-When a player makes a loony move, it hands over control of the
-position to the opponent, and so in a practical game, the first player
-to force their opponent to make a loony move is almost always the
-winner. (We will discuss the exceptions shortly.)
-
 A \emph{loony endgame} is defined as a strings-and-coins position in
 which the only possible moves are loony moves. A \emph{loony position}
 is defined as one in which a loony move has just been made.
 
-These central concepts of strings-and-coins strategy bring us to our
-first theorem.
+These concepts are extremely important to the theory of
+strings-and-coins. The basic reason for this is that in a loony
+position, the player has a free choice between taking all the coins on
+offer and then playing first in the rest of the position, or playing a
+double-dealing move, forcing the opponent to play first in the rest of
+the position at the cost of either two or four coins (depending
+whether a chain or a loop is involved). This is a powerful option,
+which will generally lead to victory if exercised correctly (we will
+discuss the exceptions shortly).
 
-\begin{sstealing}\label{sstealing}
+\begin{loonyoptions}\label{loonyoptions}
+  Let:
+  \begin{itemize}
+    \item $L$ be a loony position
+    \item $m$ the number of capturable coins in $L$
+    \item $P$ the same position with all $m$ capturable coins removed,
+      and
+    \item $s$ the minimum number of coins which must be sacrificed in
+      order to play a double-dealing move in $L$ ($s$ will be $2$ or
+      $4$ according to whether $L$ contains an open long chain, or
+      only open long loops).
+  \end{itemize}
+
+  Then the optimal strategy from $L$ is either to take all $m$ coins
+  on offer and then make the optimal move in $P$, or to take all but
+  $s$ coins and play a double-dealing move, and thus
+  $$V(L) = \max(m+V(P), m-2s-V(P))$$
+\end{loonyoptions}
+
+\begin{proof}
+  Taking all $m$ coins and playing optimally in $P$ results in a gain
+  of $m+V(P)$ coins, and taking all but $s$ coins and double-dealing
+  results in a gain of $m-2s-V(P)$ coins (assuming best play from both
+  sides thereafter). So we immediately have $$V(L) \ge \max(m+V(P),
+  m-2s-V(P))$$ and it remains only to show equality by demonstrating
+  that no other possible strategy can yield a better outcome than both
+  of these options.
+
+  Any strategies from $L$ other than these two must fall into one of
+  two categories:
+  \begin{itemize}
+    \item Making a move in the $P$ part of the position while there
+      are $n > 0$ capturable coins still available
+    \item Making a double-dealing move while there are still $n > s$
+      capturable coins available
+  \end{itemize}
+
+  In the first case, the gain from this strategy can be no greater
+  than $m-n+V(P)$, as the opponent can take all the capturable coins
+  the first player eschewed and play from there (and there may even be
+  better options available). At best, the first player has achieved
+  nothing over the take-all-$m$ strategy other than to give the
+  opponent $n$ free coins. $m-n+V(P) < m+V(P)$ and so this strategy
+  cannot be optimal.
+
+  In the second case, the gain can be no greater than $m-2n-V(P)$, as
+  the opponent can take all $n$ remaining capturable coins and play in
+  $P$ (and may again have even better options). At best, the first
+  player has achieved nothing over the take-all-but-$s$ strategy other
+  than to give the opponent $n - s$ free coins.  $m-2n-V(P) <
+  m-2s-V(P)$ so this strategy can be discarded as well.
+
+  Therefore, the optimal strategy from $L$ must be one of the two
+  given.
+\end{proof}
+
+This argument relies on the fact that $P$ plays out the same way
+regardless of which player goes first in it. Whatever strategy one
+player uses from $P$ can also be used by the other if the first player
+makes a different decision from $L$, thus reversing their roles. This
+type of reasoning is known as a \emph{strategy-stealing} argument.
+
+The power of the choice offered by a loony position is now clear. If
+$V(P)$ is positive, we can take all the capturable coins and proceed
+to reap that gain; on the other hand, if $V(P)$ is negative, we can
+make the double-dealing move and force that loss on our opponent.
+
+In fact, we can prove a slightly stronger assertion, as follows.
+
+\begin{loonynonneg}\label{loonynonneg}
   If a player has just made a loony move, her opponent can always
   score at least half of the remaining points: in other words, for any
   loony position $L$, $V(L) \ge 0$.
-\end{sstealing}
+\end{loonynonneg}
 
 \begin{proof}
-  Let $P$ be the position with the coins offered by the loony move
-  removed.
+  Let $P$, $m$ and $s$ be defined as in Theorem
+  \ref{loonyoptions}. From that theorem we already know that $$V(L) =
+  \max(m+V(P), m-2s-V(P))$$
 
-  The proof uses a technique called \emph{strategy-stealing}. It
-  relies on the fact that from $L$, the player to move can choose
-  whether to take all the coins on offer and play first in $P$, or
-  play a double-dealing move, sacrificing a few coins but forcing the
-  opponent to play first in $P$.
-
-  Let $s$ be the minimum number of coins the player would have to
-  sacrifice in order to play a double-dealing move, and let $m$ be the
-  total number of coins placed on offer by the loony move. Note that
-  $s$ is either 2 or 4, depending on whether a chain or a loop has
-  been opened, and $m \ge s$.
-
-  By taking all the coins and playing first in $P$, the player's
-  outcome would be $m + V(P)$. By taking all but $s$ coins and forcing
-  the opponent to play first in $P$, the player's outcome would be
-  $m-2s-V(P)$. So $$V(L) = \max(m+V(P), m-2s-V(P))$$
-
-  If $V(P) \ge -m$ then $V(L) \ge 0$ straight away, so suppose $V(P) <
-  -m$. Then $m-V(P) > 2m$, and thus as $m \ge s$, $$m-2s-V(P) > 2m-2s
-  \ge 0$$ so in this case $V(L) \ge 0$ also.
+  If $V(P) \ge -m$ then $m+V(P) \ge 0$ and $V(L) \ge 0$ straight away,
+  so suppose $V(P) < -m$. Then $m-V(P) > 2m$, and thus as $m \ge
+  s$, $$m-2s-V(P) > 2m-2s \ge 0$$ so in this case $V(L) \ge 0$ also.
 \end{proof}
 
 Notice that this is a non-constructive proof, which does not tell us
@@ -364,49 +419,23 @@ optimal move, and we will prove that now.
 
 \subsection{Canonical play results}
 
-\begin{addcoins}\label{addcoins}
-  For any position $P$, if $P'$ is the position resulting from adding
-  $n$ capturable coins to $P$, then $V(P') \ge V(P)+n$.
-\end{addcoins}
-\begin{proof}
-  This is immediate, as a gain of $V(P)+n$ coins can be made from $P'$
-  by taking the $n$ available coins and then following the optimal
-  strategy in $P$. (There may of course be a better strategy
-  available.)
-\end{proof}
-
 \begin{freecoins}\label{freecoins}
   Any coins which can be captured without affecting the ability to
   play a double-dealing move later in the turn should always be
   captured immediately.
 \end{freecoins}
+
 \begin{proof}
-  Let:
-  \begin{itemize}
-    \item $P$ be the current position
-    \item $n$ be the maximum number of coins we can capture without
-      affecting the ability to play a double-dealing move
-    \item $P_t$ the position after we capture all possible coins from
-      $P$ and then make the optimal move in the remaining position
-    \item $P_d$ the position resulting from taking $n$ coins from $P$
-      and then making a double-dealing move
-  \end{itemize}
+  If the position is loony, this result is exactly the same as Theorem
+  \ref{loonyoptions}, so it remains only to check the case where the
+  position is not loony (i.e.\ there are capturable coins but no
+  double-dealing move is possible).
 
-  If we take any number of coins $m < n$ and then play a
-  double-dealing move, the resulting position is the same as $P_d$ but
-  with $n-m$ extra capturable coins, so by lemma \ref{addcoins}, its
-  value is at least $n-m$ greater than $V(P_d)$.
-
-  Similarly, if we take any number of coins $m < n$, ignore the rest
-  of the coins, and then play a non-double-dealing move, its value
-  will be at least $n-m$ greater than $V(P_t)$.
-
-  Thus, in either case, if we refrain from taking any other available
-  coins, the opponent can take those coins and then play whatever
-  optimal strategy they could have played if we had taken them. Thus
-  we have achieved nothing except giving the opponent some free coins
-  (and perhaps some other possibilities too, such as making a
-  double-dealing move of their own.)
+  However this case is very simple, as we will be forced to play in
+  the rest of the position regardless of whether we capture the
+  available coins or not. If we do not, our opponent can capture the
+  coins herself and continue as if we had done so, so we have achieved
+  nothing except to hand some free coins to our opponent.
 \end{proof}
 
 \begin{halfheartedbad}\label{halfheartedbad}
@@ -692,8 +721,8 @@ Example calculations for $k=3$, $k=4$ and $k=10$ can be seen in tables
   \label{vpik10}
 \end{table*}
 
-We know from theorem \ref{sstealing} that no loony endgame can have a
-positive value, but all the $V(P_{i,k})$ are strictly less than
+We know from theorem \ref{loonynonneg} that no loony endgame can have
+a positive value, but all the $V(P_{i,k})$ are strictly less than
 zero. This is because the 3-chains have an odd number of coins, but
 the number of coins you have to sacrifice to make a double-dealing
 move is even, so the two never cancel out exactly.
@@ -1175,10 +1204,11 @@ in a simplified form with fewer caveats and complications. For example:
     basically the same in Nimstring, and so are all long loops, because the
     number of coins does not matter, only who can gain control.
   \item All loony Nimstring positions are a win for the first player
-    (similar to Theorem \ref{sstealing}). However in Nimstring, since there
-    is no score-keeping, there are no special situations where you win by
-    playing a loony move which wins more coins than it sacrifices.
-    In Nimstring, a loony move is \emph{always} a losing move.
+    (similar to Theorem \ref{loonynonneg}). However in Nimstring,
+    since there is no score-keeping, there are no special situations
+    where you win by playing a loony move which wins more coins than
+    it sacrifices.  In Nimstring, a loony move is \emph{always} a
+    losing move.
   \item The same canonical play results hold. For example, any coins
     which can be captured without affecting the ability to make a
     double-dealing move can be taken without affecting the evaluation
@@ -1381,7 +1411,7 @@ win for $L$'' and ``always a win for $R$'' are impossible, because the
 options for the two players are always the same, so one player can
 always ``steal'' the other's winning strategy if the players' roles
 are reversed (remember the proof technique from Theorem
-\ref{sstealing}).
+\ref{loonyoptions}).
 
 The game of \emph{Nim} is central to the theory of impartial games,
 for a reason we will see shortly. In Nim, a position consists of a
