@@ -165,16 +165,19 @@ valency 1 can be immediately captured.
 
 A \emph{joint} is a coin of degree 3 or more.
 
-A \emph{loop} is a connected set of coins which all have valency 2, and
-form a circuit. An $n$-loop is a loop consisting of $n$ coins. (In
-dots-and-boxes, there are no loops with fewer than four coins, and due to
-the symmetry, all loops have an even number of coins.)
+A \emph{loop} is a connected set of coins which all have valency 2,
+and form a circuit. An \emph{$n$-loop} is a loop consisting of $n$
+coins. (In dots-and-boxes, there are no loops with fewer than four
+coins, and due to the symmetry, all loops have an even number of
+coins.)
 
 A \emph{(closed) chain} is a connected set of coins with valency 2
 which is not a loop. A chain has two ends, which can either be
 connected to the ground or to a joint. An \emph{open chain} is one
-which can be immediately captured, i.e.\ a chain where one or both ends
-has valency 1. A $n$-chain is a chain consisting of $n$ coins.
+which can be immediately captured, i.e.\ a chain where one or both
+ends has valency 1; in the special case where both ends have valency
+1, we may refer to it as an \emph{opened loop}. A \emph{$n$-chain} is
+a chain consisting of $n$ coins.
 
 A chain is \emph{independent} if it is connected to the ground (rather
 than a joint) at both ends.
@@ -328,7 +331,7 @@ discuss the exceptions shortly).
     \item $s$ the minimum number of coins which must be sacrificed in
       order to play a double-dealing move in $L$ ($s$ will be $2$ or
       $4$ according to whether $L$ contains an open long chain, or
-      only open long loops).
+      only opened long loops).
   \end{itemize}
 
   Then the optimal strategy from $L$ is either to take all $m$ coins
