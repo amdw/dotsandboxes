@@ -223,8 +223,9 @@ with a turn being the optimal choice if and only if it achieves this
 maximum. The minus sign is because $P_t$ will by definition occur
 with the opponent to move.
 
-More generally, if $\mathcal{M}_P$ is a set of mutually exclusive and
-jointly exhaustive sequences of moves by the same player from $P$, and
+More generally, if $\mathcal{M}_P$ is a set of sequences of moves by
+the same player from $P$ which are jointly exhaustive
+(i.e.\ $\mathcal{M}_P$ covers all legal possibilities from $P$), and
 for each such sequence $m \in \mathcal{M}_P$, $c_m$ is the number of
 coins captured by $m$ ($m \ge 0$), $P_m$ is the position resulting
 from playing $m$, and
@@ -240,9 +241,10 @@ then $$V(P) = \max_{m \in \mathcal{M}_P}(c_m + I_mV(P_m))$$
 The indicator $I_m$ is required to take care of the fact that the
 player to move in $P_m$ depends on whether $m$ captured any coins.
 
-This definition may feel a little awkward, but it is helpful when
-comparing a sequence of moves which terminates the first player's turn
-with a sequence which does not.
+This definition may feel a little awkward, but it is helpful when, for
+example, comparing a sequence of moves which terminates the first
+player's turn with a sequence which does not. We will see this
+definition of the value function in action later.
 
 \section{Endgame fundamentals}\label{endgamesection}
 
