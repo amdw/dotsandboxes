@@ -35,3 +35,4 @@ pylint:
 
 clean:
 	-rm -v *.pdf* *.svg *.pyc vc.tex *.log *.aux *.toc
+	-rm -rf __pycache__
