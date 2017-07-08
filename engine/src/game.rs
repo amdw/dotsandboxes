@@ -256,16 +256,21 @@ impl Position {
 
 impl fmt::Display for Position {
     fn fmt(self: &Position, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "  ")?;
+        for i in 0..self.width() {
+            write!(f, " {}", i)?;
+        }
+        write!(f, "\n  ")?;
         for &b in self.top_strings.iter() {
             write!(f, "+{}", if b { " " } else { "-" })?;
         }
         write!(f, "+\n")?;
         for j in 0..self.left_strings.len() {
-            write!(f, "{} ", if self.left_strings[j] { " " } else { "|" })?;
+            write!(f, "{} {}", j, if self.left_strings[j] { " " } else { "|" })?;
             for i in 0..self.top_strings.len() {
-                write!(f, "{} ", if self.right_strings[i][j] { " " } else { "|" })?;
+                write!(f, " {}", if self.right_strings[i][j] { " " } else { "|" })?;
             }
-            write!(f, "\n")?;
+            write!(f, "\n  ")?;
             for i in 0..self.top_strings.len() {
                 write!(f, "+{}", if self.down_strings[i][j] { " " } else { "-" })?;
             }
@@ -399,9 +404,20 @@ mod tests {
         pos.make_move(0, 0, Side::Top);
         pos.make_move(0, 2, Side::Left);
         let display = format!("{}", pos);
-        let expected = vec!("+-+ + +", "        ", "+ +-+ +", "        ", "+ + + +", "|       ", "+ + + +", "");
+        let expected = vec!("   0 1 2",
+                            "  +-+ + +",
+                            "0        ",
+                            "  + +-+ +",
+                            "1        ",
+                            "  + + + +",
+                            "2 |      ",
+                            "  + + + +",
+                            "");
         let actual: Vec<&str> = display.split("\n").collect();
-        assert_eq!(expected, actual);
+        assert_eq!(expected.len(), actual.len());
+        for i in 0..expected.len() {
+            assert_eq!(expected[i], actual[i], "strings mismatch at position {}", i);
+        }
     }
 
     #[test]
