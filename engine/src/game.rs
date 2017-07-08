@@ -126,6 +126,7 @@ impl Position {
             !self.is_legal_move(x, y, Side::Bottom)
     }
 
+    // Indicate whether a given move would be a capture
     pub fn would_capture(self: &Position, x: usize, y: usize, s: Side) -> bool {
         if self.valency(x, y) == 1 {
             return true;
