@@ -20,6 +20,8 @@ use std::fmt;
 
 #[derive(Clone)]
 #[derive(Copy)]
+#[derive(Eq)]
+#[derive(Hash)]
 #[derive(PartialEq)]
 #[derive(Debug)]
 pub enum Side {
@@ -37,6 +39,8 @@ pub struct MoveOutcome {
 
 #[derive(Clone)]
 #[derive(Copy)]
+#[derive(Eq)]
+#[derive(Hash)]
 #[derive(PartialEq)]
 #[derive(Debug)]
 pub struct Move {
@@ -120,6 +124,18 @@ impl Position {
             !self.is_legal_move(x, y, Side::Right) &&
             !self.is_legal_move(x, y, Side::Top) &&
             !self.is_legal_move(x, y, Side::Bottom)
+    }
+
+    pub fn would_capture(self: &Position, x: usize, y: usize, s: Side) -> bool {
+        if self.valency(x, y) == 1 {
+            return true;
+        }
+        if let Some((nx, ny)) = self.offset(x, y, s) {
+            self.valency(nx, ny) == 1
+        }
+        else {
+            false
+        }
     }
 
     // Make a given move on the board, and indicate the outcome.
@@ -318,6 +334,7 @@ mod tests {
         assert_eq!(2, pos.valency(1, 1));
         assert_eq!(3, pos.valency(1, 2));
 
+        assert_eq!(false, pos.would_capture(1, 1, Side::Left));
         let outcome = pos.make_move(1, 1, Side::Left);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
@@ -327,6 +344,7 @@ mod tests {
         assert_eq!(1, pos.valency(1, 1));
         assert_eq!(3, pos.valency(0, 1));
 
+        assert_eq!(true, pos.would_capture(1, 1, Side::Top));
         let outcome = pos.make_move(1, 1, Side::Top);
         assert_eq!(1, outcome.coins_captured);
         assert_eq!(false, outcome.end_of_turn);

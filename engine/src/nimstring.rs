@@ -16,8 +16,8 @@
     You should have received a copy of the GNU Affero General Public License
     along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, Side};
-use std::collections::HashSet;
+use game::{Position, Side, Move};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[derive(Clone)]
@@ -82,7 +82,7 @@ pub fn calc_value(pos: &mut Position) -> Value {
     }
     let legal_moves = pos.legal_moves();
     for m in &legal_moves {
-        if pos.valency(m.x, m.y) == 1 {
+        if pos.would_capture(m.x, m.y, m.side) {
             pos.make_move(m.x, m.y, m.side);
             let result = calc_value(pos);
             pos.undo_move(m.x, m.y, m.side);
@@ -98,6 +98,21 @@ pub fn calc_value(pos: &mut Position) -> Value {
         pos.undo_move(m.x, m.y, m.side);
     }
     return Value::Nimber(mex(options));
+}
+
+// Calculate the Nimstring value of a position, along with the values attained
+// by each of the legal moves.
+pub fn calc_value_with_moves(pos: &mut Position) -> (Value, HashMap<Move, Value>) {
+    // TODO: Fix this inefficiency by caching
+    // TODO: Refactor to avoid mutable borrow at top-level interface by wrapping with functions which clone position first?
+    let val = calc_value(pos);
+    let mut per_move = HashMap::new();
+    for m in pos.legal_moves() {
+        pos.make_move(m.x, m.y, m.side);
+        per_move.insert(m, calc_value(pos));
+        pos.undo_move(m.x, m.y, m.side);
+    }
+    (val, per_move)
 }
 
 #[cfg(test)]
@@ -157,5 +172,38 @@ mod tests {
         let mut pos = make_chain(7);
         pos.undo_move(3, 0, Side::Top);
         assert_eq!(Value::Nimber(1), calc_value(&mut pos));
+    }
+
+    #[test]
+    fn right_capture_detection() {
+        let mut pos = make_chain(5);
+        pos.undo_move(3, 0, Side::Top);
+        assert_eq!(Value::Nimber(1), calc_value(&mut pos));
+        pos.make_move(4, 0, Side::Right);
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos));
+    }
+
+    #[test]
+    fn paper_example() {
+        let mut pos = Position::new_game(5, 2);
+        pos.make_move(0, 0, Side::Top);
+        pos.make_move(1, 0, Side::Top);
+        pos.make_move(0, 0, Side::Left);
+        pos.make_move(0, 1, Side::Left);
+        pos.make_move(1, 0, Side::Bottom);
+        pos.make_move(2, 0, Side::Bottom);
+        pos.make_move(3, 0, Side::Bottom);
+        pos.make_move(3, 0, Side::Right);
+        for i in 0..5 {
+            pos.make_move(i, 1, Side::Bottom);
+        }
+        let (val, per_move) = calc_value_with_moves(&mut pos);
+        println!("{}", pos);
+        println!("{}", val);
+        for (m, v) in &per_move {
+            println!("{:?} {}", m, v);
+        }
+        assert_eq!(Value::Nimber(1), val);
+        assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 3, y: 0, side: Side::Top}).unwrap());
     }
 }
