@@ -1,0 +1,6 @@
+[package]
+name = "dabengine"
+version = "0.1.0"
+authors = ["Andrew Medworth <github@medworth.org.uk>"]
+
+[dependencies]

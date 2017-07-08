@@ -8,3 +8,6 @@ _*
 *.svg
 *.out
 vc.tex
+engine/target/
+**/*.rs.bk
+engine/Cargo.lock
