@@ -17,3 +17,4 @@
     along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
 pub mod game;
+pub mod nimstring;

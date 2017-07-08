@@ -31,7 +31,18 @@ pub enum Side {
 #[derive(Debug)]
 pub struct MoveOutcome {
     pub coins_captured: usize,
-    pub end_of_turn: bool
+    pub end_of_turn: bool,
+    // TODO: Add end_of_game
+}
+
+#[derive(Clone)]
+#[derive(Copy)]
+#[derive(PartialEq)]
+#[derive(Debug)]
+pub struct Move {
+    pub x: usize,
+    pub y: usize,
+    pub side: Side,
 }
 
 // An m*n dots-and-boxes position is represented as:
@@ -51,22 +62,22 @@ pub struct Position {
 
 impl Position {
     // Create a new dots-and-boxes position of a given size.
-    pub fn new_game(m: usize, n: usize) -> Position {
-        let mut top_strings = Vec::with_capacity(m);
-        let mut left_strings = Vec::with_capacity(n);
-        let mut down_strings = Vec::with_capacity(m);
-        let mut right_strings = Vec::with_capacity(m);
+    pub fn new_game(width: usize, height: usize) -> Position {
+        let mut top_strings = Vec::with_capacity(width);
+        let mut left_strings = Vec::with_capacity(height);
+        let mut down_strings = Vec::with_capacity(width);
+        let mut right_strings = Vec::with_capacity(width);
 
-        for i in 0..m {
+        for i in 0..width {
             top_strings.push(true);
-            down_strings.push(Vec::with_capacity(n));
-            right_strings.push(Vec::with_capacity(n));
-            for _ in 0..n {
+            down_strings.push(Vec::with_capacity(height));
+            right_strings.push(Vec::with_capacity(height));
+            for _ in 0..height {
                 down_strings[i].push(true);
                 right_strings[i].push(true);
             }
         }
-        for _ in 0..n {
+        for _ in 0..height {
             left_strings.push(true);
         }
         Position {
@@ -75,6 +86,14 @@ impl Position {
             down_strings: down_strings,
             right_strings: right_strings,
         }
+    }
+
+    pub fn width(self: &Position) -> usize {
+        self.top_strings.len()
+    }
+
+    pub fn height(self: &Position) -> usize {
+        self.left_strings.len()
     }
 
     // Indicate whether a given move is legal in the current position.
@@ -140,6 +159,19 @@ impl Position {
         MoveOutcome { coins_captured: captures, end_of_turn: captures == 0 || self.is_end_of_game() }
     }
 
+    // Undo a given move by putting the line back on the board.
+    // Behaviour if the move was never made in the first place is undefined.
+    pub fn undo_move(self: &mut Position, x: usize, y: usize, s: Side) {
+        match (x, y, s) {
+            (0, y, Side::Left) => self.left_strings[y] = true,
+            (x, 0, Side::Top) => self.top_strings[x] = true,
+            (x, y, Side::Top) => self.down_strings[x][y-1] = true,
+            (x, y, Side::Bottom) => self.down_strings[x][y] = true,
+            (x, y, Side::Left) => self.right_strings[x-1][y] = true,
+            (x, y, Side::Right) => self.right_strings[x][y] = true,
+        }
+    }
+
     // Indicate whether the game is over (i.e. whether all strings have been cut).
     pub fn is_end_of_game(self: &Position) -> bool {
         for &b in self.left_strings.iter() {
@@ -167,6 +199,58 @@ impl Position {
             }
         }
         true
+    }
+
+    // Compute all possible legal moves in the position.
+    pub fn legal_moves(self: &Position) -> Vec<Move> {
+        let mut result: Vec<Move> = Vec::new();
+        for (x, &b) in self.top_strings.iter().enumerate() {
+            if b {
+                result.push(Move{ x: x, y: 0, side: Side::Top });
+            }
+        }
+        for (y, &b) in self.left_strings.iter().enumerate() {
+            if b {
+                result.push(Move{ x: 0, y: y, side: Side::Left });
+            }
+        }
+        for x in 0..self.top_strings.len() {
+            for y in 0..self.left_strings.len() {
+                if self.down_strings[x][y] {
+                    result.push(Move{ x: x, y: y, side: Side::Bottom });
+                }
+                if self.right_strings[x][y] {
+                    result.push(Move{ x: x, y: y, side: Side::Right })
+                }
+            }
+        }
+        result
+    }
+
+    // Valency or degree of coin at a given position
+    pub fn valency(self: &Position, x: usize, y: usize) -> usize {
+        let mut result = 0;
+        for &s in [Side::Top, Side::Bottom, Side::Left, Side::Right].iter() {
+            if self.is_legal_move(x, y, s) {
+                result += 1
+            }
+        }
+        result
+    }
+
+    // Move from the square indicated in the direction indicated by the side,
+    // returning a result only if that square is still on the board
+    pub fn offset(self: &Position, x: usize, y: usize, s: Side) -> Option<(usize, usize)> {
+        match (x, y, s) {
+            (0, _, Side::Left) => None,
+            (x, _, Side::Right) if x == self.width()-1 => None,
+            (_, 0, Side::Top) => None,
+            (_, y, Side::Bottom) if y == self.height()-1 => None,
+            (x, y, Side::Left) => Some((x-1, y)),
+            (x, y, Side::Right) => Some((x+1, y)),
+            (x, y, Side::Top) => Some((x, y-1)),
+            (x, y, Side::Bottom) => Some((x, y+1)),
+        }
     }
 }
 
@@ -204,6 +288,7 @@ mod tests {
                 assert_eq!(true, pos.is_legal_move(i, j, Side::Right));
                 assert_eq!(true, pos.is_legal_move(i, j, Side::Bottom));
                 assert_eq!(true, pos.is_legal_move(i, j, Side::Top));
+                assert_eq!(4, pos.valency(i, j));
             }
         }
         // Out of bounds
@@ -216,6 +301,8 @@ mod tests {
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Right));
         assert_eq!(false, pos.is_legal_move(2, 1, Side::Left));
         assert_eq!(false, pos.is_captured(1, 1));
+        assert_eq!(3, pos.valency(1, 1));
+        assert_eq!(3, pos.valency(2, 1));
 
         let outcome = pos.make_move(1, 1, Side::Bottom);
         assert_eq!(0, outcome.coins_captured);
@@ -223,6 +310,8 @@ mod tests {
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Bottom));
         assert_eq!(false, pos.is_legal_move(1, 2, Side::Top));
         assert_eq!(false, pos.is_captured(1, 1));
+        assert_eq!(2, pos.valency(1, 1));
+        assert_eq!(3, pos.valency(1, 2));
 
         let outcome = pos.make_move(1, 1, Side::Left);
         assert_eq!(0, outcome.coins_captured);
@@ -230,6 +319,8 @@ mod tests {
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Left));
         assert_eq!(false, pos.is_legal_move(0, 1, Side::Right));
         assert_eq!(false, pos.is_captured(1, 1));
+        assert_eq!(1, pos.valency(1, 1));
+        assert_eq!(3, pos.valency(0, 1));
 
         let outcome = pos.make_move(1, 1, Side::Top);
         assert_eq!(1, outcome.coins_captured);
@@ -237,6 +328,8 @@ mod tests {
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Top));
         assert_eq!(false, pos.is_legal_move(1, 0, Side::Bottom));
         assert_eq!(true, pos.is_captured(1, 1));
+        assert_eq!(0, pos.valency(1, 1));
+        assert_eq!(3, pos.valency(1, 0));
 
         assert_eq!(false, pos.is_end_of_game());
     }
@@ -263,6 +356,8 @@ mod tests {
     #[test]
     fn double_cross() {
         let mut pos = Position::new_game(2, 1);
+        assert_eq!(2, pos.width());
+        assert_eq!(1, pos.height());
         let moves = [(0, 0, Side::Top), (0, 0, Side::Bottom),
                      (1, 0, Side::Top), (1, 0, Side::Bottom),
                      (0, 0, Side::Left), (1, 0, Side::Right)];
@@ -282,6 +377,22 @@ mod tests {
     }
 
     #[test]
+    fn undo() {
+        let mut pos = Position::new_game(3, 3);
+        pos.make_move(1, 1, Side::Top);
+        pos.make_move(1, 1, Side::Left);
+        pos.undo_move(1, 1, Side::Top);
+        pos.undo_move(0, 1, Side::Right);
+        for i in 0..2 {
+            for j in 0..2 {
+                for &s in [Side::Top, Side::Bottom, Side::Left, Side::Right].iter() {
+                    assert_eq!(true, pos.is_legal_move(i, j, s));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn display() {
         let mut pos = Position::new_game(3, 3);
         pos.make_move(1, 1, Side::Top);
@@ -291,5 +402,60 @@ mod tests {
         let expected = vec!("+-+ + +", "        ", "+ +-+ +", "        ", "+ + + +", "|       ", "+ + + +", "");
         let actual: Vec<&str> = display.split("\n").collect();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn legal_moves() {
+        let mut pos = Position::new_game(2, 2);
+        let moves = pos.legal_moves();
+        assert_eq!(12, moves.len());
+        // Edge moves, for which there is only one representation
+        for i in 0..2 {
+            assert!(moves.contains(&Move{ x: i, y: 0, side: Side::Top }));
+            assert!(moves.contains(&Move{ x: i, y: 1, side: Side::Bottom }));
+        }
+        for j in 0..2 {
+            assert!(moves.contains(&Move{ x: 0, y: j, side: Side::Left }));
+            assert!(moves.contains(&Move{ x: 1, y: j, side: Side::Right }));
+        }
+        // Interior moves, for which there are two representations
+        for i in 0..2 {
+            assert!(moves.contains(&Move{ x: i, y: 0, side: Side::Bottom }) ||
+                    moves.contains(&Move{ x: i, y: 1, side: Side::Top }));
+        }
+        for j in 0..2 {
+            assert!(moves.contains(&Move{ x: 0, y: j, side: Side::Right }) ||
+                    moves.contains(&Move{ x: 1, y: j, side: Side::Left }));
+        }
+
+        pos.make_move(0, 0, Side::Bottom);
+        let moves = pos.legal_moves();
+        assert!(!moves.contains(&Move{ x: 0, y: 0, side: Side::Bottom }) &&
+                !moves.contains(&Move{ x: 0, y: 1, side: Side::Top }));
+    }
+
+    #[test]
+    fn offsets() {
+        let pos = Position::new_game(2, 2);
+
+        assert_eq!(None, pos.offset(0, 0, Side::Top));
+        assert_eq!(None, pos.offset(0, 0, Side::Left));
+        assert_eq!(Some((0, 1)), pos.offset(0, 0, Side::Bottom));
+        assert_eq!(Some((1, 0)), pos.offset(0, 0, Side::Right));
+
+        assert_eq!(Some((0, 0)), pos.offset(0, 1, Side::Top));
+        assert_eq!(None, pos.offset(0, 1, Side::Left));
+        assert_eq!(None, pos.offset(0, 1, Side::Bottom));
+        assert_eq!(Some((1, 1)), pos.offset(0, 1, Side::Right));
+
+        assert_eq!(None, pos.offset(1, 0, Side::Top));
+        assert_eq!(Some((0, 0)), pos.offset(1, 0, Side::Left));
+        assert_eq!(Some((1, 1)), pos.offset(1, 0, Side::Bottom));
+        assert_eq!(None, pos.offset(1, 0, Side::Right));
+
+        assert_eq!(Some((1, 0)), pos.offset(1, 1, Side::Top));
+        assert_eq!(Some((0, 1)), pos.offset(1, 1, Side::Left));
+        assert_eq!(None, pos.offset(1, 1, Side::Bottom));
+        assert_eq!(None, pos.offset(1, 1, Side::Right));
     }
 }
