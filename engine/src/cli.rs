@@ -92,7 +92,8 @@ fn get_next_command() -> Command {
             println!("Error reading from standard input: {}", error);
             continue;
         }
-        match parse_command(&input.trim()) {
+        let input = input.trim();
+        match parse_command(&input) {
             Ok(command) => return command,
             Err(error) => {
                 println!("Cannot execute [{}]: {}", input, error);
