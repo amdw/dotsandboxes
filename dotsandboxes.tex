@@ -1717,9 +1717,10 @@ We now have the tools we need for understanding a Nimstring position
 as (quite literally) the sum of its parts.
 
 Figure \ref{nimstringexamples} shows some examples of Nimstring
-positions with their values. In particular, note that any long chain
-or loop has a value of $0$, because all options from it are loony, so
-when calculating the value of a position, they can be ignored.
+positions with their values. In particular, note that any independent
+long chain or long loop has a value of $0$, because all options from
+it are loony, so when calculating the value of a position, such
+structures can be ignored.
 
 \begin{figure*}
   \centering
@@ -1728,6 +1729,36 @@ when calculating the value of a position, they can be ignored.
   \caption{Examples of simple Nimstring values}
   \label{nimstringexamples}
 \end{figure*}
+
+Let us now apply these techniques to the position which originally
+motivated our excursion into CGT, namely Figure
+\ref{nimstringmotivation}.
+
+Nimber value calculations are not easy to perform mentally, or even
+using pencil-and-paper, so I have developed a computer program to
+assist, which may be found in the repository which accompanies this
+paper\footnote{\texttt{https://www.github.com/amdw/dotsandboxes}}. Using
+this program, we can analyse each of the three areas of the position.
+
+The top area has value $*1$, as all but seven moves there are loony,
+and these seven each lead to zero positions. The square in the bottom
+right has value $*2$.
+
+The most complex area is the $3 \times 2$ area in the bottom
+left. This has value $*4$, so the position as a whole has value $*1 +
+*2 + *4 = *7$. To win, we need to get to a position of value zero,
+which means we need to make a move in the bottom left to change its
+value to $*3$. There are three moves which achieve this, which are
+shown in Figure \ref{nimstringmotivationsolution}, and any of these
+will win.
+
+\begin{figure}
+  \centering
+  \def\svgscale{0.7}
+  \input{fig_nimstringmotivation_solution.pdf_tex}
+  \caption{Solutions to Figure \ref{nimstringmotivation}}
+  \label{nimstringmotivationsolution}
+\end{figure}
 
 \appendix
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2016 Andrew Medworth (github@medworth.org.uk)
+# Copyright 2016-2017 Andrew Medworth (github@medworth.org.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -19,8 +19,8 @@
 
 import svg
 
-def main():
-    """Entry point"""
+def make_position():
+    """Build the position - separate function for reuse in the solution"""
     pos = svg.StringsAndCoinsPosition()
     grid = pos.create_dotsandboxes_start(5, 4)
 
@@ -46,7 +46,11 @@ def main():
     pos.cut_2coin_string(grid[2][3], grid[3][3])
 
     pos.make_pending_moves()
+    return (pos, grid)
 
+def main():
+    """Entry point"""
+    (pos, _grid) = make_position()
     pos.render()
 
 if __name__ == '__main__':
