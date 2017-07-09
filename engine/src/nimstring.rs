@@ -198,12 +198,32 @@ mod tests {
             pos.make_move(i, 1, Side::Bottom);
         }
         let (val, per_move) = calc_value_with_moves(&mut pos);
-        println!("{}", pos);
-        println!("{}", val);
-        for (m, v) in &per_move {
-            println!("{:?} {}", m, v);
-        }
         assert_eq!(Value::Nimber(1), val);
         assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 3, y: 0, side: Side::Top}).unwrap());
+    }
+
+    #[test]
+    fn paper_example2() {
+        let mut pos = Position::new_game(3, 2);
+        pos.make_move(0, 0, Side::Top);
+        pos.make_move(1, 0, Side::Top);
+        pos.make_move(2, 0, Side::Top);
+        pos.make_move(2, 0, Side::Right);
+        pos.make_move(2, 1, Side::Right);
+        pos.make_move(1, 0, Side::Bottom);
+        let val = calc_value(&mut pos);
+        assert_eq!(Value::Nimber(4), val);
+    }
+
+    #[test]
+    fn paper_example3() {
+        let mut pos = Position::new_game(2, 2);
+        pos.make_move(0, 0, Side::Top);
+        pos.make_move(1, 0, Side::Top);
+        pos.make_move(0, 0, Side::Left);
+        pos.make_move(0, 1, Side::Left);
+        let (val, per_move) = calc_value_with_moves(&mut pos);
+        assert_eq!(Value::Nimber(2), val);
+        assert_eq!(&Value::Nimber(3), per_move.get(&Move{x: 0, y: 1, side: Side::Right}).unwrap());
     }
 }
