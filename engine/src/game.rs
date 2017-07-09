@@ -28,6 +28,17 @@ pub enum Side {
     Top, Bottom, Left, Right
 }
 
+impl fmt::Display for Side {
+    fn fmt(self: &Side, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Side::Top => write!(f, "Top"),
+            &Side::Bottom => write!(f, "Bottom"),
+            &Side::Left => write!(f, "Left"),
+            &Side::Right => write!(f, "Right"),
+        }
+    }
+}
+
 #[derive(Clone)]
 #[derive(Copy)]
 #[derive(Debug)]
@@ -47,6 +58,12 @@ pub struct Move {
     pub x: usize,
     pub y: usize,
     pub side: Side,
+}
+
+impl fmt::Display for Move {
+    fn fmt(self: &Move, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {}) {}", self.x, self.y, self.side)
+    }
 }
 
 // An m*n dots-and-boxes position is represented as:
@@ -417,7 +434,13 @@ mod tests {
     }
 
     #[test]
-    fn display() {
+    fn move_display() {
+        assert_eq!("(0, 0) Top", format!("{}", Move{x: 0, y: 0, side: Side::Top}));
+        assert_eq!("(5, 3) Bottom", format!("{}", Move{x: 5, y: 3, side: Side::Bottom}));
+    }
+
+    #[test]
+    fn pos_display() {
         let mut pos = Position::new_game(3, 3);
         pos.make_move(1, 1, Side::Top);
         pos.make_move(0, 0, Side::Top);
