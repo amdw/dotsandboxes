@@ -77,6 +77,7 @@ fn mex(s: HashSet<usize>) -> usize {
 pub fn calc_value(pos: &mut Position) -> Value {
     // TODO: Optimise by caching repeated sub-positions
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
+    // TODO: Optimise by splitting position into separate components and analysing them separately
     if is_loony(pos) {
         return Value::Loony;
     }
