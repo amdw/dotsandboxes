@@ -29,6 +29,7 @@ enum Command {
     UndoMove(Move),
     CalcNimstringValue,
     PrintHelp,
+    Quit,
 }
 
 impl Command {
@@ -44,6 +45,7 @@ impl Command {
                 }
             },
             &Command::PrintHelp => { print_help(); },
+            &Command::Quit => { println!("Bye bye!"); },
         }
     }
 }
@@ -54,6 +56,7 @@ fn print_help() {
     println!("u x y t/l/b/r - undo move (x,y) top/left/bottom/right");
     println!("nv - calculate Nimstring value of current position");
     println!("help - print this help message");
+    println!("quit/exit - exit program");
 }
 
 fn parse_side(side_s: &str) -> Option<Side> {
@@ -96,6 +99,9 @@ fn parse_command(input: &str) -> Result<Command, String> {
     if "help" == input {
         return Ok(Command::PrintHelp);
     }
+    if "exit" == input || "quit" == input {
+        return Ok(Command::Quit);
+    }
     Err("Unsupported command".to_string())
 }
 
@@ -124,6 +130,9 @@ pub fn main_loop(width: usize, height: usize) {
         println!("{}", pos);
         let command = get_next_command();
         command.execute(&mut pos);
+        if command == Command::Quit {
+            break;
+        }
         println!();
     }
 }
@@ -153,5 +162,11 @@ mod tests {
     #[test]
     fn parse_help_cmd() {
         assert_eq!(Command::PrintHelp, parse_command("help").unwrap());
+    }
+
+    #[test]
+    fn parse_exit_cmd() {
+        assert_eq!(Command::Quit, parse_command("quit").unwrap());
+        assert_eq!(Command::Quit, parse_command("exit").unwrap());
     }
 }
