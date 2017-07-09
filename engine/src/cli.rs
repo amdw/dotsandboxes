@@ -164,6 +164,9 @@ pub fn main_loop_file(filename: &str) {
     let mut pos = Position::new_game(width, height);
     for line in lines {
         let line = line.expect("Could not read line from file");
+        if line.trim().len() == 0 {
+            continue;
+        }
         match parse_command(&line) {
             Ok(command) => command.execute(&mut pos),
             Err(error) => panic!("Cannot execute [{}]: {}", line, error),
