@@ -23,6 +23,8 @@ use std::fmt;
 #[derive(Eq)]
 #[derive(Hash)]
 #[derive(PartialEq)]
+#[derive(PartialOrd)]
+#[derive(Ord)]
 #[derive(Debug)]
 pub enum Side {
     Top, Bottom, Left, Right

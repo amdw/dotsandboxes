@@ -40,8 +40,10 @@ impl Command {
             &Command::CalcNimstringValue => {
                 let (val, per_move) = nimstring::calc_value_with_moves(pos);
                 println!("Position value is {}", val);
-                for (m, v) in &per_move {
-                    println!("{} {}", m, v);
+                let mut moves: Vec<&Move> = per_move.keys().collect();
+                moves.sort_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y)).then(a.side.cmp(&b.side)));
+                for &m in &moves {
+                    println!("{} {}", m, per_move.get(m).unwrap());
                 }
             },
             &Command::PrintHelp => { print_help(); },
