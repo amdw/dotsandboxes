@@ -45,7 +45,7 @@ impl fmt::Display for Side {
 pub struct MoveOutcome {
     pub coins_captured: usize,
     pub end_of_turn: bool,
-    // TODO: Add end_of_game
+    pub end_of_game: bool,
 }
 
 #[derive(Clone)]
@@ -190,7 +190,12 @@ impl Position {
                 captures += 1
             }
         }
-        MoveOutcome { coins_captured: captures, end_of_turn: captures == 0 || self.is_end_of_game() }
+        let end_of_game = self.is_end_of_game();
+        MoveOutcome {
+            coins_captured: captures,
+            end_of_turn: captures == 0 || end_of_game,
+            end_of_game: end_of_game,
+        }
     }
 
     // Undo a given move by putting the line back on the board.
@@ -337,6 +342,7 @@ mod tests {
         let outcome = pos.make_move(1, 1, Side::Right);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
+        assert_eq!(false, outcome.end_of_game);
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Right));
         assert_eq!(false, pos.is_legal_move(2, 1, Side::Left));
         assert_eq!(false, pos.is_captured(1, 1));
@@ -346,6 +352,7 @@ mod tests {
         let outcome = pos.make_move(1, 1, Side::Bottom);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
+        assert_eq!(false, outcome.end_of_game);
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Bottom));
         assert_eq!(false, pos.is_legal_move(1, 2, Side::Top));
         assert_eq!(false, pos.is_captured(1, 1));
@@ -356,6 +363,7 @@ mod tests {
         let outcome = pos.make_move(1, 1, Side::Left);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
+        assert_eq!(false, outcome.end_of_game);
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Left));
         assert_eq!(false, pos.is_legal_move(0, 1, Side::Right));
         assert_eq!(false, pos.is_captured(1, 1));
@@ -366,6 +374,7 @@ mod tests {
         let outcome = pos.make_move(1, 1, Side::Top);
         assert_eq!(1, outcome.coins_captured);
         assert_eq!(false, outcome.end_of_turn);
+        assert_eq!(false, outcome.end_of_game);
         assert_eq!(false, pos.is_legal_move(1, 1, Side::Top));
         assert_eq!(false, pos.is_legal_move(1, 0, Side::Bottom));
         assert_eq!(true, pos.is_captured(1, 1));
@@ -408,12 +417,14 @@ mod tests {
             assert_eq!(false, pos.is_legal_move(x, y, s));
             assert_eq!(0, outcome.coins_captured);
             assert_eq!(true, outcome.end_of_turn);
+            assert_eq!(false, outcome.end_of_game);
             assert_eq!(false, pos.is_end_of_game());
         }
         assert_eq!(true, pos.is_legal_move(0, 0, Side::Right));
         let outcome = pos.make_move(0, 0, Side::Right);
         assert_eq!(2, outcome.coins_captured);
-        assert_eq!(true, outcome.end_of_turn); // End of game
+        assert_eq!(true, outcome.end_of_game);
+        assert_eq!(true, outcome.end_of_turn);
         assert_eq!(true, pos.is_end_of_game());
     }
 
