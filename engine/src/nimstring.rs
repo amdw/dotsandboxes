@@ -72,45 +72,49 @@ fn mex(s: HashSet<usize>) -> usize {
     }
 }
 
-// Calculate the Nimstring value of a given position.
-// Modifies the position as it goes, but undoes its modifications before returning.
-pub fn calc_value(pos: &mut Position) -> Value {
-    // TODO: Optimise by caching repeated sub-positions
+fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
     // TODO: Optimise by splitting position into separate components and analysing them separately
+    if let Some(&v) = cache.get(&pos.zhash()) {
+        return v;
+    }
     if is_loony(pos) {
+        cache.insert(pos.zhash(), Value::Loony);
         return Value::Loony;
     }
     let legal_moves = pos.legal_moves();
     for m in &legal_moves {
         if pos.would_capture(m.x, m.y, m.side) {
             pos.make_move(m.x, m.y, m.side);
-            let result = calc_value(pos);
+            let result = calc_value(pos, cache);
             pos.undo_move(m.x, m.y, m.side);
+            cache.insert(pos.zhash(), result);
             return result
         }
     }
     let mut options = HashSet::new();
     for m in &legal_moves {
         pos.make_move(m.x, m.y, m.side);
-        if let Value::Nimber(n) = calc_value(pos) {
+        if let Value::Nimber(n) = calc_value(pos, cache) {
             options.insert(n);
         }
         pos.undo_move(m.x, m.y, m.side);
     }
-    return Value::Nimber(mex(options));
+    let result = Value::Nimber(mex(options));
+    cache.insert(pos.zhash(), result);
+    result
 }
 
 // Calculate the Nimstring value of a position, along with the values attained
 // by each of the legal moves.
 pub fn calc_value_with_moves(pos: &mut Position) -> (Value, HashMap<Move, Value>) {
-    // TODO: Fix this inefficiency by caching
     // TODO: Refactor to avoid mutable borrow at top-level interface by wrapping with functions which clone position first?
-    let val = calc_value(pos);
+    let mut cache = HashMap::new();
+    let val = calc_value(pos, &mut cache);
     let mut per_move = HashMap::new();
     for m in pos.legal_moves() {
         pos.make_move(m.x, m.y, m.side);
-        per_move.insert(m, calc_value(pos));
+        per_move.insert(m, calc_value(pos, &mut cache));
         pos.undo_move(m.x, m.y, m.side);
     }
     (val, per_move)
@@ -149,39 +153,43 @@ mod tests {
         pos
     }
 
+    // TODO: Don't use calc_value in these tests
+
     #[test]
     fn basic_values() {
         let mut pos = make_chain(3);
         assert!(!is_loony(&pos));
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos));
+        let mut cache = HashMap::new();
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
         pos.make_move(0, 0, Side::Left);
         assert!(is_loony(&pos));
-        assert_eq!(Value::Loony, calc_value(&mut pos));
+        assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
         pos.make_move(1, 0, Side::Left);
         assert!(is_loony(&pos));
-        assert_eq!(Value::Loony, calc_value(&mut pos));
+        assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
         pos.make_move(2, 0, Side::Left);
         assert!(!is_loony(&pos));
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos));
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
         pos.make_move(2, 0, Side::Right);
         assert!(!is_loony(&pos));
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos));
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
     }
 
     #[test]
     fn nonzero_value() {
         let mut pos = make_chain(7);
         pos.undo_move(3, 0, Side::Top);
-        assert_eq!(Value::Nimber(1), calc_value(&mut pos));
+        assert_eq!(Value::Nimber(1), calc_value(&mut pos, &mut HashMap::new()));
     }
 
     #[test]
     fn right_capture_detection() {
         let mut pos = make_chain(5);
         pos.undo_move(3, 0, Side::Top);
-        assert_eq!(Value::Nimber(1), calc_value(&mut pos));
+        let mut cache = HashMap::new();
+        assert_eq!(Value::Nimber(1), calc_value(&mut pos, &mut cache));
         pos.make_move(4, 0, Side::Right);
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos));
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
     }
 
     #[test]
@@ -212,7 +220,7 @@ mod tests {
         pos.make_move(2, 0, Side::Right);
         pos.make_move(2, 1, Side::Right);
         pos.make_move(1, 0, Side::Bottom);
-        let val = calc_value(&mut pos);
+        let val = calc_value(&mut pos, &mut HashMap::new());
         assert_eq!(Value::Nimber(4), val);
     }
 

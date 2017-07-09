@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
+use rand::{self, Rng};
 use std::fmt;
 
 #[derive(Clone)]
@@ -81,6 +82,7 @@ pub struct Position {
     left_strings: Vec<bool>,
     down_strings: Vec<Vec<bool>>,
     right_strings: Vec<Vec<bool>>,
+    zhash: ZHash,
 }
 
 impl Position {
@@ -108,6 +110,7 @@ impl Position {
             left_strings: left_strings,
             down_strings: down_strings,
             right_strings: right_strings,
+            zhash: ZHash::new(width, height),
         }
     }
 
@@ -193,6 +196,7 @@ impl Position {
             }
         }
         let end_of_game = self.is_end_of_game();
+        self.zhash.toggle_element(x, y, s);
         MoveOutcome {
             coins_captured: captures,
             end_of_turn: captures == 0 || end_of_game,
@@ -211,6 +215,7 @@ impl Position {
             (x, y, Side::Left) => self.right_strings[x-1][y] = true,
             (x, y, Side::Right) => self.right_strings[x][y] = true,
         }
+        self.zhash.toggle_element(x, y, s);
     }
 
     // Indicate whether the game is over (i.e. whether all strings have been cut).
@@ -293,6 +298,11 @@ impl Position {
             (x, y, Side::Bottom) => Some((x, y+1)),
         }
     }
+
+    // Current Zobrist hash value for position
+    pub fn zhash(self: &Position) -> usize {
+        self.zhash.current_value()
+    }
 }
 
 impl fmt::Display for Position {
@@ -321,9 +331,66 @@ impl fmt::Display for Position {
     }
 }
 
+// Struct to encapsulate Zobrist hash for positions
+// It has an internal structure mirroring the position, one integer per element
+struct ZHash {
+    current_val: usize,
+    top_strings: Vec<usize>,
+    left_strings: Vec<usize>,
+    right_strings: Vec<Vec<usize>>,
+    down_strings: Vec<Vec<usize>>,
+}
+
+impl ZHash {
+    fn new(width: usize, height: usize) -> ZHash {
+        let mut r = rand::thread_rng();
+        let mut top_strings: Vec<usize> = Vec::with_capacity(width);
+        let mut left_strings: Vec<usize> = Vec::with_capacity(height);
+        let mut right_strings: Vec<Vec<usize>> = Vec::with_capacity(width);
+        let mut down_strings: Vec<Vec<usize>> = Vec::with_capacity(width);
+
+        for i in 0..width {
+            top_strings.push(r.gen());
+            right_strings.push(Vec::with_capacity(height));
+            down_strings.push(Vec::with_capacity(height));
+            for _ in 0..height {
+                right_strings[i].push(r.gen());
+                down_strings[i].push(r.gen());
+            }
+        }
+        for _ in 0..height {
+            left_strings.push(r.gen());
+        }
+
+        ZHash{
+            current_val: 0,
+            top_strings: top_strings,
+            left_strings: left_strings,
+            right_strings: right_strings,
+            down_strings: down_strings,
+        }
+    }
+
+    fn current_value(self: &ZHash) -> usize {
+        self.current_val
+    }
+
+    fn toggle_element(self: &mut ZHash, x: usize, y: usize, side: Side) {
+        match (x, y, side) {
+            (0, y, Side::Left) => self.current_val ^= self.left_strings[y],
+            (x, 0, Side::Top) => self.current_val ^= self.top_strings[x],
+            (x, y, Side::Left) => self.current_val ^= self.right_strings[x-1][y],
+            (x, y, Side::Right) => self.current_val ^= self.right_strings[x][y],
+            (x, y, Side::Bottom) => self.current_val ^= self.down_strings[x][y],
+            (x, y, Side::Top) => self.current_val ^= self.down_strings[x][y-1],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use game::*;
+    use std::collections::HashSet;
 
     #[test]
     fn simple_capture() {
@@ -537,5 +604,33 @@ mod tests {
         assert_eq!(Some((0, 1)), pos.offset(1, 1, Side::Left));
         assert_eq!(None, pos.offset(1, 1, Side::Bottom));
         assert_eq!(None, pos.offset(1, 1, Side::Right));
+    }
+
+    #[test]
+    fn zhashes() {
+        let mut pos = Position::new_game(3, 3);
+        let mut hashes: Vec<usize> = Vec::new();
+        let mut moves: Vec<Move> = Vec::new();
+        while !pos.is_end_of_game() {
+            hashes.push(pos.zhash());
+            let m = pos.legal_moves()[0];
+            pos.make_move(m.x, m.y, m.side);
+            moves.push(m);
+        }
+        hashes.push(pos.zhash());
+
+        // Hashes should all be unique
+        let unique_hashes: HashSet<usize> = hashes.iter().cloned().collect();
+        assert_eq!(hashes.len(), unique_hashes.len());
+
+        // Undoing moves all the way back should give the same sequence of hashes in reverse
+        while !moves.is_empty() {
+            let hash = hashes.pop().unwrap();
+            let m = moves.pop().unwrap();
+            assert_eq!(hash, pos.zhash());
+            pos.undo_move(m.x, m.y, m.side);
+        }
+        assert_eq!(1, hashes.len());
+        assert_eq!(hashes.pop().unwrap(), pos.zhash());
     }
 }
