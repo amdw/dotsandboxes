@@ -297,7 +297,7 @@ impl fmt::Display for Position {
     fn fmt(self: &Position, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "  ")?;
         for i in 0..self.width() {
-            write!(f, " {}", i)?;
+            write!(f, " {}", i % 10)?;
         }
         write!(f, "\n  ")?;
         for &b in self.top_strings.iter() {
@@ -305,7 +305,7 @@ impl fmt::Display for Position {
         }
         write!(f, "+\n")?;
         for j in 0..self.left_strings.len() {
-            write!(f, "{} {}", j, if self.left_strings[j] { " " } else { "|" })?;
+            write!(f, "{} {}", j % 10, if self.left_strings[j] { " " } else { "|" })?;
             for i in 0..self.top_strings.len() {
                 write!(f, " {}", if self.right_strings[i][j] { " " } else { "|" })?;
             }
@@ -471,6 +471,15 @@ mod tests {
         for i in 0..expected.len() {
             assert_eq!(expected[i], actual[i], "strings mismatch at position {}", i);
         }
+    }
+
+    #[test]
+    fn big_pos_display() {
+        let pos = Position::new_game(12, 12);
+        let actual = format!("{}", pos);
+        let lines: Vec<&str> = actual.split("\n").collect();
+        assert_eq!("   0 1 2 3 4 5 6 7 8 9 0 1", lines[0]);
+        assert!(lines[24].starts_with("1 "), lines[24].to_string());
     }
 
     #[test]
