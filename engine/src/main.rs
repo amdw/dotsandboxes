@@ -21,8 +21,10 @@ use dabengine::cli;
 use std::env;
 use std::process;
 
-fn usage() {
-    println!("This command takes two arguments, the width and height of the board.");
+fn usage(name: &str) {
+    println!("Usage:");
+    println!("{} x y - start a new game of width x, height y", name);
+    println!("{} cmd_file - read commands from cmd_file and start CLI from there", name);
 }
 
 fn main() {
@@ -37,7 +39,7 @@ fn main() {
         cli::main_loop_file(filename);
     }
     else {
-        usage();
+        usage(&args[0]);
         process::exit(1);
     }
 }

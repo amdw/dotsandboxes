@@ -17,7 +17,7 @@ very early stages of development.
 I would be very grateful to learn of any errors in any of this
 material.
 
-# Building
+# Building the paper
 
 ## On Linux
 
@@ -83,6 +83,26 @@ your local folder into it as a volume:
 ```docker run --rm -ti --privileged -v `pwd`:/dotsandboxes -w /dotsandboxes dabbase make```
 
 However this may not work on all platforms.
+
+# Building the engine
+
+For now, the engine is built separately from the paper. It uses the
+standard Cargo mechanism for the Rust programming language.
+
+First you will need to install the Rust toolchain, if you do not
+already have it, according to the instructions on [the Rust
+website](https://www.rust-lang.org/).
+
+Then, from the ```engine``` directory, run ```cargo run 3 2``` to
+start a new 3-by-2 game. Type ```help``` to see a list of available
+commands.
+
+You can also put a list of commands in a file, with the dimensions on
+the first line. For example ```cargo run p50bl.pos``` to start from
+the 3-by-2 corner discussed in the paper.
+
+Other actions are standard to Cargo. For example ```cargo test``` runs
+the unit tests.
 
 # Licensing
 
