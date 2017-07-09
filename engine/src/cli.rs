@@ -19,7 +19,8 @@
 
 use game::{Move, Position, Side};
 use nimstring;
-use std::io;
+use std::io::{self, BufRead};
+use std::fs::File;
 use regex::{Regex, Captures};
 
 #[derive(PartialEq)]
@@ -132,18 +133,43 @@ fn get_next_command() -> Command {
     }
 }
 
-// Enter the main loop of the CLI
-pub fn main_loop(width: usize, height: usize) {
-    let mut pos = Position::new_game(width, height);
+fn main_loop_from(pos: &mut Position) {
     loop {
         println!("{}", pos);
         let command = get_next_command();
-        command.execute(&mut pos);
+        command.execute(pos);
         if command == Command::Quit {
             break;
         }
         println!();
     }
+}
+
+// Enter the main loop of the CLI from the start of the game
+pub fn main_loop_start(width: usize, height: usize) {
+    main_loop_from(&mut Position::new_game(width, height));
+}
+
+// Execute a given file of commands (which must have the dimensions of the position on the first line)
+// and then enter the CLI main loop.
+pub fn main_loop_file(filename: &str) {
+    let f = File::open(filename).expect(&format!("Could not open file [{}]", filename));
+    let reader = io::BufReader::new(f);
+    let mut lines = reader.lines();
+    let size_spec = lines.next().expect("Empty file").expect("Could not read board size from first line");
+    let size_re = Regex::new(r"^(\d+) (\d+)$").unwrap();
+    let size_caps = size_re.captures(&size_spec).expect(&format!("Could not read board size from [{}]", size_spec));
+    let width = size_caps[1].parse::<usize>().unwrap();
+    let height = size_caps[2].parse::<usize>().unwrap();
+    let mut pos = Position::new_game(width, height);
+    for line in lines {
+        let line = line.expect("Could not read line from file");
+        match parse_command(&line) {
+            Ok(command) => command.execute(&mut pos),
+            Err(error) => panic!("Cannot execute [{}]: {}", line, error),
+        }
+    }
+    main_loop_from(&mut pos);
 }
 
 #[cfg(test)]

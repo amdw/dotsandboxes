@@ -27,11 +27,17 @@ fn usage() {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    if args.len() != 3 {
+    if args.len() == 3 {
+        let width = args[1].parse::<usize>().unwrap();
+        let height = args[2].parse::<usize>().unwrap();
+        cli::main_loop_start(width, height);
+    }
+    else if args.len() == 2 {
+        let filename = &args[1];
+        cli::main_loop_file(filename);
+    }
+    else {
         usage();
         process::exit(1);
     }
-    let width = args[1].parse::<usize>().unwrap();
-    let height = args[2].parse::<usize>().unwrap();
-    cli::main_loop(width, height);
 }
