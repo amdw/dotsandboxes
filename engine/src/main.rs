@@ -17,12 +17,21 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 extern crate dabengine;
-use dabengine::game::{Position, Side};
+use dabengine::cli;
+use std::env;
+use std::process;
+
+fn usage() {
+    println!("This command takes two arguments, the width and height of the board.");
+}
 
 fn main() {
-    let mut pos = Position::new_game(3, 3);
-    pos.make_move(1, 1, Side::Top);
-    pos.make_move(0, 0, Side::Top);
-    pos.make_move(0, 2, Side::Left);
-    println!("{}", pos);
+    let args: Vec<_> = env::args().collect();
+    if args.len() != 3 {
+        usage();
+        process::exit(1);
+    }
+    let width = args[1].parse::<usize>().unwrap();
+    let height = args[2].parse::<usize>().unwrap();
+    cli::main_loop(width, height);
 }
