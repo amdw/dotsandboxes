@@ -28,6 +28,7 @@ enum Command {
     MakeMove(Move),
     UndoMove(Move),
     CalcNimstringValue,
+    PrintHelp,
 }
 
 impl Command {
@@ -41,9 +42,18 @@ impl Command {
                 for (m, v) in &per_move {
                     println!("{} {}", m, v);
                 }
-            }
+            },
+            &Command::PrintHelp => { print_help(); },
         }
     }
+}
+
+fn print_help() {
+    println!("Available commands:");
+    println!("x y t/l/b/r - make move (x,y) top/left/bottom/right");
+    println!("u x y t/l/b/r - undo move (x,y) top/left/bottom/right");
+    println!("nv - calculate Nimstring value of current position");
+    println!("help - print this help message");
 }
 
 fn parse_side(side_s: &str) -> Option<Side> {
@@ -57,7 +67,7 @@ fn parse_side(side_s: &str) -> Option<Side> {
 fn parse_move(caps: Captures) -> Result<Move, String> {
     let x = caps[1].parse::<usize>().unwrap();
     let y = caps[2].parse::<usize>().unwrap();
-    let side_s = caps[3].to_lowercase();
+    let side_s = caps[3].to_string();
     match parse_side(&side_s) {
         Some(side) => Ok(Move{x: x, y: y, side: side}),
         None => Err(format!("Unrecognised side: [{}]", side_s))
@@ -65,22 +75,26 @@ fn parse_move(caps: Captures) -> Result<Move, String> {
 }
 
 fn parse_command(input: &str) -> Result<Command, String> {
+    let input = input.to_lowercase();
     let move_re = Regex::new(r"^(\d+) (\d+) ([a-zA-Z]+)$").unwrap();
-    if let Some(caps) = move_re.captures(input) {
+    if let Some(caps) = move_re.captures(&input) {
         match parse_move(caps) {
             Ok(m) => return Ok(Command::MakeMove(m)),
             Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
         }
     }
     let undo_move_re = Regex::new(r"^[uU] (\d+) (\d+) ([a-zA-Z]+)$").unwrap();
-    if let Some(caps) = undo_move_re.captures(input) {
+    if let Some(caps) = undo_move_re.captures(&input) {
         match parse_move(caps) {
             Ok(m) => return Ok(Command::UndoMove(m)),
             Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
         }
     }
-    if "nv" == input.to_lowercase() {
+    if "nv" == input {
         return Ok(Command::CalcNimstringValue);
+    }
+    if "help" == input {
+        return Ok(Command::PrintHelp);
     }
     Err("Unsupported command".to_string())
 }
@@ -97,6 +111,7 @@ fn get_next_command() -> Command {
             Ok(command) => return command,
             Err(error) => {
                 println!("Cannot execute [{}]: {}", input, error);
+                println!("For help, try 'help'");
             }
         }
     }
@@ -109,6 +124,7 @@ pub fn main_loop(width: usize, height: usize) {
         println!("{}", pos);
         let command = get_next_command();
         command.execute(&mut pos);
+        println!();
     }
 }
 
@@ -132,5 +148,10 @@ mod tests {
     #[test]
     fn parse_nimstring_value_cmd() {
         assert_eq!(Command::CalcNimstringValue, parse_command("nv").unwrap());
+    }
+
+    #[test]
+    fn parse_help_cmd() {
+        assert_eq!(Command::PrintHelp, parse_command("help").unwrap());
     }
 }
