@@ -35,7 +35,14 @@ enum Command {
 impl Command {
     fn execute(self: &Command, pos: &mut Position) {
         match self {
-            &Command::MakeMove(m) => { pos.make_move(m.x, m.y, m.side); },
+            &Command::MakeMove(m) => {
+                if pos.is_legal_move(m.x, m.y, m.side) {
+                    pos.make_move(m.x, m.y, m.side);
+                }
+                else {
+                    println!("Not a legal move: {}", m);
+                }
+            },
             &Command::UndoMove(m) => { pos.undo_move(m.x, m.y, m.side); },
             &Command::CalcNimstringValue => {
                 let (val, per_move) = nimstring::calc_value_with_moves(pos);
