@@ -49,7 +49,7 @@ impl Command {
                 let (val, per_move) = nimstring::calc_value_with_moves(pos);
                 println!("Position value is {}", val);
                 let mut moves: Vec<&Move> = per_move.keys().collect();
-                moves.sort_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y)).then(a.side.cmp(&b.side)));
+                moves.sort_by(|a, b| a.y.cmp(&b.y).then(a.x.cmp(&b.x)).then(a.side.cmp(&b.side)));
                 for &m in &moves {
                     println!("{} {}", m, per_move.get(m).unwrap());
                 }
