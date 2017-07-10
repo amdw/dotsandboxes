@@ -76,8 +76,8 @@ impl fmt::Display for Move {
 // * an m*n array of rightward-pointing links
 // Position coordinates originate at the top left and are 0-based,
 // so x=1,y=2 is the second square in the third row.
+#[derive(Clone)]
 pub struct Position {
-    // TODO: Make this a generic type and change the vectors to arrays
     top_strings: Vec<bool>,
     left_strings: Vec<bool>,
     down_strings: Vec<Vec<bool>>,
@@ -333,6 +333,7 @@ impl fmt::Display for Position {
 
 // Struct to encapsulate Zobrist hash for positions
 // It has an internal structure mirroring the position, one integer per element
+#[derive(Clone)]
 struct ZHash {
     current_val: usize,
     top_strings: Vec<usize>,

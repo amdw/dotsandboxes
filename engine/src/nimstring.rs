@@ -107,14 +107,14 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
 
 // Calculate the Nimstring value of a position, along with the values attained
 // by each of the legal moves.
-pub fn calc_value_with_moves(pos: &mut Position) -> (Value, HashMap<Move, Value>) {
-    // TODO: Refactor to avoid mutable borrow at top-level interface by wrapping with functions which clone position first?
+pub fn calc_value_with_moves(pos: &Position) -> (Value, HashMap<Move, Value>) {
     let mut cache = HashMap::new();
-    let val = calc_value(pos, &mut cache);
+    let mut pos = pos.clone();
+    let val = calc_value(&mut pos, &mut cache);
     let mut per_move = HashMap::new();
     for m in pos.legal_moves() {
         pos.make_move(m.x, m.y, m.side);
-        per_move.insert(m, calc_value(pos, &mut cache));
+        per_move.insert(m, calc_value(&mut pos, &mut cache));
         pos.undo_move(m.x, m.y, m.side);
     }
     (val, per_move)
@@ -153,8 +153,6 @@ mod tests {
         pos
     }
 
-    // TODO: Don't use calc_value in these tests
-
     #[test]
     fn basic_values() {
         let mut pos = make_chain(3);
@@ -179,17 +177,18 @@ mod tests {
     fn nonzero_value() {
         let mut pos = make_chain(7);
         pos.undo_move(3, 0, Side::Top);
-        assert_eq!(Value::Nimber(1), calc_value(&mut pos, &mut HashMap::new()));
+        let (val, per_move) = calc_value_with_moves(&pos);
+        assert_eq!(Value::Nimber(1), val);
+        assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 3, y: 0, side: Side::Top}).unwrap());
     }
 
     #[test]
     fn right_capture_detection() {
         let mut pos = make_chain(5);
         pos.undo_move(3, 0, Side::Top);
-        let mut cache = HashMap::new();
-        assert_eq!(Value::Nimber(1), calc_value(&mut pos, &mut cache));
-        pos.make_move(4, 0, Side::Right);
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
+        let (val, per_move) = calc_value_with_moves(&pos);
+        assert_eq!(Value::Nimber(1), val);
+        assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 4, y: 0, side: Side::Right}).unwrap());
     }
 
     #[test]
@@ -206,7 +205,7 @@ mod tests {
         for i in 0..5 {
             pos.make_move(i, 1, Side::Bottom);
         }
-        let (val, per_move) = calc_value_with_moves(&mut pos);
+        let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(1), val);
         assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 3, y: 0, side: Side::Top}).unwrap());
     }
@@ -220,8 +219,12 @@ mod tests {
         pos.make_move(2, 0, Side::Right);
         pos.make_move(2, 1, Side::Right);
         pos.make_move(1, 0, Side::Bottom);
-        let val = calc_value(&mut pos, &mut HashMap::new());
+        let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(4), val);
+        assert_eq!(&Value::Nimber(3), per_move.get(&Move{x: 0, y: 1, side: Side::Left}).unwrap());
+        assert_eq!(&Value::Nimber(3), per_move.get(&Move{x: 0, y: 1, side: Side::Bottom}).unwrap());
+        assert_eq!(&Value::Nimber(3),
+                   per_move.get(&Move{x: 0, y: 1, side: Side::Right}).or(per_move.get(&Move{x: 0, y: 2, side: Side::Left})).unwrap());
     }
 
     #[test]
@@ -231,7 +234,7 @@ mod tests {
         pos.make_move(1, 0, Side::Top);
         pos.make_move(0, 0, Side::Left);
         pos.make_move(0, 1, Side::Left);
-        let (val, per_move) = calc_value_with_moves(&mut pos);
+        let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(2), val);
         assert_eq!(&Value::Nimber(3), per_move.get(&Move{x: 0, y: 1, side: Side::Right}).unwrap());
     }
