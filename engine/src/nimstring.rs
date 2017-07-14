@@ -59,7 +59,7 @@ pub fn is_loony(pos: &Position) -> bool {
             if pos.valency(i, j) != 1 {
                 continue
             }
-            for &s in [Side::Top, Side::Bottom, Side::Left, Side::Right].iter() {
+            for s in Side::all() {
                 if pos.is_legal_move(i, j, s) {
                     if let Some((nx, ny)) = pos.offset(i, j, s) {
                         if pos.valency(nx, ny) == 2 {
