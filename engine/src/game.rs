@@ -18,6 +18,7 @@
 */
 use rand::{self, Rng};
 use std::fmt;
+use std::iter;
 
 #[derive(Clone)]
 #[derive(Copy)]
@@ -29,6 +30,12 @@ use std::fmt;
 #[derive(Debug)]
 pub enum Side {
     Top, Bottom, Left, Right
+}
+
+impl Side {
+    pub fn all() -> Vec<Side> {
+        vec!(Side::Top, Side::Bottom, Side::Left, Side::Right)
+    }
 }
 
 impl fmt::Display for Side {
@@ -88,22 +95,22 @@ pub struct Position {
 impl Position {
     // Create a new dots-and-boxes position of a given size.
     pub fn new_game(width: usize, height: usize) -> Position {
-        let mut top_strings = Vec::with_capacity(width);
-        let mut left_strings = Vec::with_capacity(height);
-        let mut down_strings = Vec::with_capacity(width);
-        let mut right_strings = Vec::with_capacity(width);
+        Position::make_position(width, height, true)
+    }
 
-        for i in 0..width {
-            top_strings.push(true);
-            down_strings.push(Vec::with_capacity(height));
-            right_strings.push(Vec::with_capacity(height));
-            for _ in 0..height {
-                down_strings[i].push(true);
-                right_strings[i].push(true);
-            }
-        }
-        for _ in 0..height {
-            left_strings.push(true);
+    // Create a new dots-and-boxes position of a given size but with all moves completed.
+    pub fn new_end_game(width: usize, height: usize) -> Position {
+        Position::make_position(width, height, false)
+    }
+
+    fn make_position(width: usize, height: usize, init_string: bool) -> Position {
+        let top_strings = iter::repeat(init_string).take(width).collect();
+        let left_strings = iter::repeat(init_string).take(height).collect();
+        let mut right_strings = Vec::with_capacity(width);
+        let mut down_strings = Vec::with_capacity(width);
+        for _ in 0..width {
+            right_strings.push(iter::repeat(init_string).take(height).collect());
+            down_strings.push(iter::repeat(init_string).take(height).collect());
         }
         Position {
             top_strings: top_strings,
@@ -276,7 +283,7 @@ impl Position {
     // Valency or degree of coin at a given position
     pub fn valency(self: &Position, x: usize, y: usize) -> usize {
         let mut result = 0;
-        for &s in [Side::Top, Side::Bottom, Side::Left, Side::Right].iter() {
+        for s in Side::all() {
             if self.is_legal_move(x, y, s) {
                 result += 1
             }
@@ -299,11 +306,34 @@ impl Position {
         }
     }
 
-    // Current Zobrist hash value for position
+    // Current Zobrist hash value for position.
+    // These hash values are unique only within the context of this position:
+    // a different equal position will not necessarily have the same zhash
+    // (we could fix this by using a constant seed for the RNG)
     pub fn zhash(self: &Position) -> usize {
         self.zhash.current_value()
     }
 }
+
+impl PartialEq for Position {
+    fn eq(self: &Position, other: &Position) -> bool {
+        if self.width() != other.width() || self.height() != other.height() {
+            return false;
+        }
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                for s in Side::all() {
+                    if self.is_legal_move(x, y, s) != other.is_legal_move(x, y, s) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+}
+
+impl Eq for Position {}
 
 impl fmt::Display for Position {
     fn fmt(self: &Position, f: &mut fmt::Formatter) -> fmt::Result {
@@ -391,6 +421,7 @@ impl ZHash {
 #[cfg(test)]
 mod tests {
     use game::*;
+    use examples::*;
     use std::collections::HashSet;
 
     #[test]
@@ -459,7 +490,7 @@ mod tests {
         let mut pos = Position::new_game(3, 3);
         for &(x, y) in [(0, 0), (0, 2), (2, 0), (2, 2)].iter() {
             let mut sides_captured = 0;
-            for &s in [Side::Left, Side::Right, Side::Top, Side::Bottom].iter() {
+            for s in Side::all() {
                 assert_eq!(true, pos.is_legal_move(x, y, s));
                 let outcome = pos.make_move(x, y, s);
                 assert_eq!(false, pos.is_legal_move(x, y, s));
@@ -507,7 +538,7 @@ mod tests {
         pos.undo_move(0, 1, Side::Right);
         for i in 0..2 {
             for j in 0..2 {
-                for &s in [Side::Top, Side::Bottom, Side::Left, Side::Right].iter() {
+                for s in Side::all() {
                     assert_eq!(true, pos.is_legal_move(i, j, s));
                 }
             }
@@ -608,6 +639,19 @@ mod tests {
     }
 
     #[test]
+    fn equality() {
+        let pos1 = p50();
+        let mut pos2 = p50();
+        assert_eq!(true, pos1.eq(&pos2));
+        pos2.make_move(0, 3, Side::Bottom);
+        assert_eq!(false, pos1.eq(&pos2));
+        pos2.undo_move(0, 3, Side::Bottom);
+        assert_eq!(true, pos1.eq(&pos2));
+
+        assert_eq!(false, pos1.eq(&p50_top()));
+    }
+
+    #[test]
     fn zhashes() {
         let mut pos = Position::new_game(3, 3);
         let mut hashes: Vec<usize> = Vec::new();
@@ -633,5 +677,18 @@ mod tests {
         }
         assert_eq!(1, hashes.len());
         assert_eq!(hashes.pop().unwrap(), pos.zhash());
+    }
+
+    #[test]
+    fn end_position() {
+        let (width, height) = (3, 4);
+        let pos = Position::new_end_game(width, height);
+        for i in 0..width {
+            for j in 0..height {
+                for s in Side::all() {
+                    assert_eq!(false, pos.is_legal_move(i, j, s));
+                }
+            }
+        }
     }
 }

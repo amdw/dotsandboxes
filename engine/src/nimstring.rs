@@ -17,8 +17,10 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use game::{Position, Side, Move};
+use splitter;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::ops;
 
 #[derive(Clone)]
 #[derive(Copy)]
@@ -27,6 +29,18 @@ use std::fmt;
 pub enum Value {
     Nimber(usize),
     Loony
+}
+
+impl ops::Add for Value {
+    type Output = Value;
+
+    fn add(self: Value, other: Value) -> Value {
+        match (self, other) {
+            (Value::Loony, _) => Value::Loony,
+            (_, Value::Loony) => Value::Loony,
+            (Value::Nimber(x), Value::Nimber(y)) => Value::Nimber(x ^ y),
+        }
+    }
 }
 
 impl fmt::Display for Value {
@@ -74,7 +88,6 @@ fn mex(s: HashSet<usize>) -> usize {
 
 fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
-    // TODO: Optimise by splitting position into separate components and analysing them separately
     if let Some(&v) = cache.get(&pos.zhash()) {
         return v;
     }
@@ -82,6 +95,20 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
         cache.insert(pos.zhash(), Value::Loony);
         return Value::Loony;
     }
+
+    // Try to split the position into independent parts which can be evaluated separately
+    let parts = splitter::split(pos);
+    if parts.len() > 1 {
+        let mut result = Value::Nimber(0);
+        for mut part in parts {
+            let mut frag_cache = HashMap::new();
+            let frag_value = calc_value(&mut part.pos, &mut frag_cache);
+            result = result + frag_value;
+        }
+        cache.insert(pos.zhash(), result);
+        return result;
+    }
+
     let legal_moves = pos.legal_moves();
     for m in &legal_moves {
         if pos.would_capture(m.x, m.y, m.side) {
@@ -124,6 +151,7 @@ pub fn calc_value_with_moves(pos: &Position) -> (Value, HashMap<Move, Value>) {
 mod tests {
     use nimstring::*;
     use game::*;
+    use examples::*;
 
     #[test]
     fn value_display() {
@@ -141,6 +169,20 @@ mod tests {
         assert_eq!(1, mex([0,2,3].iter().cloned().collect()));
         assert_eq!(2, mex([0,1,3].iter().cloned().collect()));
         assert_eq!(3, mex([0,1,2].iter().cloned().collect()));
+    }
+
+    #[test]
+    fn nimber_addition() {
+        assert_eq!(Value::Nimber(3), Value::Nimber(1) + Value::Nimber(2));
+        assert_eq!(Value::Nimber(2), Value::Nimber(1) + Value::Nimber(3));
+        assert_eq!(Value::Nimber(1), Value::Nimber(2) + Value::Nimber(3));
+
+        assert_eq!(Value::Nimber(6), Value::Nimber(2) + Value::Nimber(4));
+        assert_eq!(Value::Nimber(4), Value::Nimber(6) + Value::Nimber(2));
+        assert_eq!(Value::Nimber(2), Value::Nimber(4) + Value::Nimber(6));
+
+        assert_eq!(Value::Loony, Value::Nimber(2) + Value::Loony);
+        assert_eq!(Value::Loony, Value::Loony + Value::Nimber(2));
     }
 
     // Create a position consisting of a single horizontal chain of a given length.
@@ -192,33 +234,16 @@ mod tests {
     }
 
     #[test]
-    fn paper_example() {
-        let mut pos = Position::new_game(5, 2);
-        pos.make_move(0, 0, Side::Top);
-        pos.make_move(1, 0, Side::Top);
-        pos.make_move(0, 0, Side::Left);
-        pos.make_move(0, 1, Side::Left);
-        pos.make_move(1, 0, Side::Bottom);
-        pos.make_move(2, 0, Side::Bottom);
-        pos.make_move(3, 0, Side::Bottom);
-        pos.make_move(3, 0, Side::Right);
-        for i in 0..5 {
-            pos.make_move(i, 1, Side::Bottom);
-        }
+    fn p50_top_value() {
+        let pos = p50_top();
         let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(1), val);
         assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 3, y: 0, side: Side::Top}).unwrap());
     }
 
     #[test]
-    fn paper_example2() {
-        let mut pos = Position::new_game(3, 2);
-        pos.make_move(0, 0, Side::Top);
-        pos.make_move(1, 0, Side::Top);
-        pos.make_move(2, 0, Side::Top);
-        pos.make_move(2, 0, Side::Right);
-        pos.make_move(2, 1, Side::Right);
-        pos.make_move(1, 0, Side::Bottom);
+    fn p50_bottomleft_value() {
+        let pos = p50_bottomleft();
         let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(4), val);
         assert_eq!(&Value::Nimber(3), per_move.get(&Move{x: 0, y: 1, side: Side::Left}).unwrap());
@@ -228,14 +253,22 @@ mod tests {
     }
 
     #[test]
-    fn paper_example3() {
-        let mut pos = Position::new_game(2, 2);
-        pos.make_move(0, 0, Side::Top);
-        pos.make_move(1, 0, Side::Top);
-        pos.make_move(0, 0, Side::Left);
-        pos.make_move(0, 1, Side::Left);
+    fn p50_bottomright_value() {
+        let pos = p50_bottomright();
         let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(2), val);
         assert_eq!(&Value::Nimber(3), per_move.get(&Move{x: 0, y: 1, side: Side::Right}).unwrap());
+    }
+
+    #[test]
+    fn p50_value() {
+        let pos = p50();
+        let (val, per_move) = calc_value_with_moves(&pos);
+        assert_eq!(Value::Nimber(7), val);
+        let zero_moves: Vec<&Move> = per_move.keys().filter(|m| &Value::Nimber(0) == per_move.get(m).unwrap()).collect();
+        assert_eq!(3, zero_moves.len());
+        assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Bottom}));
+        assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Left}));
+        assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Right}));
     }
 }

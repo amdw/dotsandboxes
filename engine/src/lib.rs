@@ -22,3 +22,5 @@ extern crate regex;
 pub mod game;
 pub mod nimstring;
 pub mod cli;
+pub mod splitter;
+pub mod examples;
