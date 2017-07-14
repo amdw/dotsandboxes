@@ -111,5 +111,9 @@ mod tests {
         let pos = Position::new_game(3, 3);
         let parts = split(&pos);
         assert_eq!(1, parts.len());
+        let frag = &parts[0];
+        assert_eq!(0, frag.x_offset);
+        assert_eq!(0, frag.y_offset);
+        assert_eq!(true, frag.pos.eq(&pos));
     }
 }
