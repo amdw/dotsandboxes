@@ -45,20 +45,20 @@ fn search(pos: &Position, x: usize, y: usize,
 
 // Build a PositionFragment from a list of coordinates
 fn make_fragment(pos: &Position, coords: &Vec<(usize, usize)>) -> PositionFragment {
-    let (xl, xr, yt, yb) = coords.iter().fold(
+    let (x_left, x_right, y_top, y_bottom) = coords.iter().fold(
         (coords[0].0, coords[0].0, coords[0].1, coords[0].1),
-        |(xli, xri, yti, ybi), &(x, y)| (cmp::min(xli, x), cmp::max(xri, x), cmp::min(yti, y), cmp::max(ybi, y))
+        |(xl, xr, yt, yb), &(x, y)| (cmp::min(xl, x), cmp::max(xr, x), cmp::min(yt, y), cmp::max(yb, y))
     );
-    let mut frag_pos = Position::new_end_game(xr-xl+1, yb-yt+1);
+    let mut frag_pos = Position::new_end_game(x_right - x_left + 1, y_bottom - y_top + 1);
     for &(x, y) in coords {
-        let (frag_x, frag_y) = (x - xl, y - yt);
+        let (frag_x, frag_y) = (x - x_left, y - y_top);
         for side in Side::all() {
             if pos.is_legal_move(x, y, side) && !frag_pos.is_legal_move(frag_x, frag_y, side) {
                 frag_pos.undo_move(frag_x, frag_y, side);
             }
         }
     }
-    PositionFragment{pos: frag_pos, x_offset: xl, y_offset: yt}
+    PositionFragment{pos: frag_pos, x_offset: x_left, y_offset: y_top}
 }
 
 // Split a position into its independent fragments.
