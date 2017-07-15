@@ -326,6 +326,22 @@ impl Position {
         }
     }
 
+    // Indicate whether two moves are equivalent in the current position,
+    // i.e. they refer to the same "logical" move on the board.
+    // For example (0,0) Right is equivalent to (1,0) Left
+    // (provided the board is at least two columns wide).
+    pub fn moves_equivalent(self: &Position, move1: Move, move2: Move) -> bool {
+        if move1 == move2 {
+            true
+        }
+        else if let Some((n1x, n1y)) = self.offset(move1.x, move1.y, move1.side) {
+            move2.x == n1x && move2.y == n1y && move2.side == move1.side.opposite()
+        }
+        else {
+            false
+        }
+    }
+
     // Current Zobrist hash value for position.
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
@@ -659,6 +675,27 @@ mod tests {
         assert_eq!(Some((0, 1)), pos.offset(1, 1, Side::Left));
         assert_eq!(None, pos.offset(1, 1, Side::Bottom));
         assert_eq!(None, pos.offset(1, 1, Side::Right));
+    }
+
+    #[test]
+    fn move_equivalences() {
+        let pos = Position::new_game(2, 2);
+
+        // A move is always equivalent to itself
+        assert!(pos.moves_equivalent(Move{x: 0, y: 0, side: Side::Left},
+                                     Move{x: 0, y: 0, side: Side::Left}));
+
+        assert!(pos.moves_equivalent(Move{x: 0, y: 0, side: Side::Right},
+                                     Move{x: 1, y: 0, side: Side::Left}));
+        assert!(pos.moves_equivalent(Move{x: 0, y: 0, side: Side::Bottom},
+                                     Move{x: 0, y: 1, side: Side::Top}));
+
+        assert!(!pos.moves_equivalent(Move{x: 0, y: 0, side: Side::Left},
+                                      Move{x: 0, y: 0, side: Side::Right}));
+
+        // Out of bounds
+        assert!(!pos.moves_equivalent(Move{x: 1, y: 0, side: Side::Right},
+                                      Move{x: 2, y: 0, side: Side::Left}));
     }
 
     #[test]

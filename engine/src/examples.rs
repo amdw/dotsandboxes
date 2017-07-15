@@ -75,25 +75,25 @@ pub fn p50() -> Position {
     pos
 }
 
-// Create a position consisting of a single horizontal chain of a given length.
-pub fn make_chain(length: usize) -> Position {
-    let mut pos = Position::new_game(length, 1);
-    for i in 0..length {
-        pos.make_move(i, 0, Side::Top);
-        pos.make_move(i, 0, Side::Bottom);
+// Construct a position consisting of a given number of equally-sized chains.
+pub fn multi_chains(chain_size: usize, chain_count: usize) -> Position {
+    let mut pos = Position::new_game(chain_size, chain_count);
+    for x in 0..chain_size {
+        pos.make_move(x, 0, Side::Top);
+        for y in 0..chain_count {
+            pos.make_move(x, y, Side::Bottom);
+        }
     }
     pos
+}
+// Create a position consisting of a single horizontal chain of a given length.
+pub fn make_chain(length: usize) -> Position {
+    multi_chains(length, 1)
 }
 
 // Create a position consisting of two horizontal chains of a given length.
 pub fn double_chain(length: usize) -> Position {
-    let mut pos = Position::new_game(length, 2);
-    for i in 0..length {
-        pos.make_move(i, 0, Side::Top);
-        pos.make_move(i, 0, Side::Bottom);
-        pos.make_move(i, 1, Side::Bottom);
-    }
-    pos
+    multi_chains(length, 2)
 }
 
 // Create a position consisting of two loops of a given width.

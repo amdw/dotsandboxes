@@ -140,6 +140,33 @@ mod test {
     }
 
     #[test]
+    fn eval_multi_chains() {
+        let mut pos = multi_chains(3, 4);
+
+        let (val, _) = eval(&mut pos);
+        assert_eq!(-2, val);
+        pos.make_move(0, 0, Side::Left);
+
+        let (val, best_move) = eval(&mut pos);
+        assert_eq!(2, val);
+        assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
+        pos.make_move(0, 0, Side::Right);
+
+        let (val, best_move) = eval(&mut pos);
+        assert_eq!(1, val);
+        assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 1, y: 0, side: Side::Right}));
+        pos.make_move(1, 0, Side::Right);
+
+        let (val, best_move) = eval(&mut pos);
+        assert_eq!(0, val);
+        assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 2, y: 0, side: Side::Right}));
+        pos.make_move(2, 0, Side::Right);
+
+        let (val, _) = eval(&mut pos);
+        assert_eq!(-1, val);
+    }
+
+    #[test]
     fn eval_double_loop() {
         for i in 2..8 {
             let mut pos = double_loop(i);
@@ -156,7 +183,7 @@ mod test {
             let (val, best_move) = eval(&mut pos);
             assert_eq!(i as isize, val, "Evaluation of open {}-chain", i);
             let best_move = best_move.unwrap();
-            assert!(best_move == Move{x: 0, y: 0, side: Side::Right} || best_move == Move{x: 1, y: 0, side: Side::Left});
+            assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Right}));
         }
     }
 }
