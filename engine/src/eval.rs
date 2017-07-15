@@ -16,49 +16,84 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::Position;
+use game::{Move, Position, Side};
 use nimstring;
 use std::cmp;
 use std::collections::HashMap;
 
-fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, isize>) -> isize {
-    if let Some(&cached) = cache.get(&pos.zhash()) {
-        return cached;
-    }
-
-    let moves = pos.legal_moves();
+// Evaluate a position given a set of moves to consider
+fn eval_moves(pos: &mut Position, moves: &Vec<Move>, cache: &mut HashMap<usize, isize>) -> isize {
     if moves.is_empty() {
         return 0;
     }
-
-    // If there are any captures which don't affect looniness, just go ahead and make those
-    let is_loony = nimstring::is_loony(pos);
-    for m in &moves {
-        let captures = pos.would_capture(m.x, m.y, m.side);
-        if captures == 0 {
-            continue;
-        }
-        if !is_loony || nimstring::would_be_loony(pos, m.x, m.y, m.side) {
-            pos.make_move(m.x, m.y, m.side);
-            let result = captures + eval_cache(pos, cache);
-            pos.undo_move(m.x, m.y, m.side);
-            cache.insert(pos.zhash(), result);
-            return result;
-        }
-        //TODO: Consider only capturing all and double-dealing in the loony case
-    }
-
     let mut sub_vals = Vec::with_capacity(moves.len());
-    for m in &moves {
-        let captures = pos.would_capture(m.x, m.y, m.side);
-        let sign = if captures > 0 { 1 } else { -1 };
-        pos.make_move(m.x, m.y, m.side);
-        sub_vals.push(captures + sign * eval_cache(pos, cache));
+    for m in moves {
+        let outcome = pos.make_move(m.x, m.y, m.side);
+        let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
+        sub_vals.push((outcome.coins_captured as isize) + sign * eval_cache(pos, cache));
         pos.undo_move(m.x, m.y, m.side);
     }
     let result = sub_vals.iter().fold(sub_vals[0], |a, &v| cmp::max(a, v));
     cache.insert(pos.zhash(), result);
     result
+}
+
+// Given a loony position and the capture, find the corresponding double-dealing move
+fn find_ddeal_move(pos: &Position, capture: Move) -> Move {
+    // (capture.x, capture.y) might be the valency-1 coin or the valency-2 one
+    let (v2_x, v2_y, excl_side) = if pos.valency(capture.x, capture.y) == 1 {
+        let (x, y) = pos.offset(capture.x, capture.y, capture.side).unwrap();
+        (x, y, capture.side.opposite())
+    } else {
+        (capture.x, capture.y, capture.side)
+    };
+
+    for s in Side::all_except(excl_side) {
+        if pos.is_legal_move(v2_x, v2_y, s) {
+            return Move{x: v2_x, y: v2_y, side: s};
+        }
+    }
+
+    panic!("Could not find double-dealing move corresponding to {} in {}", capture, pos);
+}
+
+// Determine what moves deserve consideration in a given position
+fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
+    let legal_moves = pos.legal_moves();
+
+    // If there are any captures which don't affect looniness, just go ahead and make those
+    let is_loony = nimstring::is_loony(pos);
+    let mut capture: Option<Move> = None;
+    for &m in &legal_moves {
+        let captures = pos.would_capture(m.x, m.y, m.side);
+        if captures == 0 {
+            continue;
+        }
+        capture = Some(m);
+        if !is_loony || nimstring::would_be_loony(pos, m.x, m.y, m.side) {
+            return vec!(m);
+        }
+    }
+
+    // Consider only capturing all and double-dealing in the loony case
+    // TODO: Use other canonical play results to further reduce the set of moves considered
+    if is_loony {
+        let capture = capture.unwrap();
+        let ddeal_move = find_ddeal_move(pos, capture);
+        vec!(capture, ddeal_move)
+    } else {
+        legal_moves
+    }
+}
+
+fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, isize>) -> isize {
+    // TODO: Use alpha-beta pruning
+    if let Some(&cached) = cache.get(&pos.zhash()) {
+        return cached;
+    }
+
+    let moves = moves_to_consider(pos);
+    eval_moves(pos, &moves, cache)
 }
 
 // Calculate the value function of a given position
