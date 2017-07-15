@@ -52,27 +52,55 @@ impl fmt::Display for Value {
     }
 }
 
+// If there is a coin connected to (x,y) on one of the given sides, return one such, else None.
+fn connected_coin(pos: &Position, x: usize, y: usize, sides: Vec<Side>) -> Option<(usize, usize, Side)> {
+    for &s in &sides {
+        if pos.is_legal_move(x, y, s) {
+            if let Some((nx, ny)) = pos.offset(x, y, s) {
+                return Some((nx, ny, s));
+            }
+        }
+    }
+    None
+}
+
 // Indicate whether a given position is loony
 pub fn is_loony(pos: &Position) -> bool {
-    for i in 0..pos.width() {
-        for j in 0..pos.height() {
-            if pos.valency(i, j) != 1 {
+    for x in 0..pos.width() {
+        for y in 0..pos.height() {
+            if pos.valency(x, y) != 1 {
                 continue
             }
-            for s in Side::all() {
-                if pos.is_legal_move(i, j, s) {
-                    if let Some((nx, ny)) = pos.offset(i, j, s) {
-                        if pos.valency(nx, ny) == 2 {
-                            // We have found a capturable coin attached to a coin of valency 2 => loony
-                            return true;
-                        }
-                    }
-                    break;
+            if let Some((neighbour_x, neighbour_y, side)) = connected_coin(pos, x, y, Side::all()) {
+                if pos.valency(neighbour_x, neighbour_y) != 2 {
+                    continue
                 }
+                // We have found a capturable coin attached to a coin of valency 2 (o-o-?).
+                // This means the position is loony unless there is a valency-1 coin
+                // on the other side (o-o-o).
+                let far_sides = Side::all_except(side.opposite());
+                if let Some((far_x, far_y, _)) = connected_coin(pos, neighbour_x, neighbour_y, far_sides) {
+                    if pos.valency(far_x, far_y) == 1 {
+                        continue;
+                    }
+                }
+                return true;
             }
         }
     }
     false
+}
+
+// Indicate whether a given move would result in a loony position
+// (regardless of whether the current position is loony).
+// Note that a move is loony iff it returns true here *and* it is not a capture.
+// A capture is never a loony move but can return true here (e.g. capturing
+// the first coin of an open 3-chain).
+pub fn would_be_loony(pos: &mut Position, x: usize, y: usize, s: Side) -> bool {
+    pos.make_move(x, y, s);
+    let result = is_loony(pos);
+    pos.undo_move(x, y, s);
+    result
 }
 
 // Minimal excludant helper function
@@ -98,7 +126,7 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
 
     let legal_moves = pos.legal_moves();
     for m in &legal_moves {
-        if pos.would_capture(m.x, m.y, m.side) {
+        if pos.would_capture(m.x, m.y, m.side) > 0 {
             pos.make_move(m.x, m.y, m.side);
             let result = calc_value(pos, cache);
             pos.undo_move(m.x, m.y, m.side);
@@ -206,6 +234,16 @@ mod tests {
     }
 
     #[test]
+    fn open_3loop_not_loony() {
+        let mut pos = make_chain(3);
+        pos.make_move(0, 0, Side::Left);
+        pos.make_move(2, 0, Side::Right);
+        assert_eq!(false, is_loony(&pos));
+        let (val, _) = calc_value_with_moves(&pos);
+        assert_eq!(Value::Nimber(0), val);
+    }
+
+    #[test]
     fn nonzero_value() {
         let mut pos = make_chain(7);
         pos.undo_move(3, 0, Side::Top);
@@ -260,5 +298,30 @@ mod tests {
         assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Bottom}));
         assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Left}));
         assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Right}));
+    }
+
+    #[test]
+    fn conditional_looniness() {
+        let mut pos = make_chain(5);
+        assert_eq!(true, would_be_loony(&mut pos, 0, 0, Side::Left));
+        pos.make_move(0, 0, Side::Left);
+        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, would_be_loony(&mut pos, 1, 0, Side::Left));
+        pos.make_move(1, 0, Side::Left);
+        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, would_be_loony(&mut pos, 2, 0, Side::Left));
+        pos.make_move(2, 0, Side::Left);
+        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, would_be_loony(&mut pos, 3, 0, Side::Left));
+        pos.make_move(3, 0, Side::Left);
+        assert_eq!(true, is_loony(&pos));
+        assert_eq!(false, would_be_loony(&mut pos, 4, 0, Side::Left));
+        assert_eq!(false, would_be_loony(&mut pos, 4, 0, Side::Right));
+        pos.make_move(4, 0, Side::Left);
+        assert_eq!(false, is_loony(&pos));
+        assert_eq!(false, would_be_loony(&mut pos, 4, 0, Side::Right));
+        pos.make_move(4, 0, Side::Right);
+        assert_eq!(true, pos.is_end_of_game());
+        assert_eq!(false, is_loony(&mut pos));
     }
 }

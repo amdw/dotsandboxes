@@ -36,6 +36,25 @@ impl Side {
     pub fn all() -> Vec<Side> {
         vec!(Side::Top, Side::Bottom, Side::Left, Side::Right)
     }
+
+    pub fn all_except(side: Side) -> Vec<Side> {
+        let mut result = Vec::with_capacity(3);
+        for s in Side::all() {
+            if s != side {
+                result.push(s);
+            }
+        }
+        result
+    }
+
+    pub fn opposite(self: &Side) -> Side {
+        match self {
+            &Side::Left => Side::Right,
+            &Side::Right => Side::Left,
+            &Side::Top => Side::Bottom,
+            &Side::Bottom => Side::Top,
+        }
+    }
 }
 
 impl fmt::Display for Side {
@@ -155,17 +174,18 @@ impl Position {
             !self.is_legal_move(x, y, Side::Bottom)
     }
 
-    // Indicate whether a given move would be a capture
-    pub fn would_capture(self: &Position, x: usize, y: usize, s: Side) -> bool {
+    // Indicate how many coins a given move would capture (either 0, 1 or 2)
+    pub fn would_capture(self: &Position, x: usize, y: usize, s: Side) -> isize {
+        let mut result = 0;
         if self.valency(x, y) == 1 {
-            return true;
+            result += 1;
         }
         if let Some((nx, ny)) = self.offset(x, y, s) {
-            self.valency(nx, ny) == 1
+            if self.valency(nx, ny) == 1 {
+                result += 1;
+            }
         }
-        else {
-            false
-        }
+        result
     }
 
     // Make a given move on the board, and indicate the outcome.
@@ -460,7 +480,7 @@ mod tests {
         assert_eq!(2, pos.valency(1, 1));
         assert_eq!(3, pos.valency(1, 2));
 
-        assert_eq!(false, pos.would_capture(1, 1, Side::Left));
+        assert_eq!(0, pos.would_capture(1, 1, Side::Left));
         let outcome = pos.make_move(1, 1, Side::Left);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
@@ -471,7 +491,7 @@ mod tests {
         assert_eq!(1, pos.valency(1, 1));
         assert_eq!(3, pos.valency(0, 1));
 
-        assert_eq!(true, pos.would_capture(1, 1, Side::Top));
+        assert_eq!(1, pos.would_capture(1, 1, Side::Top));
         let outcome = pos.make_move(1, 1, Side::Top);
         assert_eq!(1, outcome.coins_captured);
         assert_eq!(false, outcome.end_of_turn);
@@ -514,6 +534,7 @@ mod tests {
                      (0, 0, Side::Left), (1, 0, Side::Right)];
         for &(x, y, s) in moves.iter() {
             assert_eq!(true, pos.is_legal_move(x, y, s));
+            assert_eq!(0, pos.would_capture(x, y, s));
             let outcome = pos.make_move(x, y, s);
             assert_eq!(false, pos.is_legal_move(x, y, s));
             assert_eq!(0, outcome.coins_captured);
@@ -522,6 +543,7 @@ mod tests {
             assert_eq!(false, pos.is_end_of_game());
         }
         assert_eq!(true, pos.is_legal_move(0, 0, Side::Right));
+        assert_eq!(2, pos.would_capture(0, 0, Side::Right));
         let outcome = pos.make_move(0, 0, Side::Right);
         assert_eq!(2, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_game);
@@ -729,6 +751,35 @@ mod tests {
                 for s in Side::all() {
                     assert_eq!(false, pos.is_legal_move(i, j, s));
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn all_sides() {
+        let sides = Side::all();
+        assert_eq!(4, sides.len());
+        assert!(sides.contains(&Side::Top));
+        assert!(sides.contains(&Side::Bottom));
+        assert!(sides.contains(&Side::Left));
+        assert!(sides.contains(&Side::Right));
+    }
+
+    #[test]
+    fn opposites() {
+        assert_eq!(Side::Left, Side::Right.opposite());
+        assert_eq!(Side::Right, Side::Left.opposite());
+        assert_eq!(Side::Top, Side::Bottom.opposite());
+        assert_eq!(Side::Bottom, Side::Top.opposite());
+    }
+
+    #[test]
+    fn all_sides_except() {
+        for side in Side::all() {
+            let sides = Side::all_except(side);
+            assert_eq!(3, sides.len());
+            for other_side in Side::all() {
+                assert_eq!(side != other_side, sides.contains(&other_side));
             }
         }
     }

@@ -84,3 +84,33 @@ pub fn make_chain(length: usize) -> Position {
     }
     pos
 }
+
+// Create a position consisting of two horizontal chains of a given length.
+pub fn double_chain(length: usize) -> Position {
+    let mut pos = Position::new_game(length, 2);
+    for i in 0..length {
+        pos.make_move(i, 0, Side::Top);
+        pos.make_move(i, 0, Side::Bottom);
+        pos.make_move(i, 1, Side::Bottom);
+    }
+    pos
+}
+
+// Create a position consisting of two loops of a given width.
+pub fn double_loop(width: usize) -> Position {
+    let mut pos = Position::new_game(width, 4);
+    for i in 0..width {
+        pos.make_move(i, 0, Side::Top);
+        pos.make_move(i, 1, Side::Bottom);
+        pos.make_move(i, 3, Side::Bottom);
+    }
+    for i in 0..4 {
+        pos.make_move(0, i, Side::Left);
+        pos.make_move(width-1, i, Side::Right);
+    }
+    for i in 1..width-1 {
+        pos.make_move(i, 0, Side::Bottom);
+        pos.make_move(i, 2, Side::Bottom);
+    }
+    pos
+}

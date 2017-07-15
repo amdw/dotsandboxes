@@ -17,6 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use game::Position;
+use nimstring;
 use std::cmp;
 
 // Calculate the value function of a given position
@@ -25,15 +26,28 @@ pub fn eval(pos: &mut Position) -> isize {
     if moves.is_empty() {
         return 0;
     }
+
+    // If there are any captures which don't affect looniness, just go ahead and make those
+    let is_loony = nimstring::is_loony(pos);
+    for m in &moves {
+        let captures = pos.would_capture(m.x, m.y, m.side);
+        if captures == 0 {
+            continue;
+        }
+        if !is_loony || nimstring::would_be_loony(pos, m.x, m.y, m.side) {
+            pos.make_move(m.x, m.y, m.side);
+            let result = captures + eval(pos);
+            pos.undo_move(m.x, m.y, m.side);
+            return result;
+        }
+    }
+
     let mut sub_vals = Vec::with_capacity(moves.len());
-    for m in moves {
-        let (c, i) = if pos.would_capture(m.x, m.y, m.side) {
-            (1, 1)
-        } else {
-            (0, -1)
-        };
+    for m in &moves {
+        let captures = pos.would_capture(m.x, m.y, m.side);
+        let sign = if captures > 0 { 1 } else { -1 };
         pos.make_move(m.x, m.y, m.side);
-        sub_vals.push(c + i * eval(pos));
+        sub_vals.push(captures + sign * eval(pos));
         pos.undo_move(m.x, m.y, m.side);
     }
     sub_vals.iter().fold(sub_vals[0], |a, &v| cmp::max(a, v))
@@ -46,9 +60,26 @@ mod test {
 
     #[test]
     fn eval_chain() {
-        for i in 1..5 {
+        for i in 1..10 {
             let mut chain = make_chain(i);
             assert_eq!(-(i as isize), eval(&mut chain));
+        }
+    }
+
+    #[test]
+    fn eval_double_chain() {
+        assert_eq!(0, eval(&mut double_chain(1)));
+        for i in 2..10 {
+            let mut pos = double_chain(i);
+            assert_eq!(4 - 2*(i as isize), eval(&mut pos), "Evaluation of double chain length {}", i);
+        }
+    }
+
+    #[test]
+    fn eval_double_loop() {
+        for i in 2..8 {
+            let mut pos = double_loop(i);
+            assert_eq!(8 - 4*(i as isize), eval(&mut pos), "Evaluation of double loop width {}", i);
         }
     }
 }
