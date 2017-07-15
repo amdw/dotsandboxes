@@ -112,8 +112,7 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
     if parts.len() > 1 {
         let mut result = Value::Nimber(0);
         for mut part in parts {
-            let mut frag_cache = HashMap::new();
-            let frag_value = calc_value(&mut part.pos, &mut frag_cache);
+            let frag_value = calc_value(&mut part.pos, cache);
             result = result + frag_value;
         }
         cache.insert(pos.zhash(), result);

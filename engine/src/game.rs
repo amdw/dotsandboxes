@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use rand::{self, Rng};
+use rand::{Rng, SeedableRng, StdRng};
 use std::fmt;
 use std::iter;
 
@@ -307,9 +307,8 @@ impl Position {
     }
 
     // Current Zobrist hash value for position.
-    // These hash values are unique only within the context of this position:
-    // a different equal position will not necessarily have the same zhash
-    // (we could fix this by using a constant seed for the RNG)
+    // This hash should be consistent across positions,
+    // i.e. equal positions should have equal hashes.
     pub fn zhash(self: &Position) -> usize {
         self.zhash.current_value()
     }
@@ -374,7 +373,8 @@ struct ZHash {
 
 impl ZHash {
     fn new(width: usize, height: usize) -> ZHash {
-        let mut r = rand::thread_rng();
+        let seed: &[_] = &[width, height];
+        let mut r: StdRng = SeedableRng::from_seed(seed);
         let mut top_strings: Vec<usize> = Vec::with_capacity(width);
         let mut left_strings: Vec<usize> = Vec::with_capacity(height);
         let mut right_strings: Vec<Vec<usize>> = Vec::with_capacity(width);
@@ -394,7 +394,7 @@ impl ZHash {
         }
 
         ZHash{
-            current_val: 0,
+            current_val: r.gen(),
             top_strings: top_strings,
             left_strings: left_strings,
             right_strings: right_strings,
@@ -677,6 +677,46 @@ mod tests {
         }
         assert_eq!(1, hashes.len());
         assert_eq!(hashes.pop().unwrap(), pos.zhash());
+    }
+
+    #[test]
+    fn zhashes_across_position() {
+        let (width, height) = (3, 4);
+        let mut pos1 = Position::new_game(width, height);
+        let mut pos2 = Position::new_game(width, height);
+        assert_eq!(pos1.zhash(), pos2.zhash());
+        pos1.make_move(1, 1, Side::Top);
+        pos2.make_move(1, 1, Side::Top);
+        assert_eq!(pos1.zhash(), pos2.zhash());
+
+        assert_eq!(Position::new_end_game(width, height).zhash(),
+                   Position::new_end_game(width, height).zhash());
+    }
+
+    fn all_hashes(pos: &mut Position) -> HashSet<usize> {
+        let mut hashes = HashSet::new();
+        loop {
+            hashes.insert(pos.zhash());
+            let legal_moves = pos.legal_moves();
+            if legal_moves.is_empty() {
+                hashes.insert(pos.zhash());
+                break;
+            }
+            let m = legal_moves[0];
+            pos.make_move(m.x, m.y, m.side);
+        }
+        hashes
+    }
+
+    #[test]
+    fn zhashes_across_games() {
+        let (width, height) = (3, 4);
+        let mut pos1 = Position::new_game(width, height);
+        let mut pos2 = Position::new_game(height, width);
+        let hashes1 = all_hashes(&mut pos1);
+        let hashes2 = all_hashes(&mut pos2);
+        let intersect: HashSet<usize> = hashes1.intersection(&hashes2).cloned().collect();
+        assert!(intersect.is_empty());
     }
 
     #[test]
