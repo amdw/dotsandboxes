@@ -96,6 +96,17 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
         return Value::Loony;
     }
 
+    let legal_moves = pos.legal_moves();
+    for m in &legal_moves {
+        if pos.would_capture(m.x, m.y, m.side) {
+            pos.make_move(m.x, m.y, m.side);
+            let result = calc_value(pos, cache);
+            pos.undo_move(m.x, m.y, m.side);
+            cache.insert(pos.zhash(), result);
+            return result
+        }
+    }
+
     // Try to split the position into independent parts which can be evaluated separately
     let parts = splitter::split(pos);
     if parts.len() > 1 {
@@ -109,16 +120,6 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
         return result;
     }
 
-    let legal_moves = pos.legal_moves();
-    for m in &legal_moves {
-        if pos.would_capture(m.x, m.y, m.side) {
-            pos.make_move(m.x, m.y, m.side);
-            let result = calc_value(pos, cache);
-            pos.undo_move(m.x, m.y, m.side);
-            cache.insert(pos.zhash(), result);
-            return result
-        }
-    }
     let mut options = HashSet::new();
     for m in &legal_moves {
         pos.make_move(m.x, m.y, m.side);
