@@ -54,6 +54,11 @@ fn find_ddeal_move(pos: &Position, capture: Move) -> Move {
         (capture.x, capture.y, capture.side)
     };
 
+    if pos.valency(v2_x, v2_y) != 2 {
+        panic!("Expected ({},{}) to have valency 2, found {} in {}",
+               v2_x, v2_y, pos.valency(v2_x, v2_y), pos);
+    }
+
     for s in Side::all_except(excl_side) {
         if pos.is_legal_move(v2_x, v2_y, s) {
             return Move{x: v2_x, y: v2_y, side: s};
