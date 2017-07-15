@@ -19,6 +19,7 @@
 
 use game::{Move, Position, Side};
 use nimstring;
+use eval;
 use std::io::{self, BufRead};
 use std::fs::File;
 use regex::{Regex, Captures};
@@ -29,6 +30,7 @@ enum Command {
     MakeMove(Move),
     UndoMove(Move),
     CalcNimstringValue,
+    Evaluate,
     PrintHelp,
     Quit,
 }
@@ -54,6 +56,14 @@ impl Command {
                     println!("{} {}", m, per_move.get(m).unwrap());
                 }
             },
+            &Command::Evaluate => {
+                let (val, best_move) = eval::eval(pos);
+                if let Some(best_move) = best_move {
+                    println!("V(P) = {}, best move {}", val, best_move);
+                } else {
+                    println!("V(P) = {}", val);
+                }
+            },
             &Command::PrintHelp => { print_help(); },
             &Command::Quit => { println!("Bye bye!"); },
         }
@@ -65,6 +75,7 @@ fn print_help() {
     println!("x y t/l/b/r - make move (x,y) top/left/bottom/right");
     println!("u x y t/l/b/r - undo move (x,y) top/left/bottom/right");
     println!("nv - calculate Nimstring value of current position");
+    println!("eval - evaluate the current position");
     println!("help - print this help message");
     println!("quit/exit - exit program");
 }
@@ -105,6 +116,9 @@ fn parse_command(input: &str) -> Result<Command, String> {
     }
     if "nv" == input {
         return Ok(Command::CalcNimstringValue);
+    }
+    if "eval" == input {
+        return Ok(Command::Evaluate);
     }
     if "help" == input {
         return Ok(Command::PrintHelp);
@@ -195,6 +209,11 @@ mod tests {
     #[test]
     fn parse_nimstring_value_cmd() {
         assert_eq!(Command::CalcNimstringValue, parse_command("nv").unwrap());
+    }
+
+    #[test]
+    fn parse_evaluate_cmd() {
+        assert_eq!(Command::Evaluate, parse_command("eval").unwrap());
     }
 
     #[test]

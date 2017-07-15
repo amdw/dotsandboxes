@@ -18,24 +18,30 @@
 */
 use game::{Move, Position, Side};
 use nimstring;
-use std::cmp;
 use std::collections::HashMap;
+use std::isize;
 
 // Evaluate a position given a set of moves to consider
-fn eval_moves(pos: &mut Position, moves: &Vec<Move>, cache: &mut HashMap<usize, isize>) -> isize {
+fn eval_moves(pos: &mut Position, moves: &Vec<Move>,
+              cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
     if moves.is_empty() {
-        return 0;
+        return (0, None);
     }
-    let mut sub_vals = Vec::with_capacity(moves.len());
-    for m in moves {
+    let mut value = isize::MIN;
+    let mut best_move = moves[0];
+    for &m in moves {
         let outcome = pos.make_move(m.x, m.y, m.side);
         let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
-        sub_vals.push((outcome.coins_captured as isize) + sign * eval_cache(pos, cache));
+        let (next_val, _) = eval_cache(pos, cache);
+        let sub_val = (outcome.coins_captured as isize) + sign * next_val;
         pos.undo_move(m.x, m.y, m.side);
+        if sub_val > value {
+            value = sub_val;
+            best_move = m;
+        }
     }
-    let result = sub_vals.iter().fold(sub_vals[0], |a, &v| cmp::max(a, v));
-    cache.insert(pos.zhash(), result);
-    result
+    cache.insert(pos.zhash(), (value, best_move));
+    (value, Some(best_move))
 }
 
 // Given a loony position and the capture, find the corresponding double-dealing move
@@ -86,18 +92,18 @@ fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
     }
 }
 
-fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, isize>) -> isize {
+fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
     // TODO: Use alpha-beta pruning
-    if let Some(&cached) = cache.get(&pos.zhash()) {
-        return cached;
+    if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
+        return (val, Some(best_move));
     }
 
     let moves = moves_to_consider(pos);
     eval_moves(pos, &moves, cache)
 }
 
-// Calculate the value function of a given position
-pub fn eval(pos: &Position) -> isize {
+// Calculate the value function of a given position and a move which achieves that value
+pub fn eval(pos: &Position) -> (isize, Option<Move>) {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
     eval_cache(&mut pos, &mut cache)
@@ -112,16 +118,19 @@ mod test {
     fn eval_chain() {
         for i in 1..10 {
             let mut chain = make_chain(i);
-            assert_eq!(-(i as isize), eval(&mut chain));
+            let (val, _) = eval(&mut chain);
+            assert_eq!(-(i as isize), val);
         }
     }
 
     #[test]
     fn eval_double_chain() {
-        assert_eq!(0, eval(&mut double_chain(1)));
+        let (val, _) = eval(&mut double_chain(1));
+        assert_eq!(0, val);
         for i in 2..10 {
             let mut pos = double_chain(i);
-            assert_eq!(4 - 2*(i as isize), eval(&mut pos), "Evaluation of double chain length {}", i);
+            let (val, _) = eval(&mut pos);
+            assert_eq!(4 - 2*(i as isize), val, "Evaluation of double chain length {}", i);
         }
     }
 
@@ -129,7 +138,20 @@ mod test {
     fn eval_double_loop() {
         for i in 2..8 {
             let mut pos = double_loop(i);
-            assert_eq!(8 - 4*(i as isize), eval(&mut pos), "Evaluation of double loop width {}", i);
+            let (val, _) = eval(&mut pos);
+            assert_eq!(8 - 4*(i as isize), val, "Evaluation of double loop width {}", i);
+        }
+    }
+
+    #[test]
+    fn eval_open_chain() {
+        for i in 2..8 {
+            let mut pos = make_chain(i);
+            pos.make_move(0, 0, Side::Left);
+            let (val, best_move) = eval(&mut pos);
+            assert_eq!(i as isize, val, "Evaluation of open {}-chain", i);
+            let best_move = best_move.unwrap();
+            assert!(best_move == Move{x: 0, y: 0, side: Side::Right} || best_move == Move{x: 1, y: 0, side: Side::Left});
         }
     }
 }
