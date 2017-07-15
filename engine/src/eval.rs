@@ -19,9 +19,13 @@
 use game::Position;
 use nimstring;
 use std::cmp;
+use std::collections::HashMap;
 
-// Calculate the value function of a given position
-pub fn eval(pos: &mut Position) -> isize {
+fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, isize>) -> isize {
+    if let Some(&cached) = cache.get(&pos.zhash()) {
+        return cached;
+    }
+
     let moves = pos.legal_moves();
     if moves.is_empty() {
         return 0;
@@ -36,10 +40,12 @@ pub fn eval(pos: &mut Position) -> isize {
         }
         if !is_loony || nimstring::would_be_loony(pos, m.x, m.y, m.side) {
             pos.make_move(m.x, m.y, m.side);
-            let result = captures + eval(pos);
+            let result = captures + eval_cache(pos, cache);
             pos.undo_move(m.x, m.y, m.side);
+            cache.insert(pos.zhash(), result);
             return result;
         }
+        //TODO: Consider only capturing all and double-dealing in the loony case
     }
 
     let mut sub_vals = Vec::with_capacity(moves.len());
@@ -47,10 +53,19 @@ pub fn eval(pos: &mut Position) -> isize {
         let captures = pos.would_capture(m.x, m.y, m.side);
         let sign = if captures > 0 { 1 } else { -1 };
         pos.make_move(m.x, m.y, m.side);
-        sub_vals.push(captures + sign * eval(pos));
+        sub_vals.push(captures + sign * eval_cache(pos, cache));
         pos.undo_move(m.x, m.y, m.side);
     }
-    sub_vals.iter().fold(sub_vals[0], |a, &v| cmp::max(a, v))
+    let result = sub_vals.iter().fold(sub_vals[0], |a, &v| cmp::max(a, v));
+    cache.insert(pos.zhash(), result);
+    result
+}
+
+// Calculate the value function of a given position
+pub fn eval(pos: &Position) -> isize {
+    let mut cache = HashMap::new();
+    let mut pos = pos.clone();
+    eval_cache(&mut pos, &mut cache)
 }
 
 #[cfg(test)]
