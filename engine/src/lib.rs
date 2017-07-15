@@ -24,3 +24,4 @@ pub mod nimstring;
 pub mod cli;
 pub mod splitter;
 pub mod examples;
+pub mod eval;

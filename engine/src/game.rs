@@ -527,6 +527,7 @@ mod tests {
         assert_eq!(true, outcome.end_of_game);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(true, pos.is_end_of_game());
+        assert_eq!(0, pos.legal_moves().len());
     }
 
     #[test]

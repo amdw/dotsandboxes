@@ -74,3 +74,13 @@ pub fn p50() -> Position {
     pos.make_move(2, 3, Side::Right);
     pos
 }
+
+// Create a position consisting of a single horizontal chain of a given length.
+pub fn make_chain(length: usize) -> Position {
+    let mut pos = Position::new_game(length, 1);
+    for i in 0..length {
+        pos.make_move(i, 0, Side::Top);
+        pos.make_move(i, 0, Side::Bottom);
+    }
+    pos
+}
