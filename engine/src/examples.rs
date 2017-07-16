@@ -114,3 +114,19 @@ pub fn double_loop(width: usize) -> Position {
     }
     pos
 }
+
+// Create Exercise 3.1 from Berlekamp's book
+pub fn ex3p1() -> Position {
+    let mut pos = Position::new_game(3, 3);
+    pos.make_move(0, 0, Side::Top);
+    pos.make_move(0, 0, Side::Left);
+    pos.make_move(1, 0, Side::Top);
+    pos.make_move(1, 0, Side::Bottom);
+    pos.make_move(2, 0, Side::Bottom);
+    pos.make_move(0, 1, Side::Left);
+    pos.make_move(0, 1, Side::Right);
+    pos.make_move(0, 2, Side::Right);
+    pos.make_move(1, 2, Side::Bottom);
+    pos.make_move(2, 2, Side::Right);
+    pos
+}

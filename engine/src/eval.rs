@@ -186,4 +186,28 @@ mod test {
             assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Right}));
         }
     }
+
+    #[test]
+    fn eval_ex3p1() {
+        let mut pos = ex3p1();
+        let (val, best_move) = eval(&mut pos);
+        let best_move = best_move.unwrap();
+        assert_eq!(3, val);
+        assert!(pos.moves_equivalent(best_move, Move{x: 2, y: 1, side: Side::Bottom}));
+
+        pos.make_move(2, 1, Side::Bottom);
+        let (val, best_move) = eval(&mut pos);
+        let best_move = best_move.unwrap();
+        assert_eq!(-3, val);
+        assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Bottom}));
+
+        pos.make_move(0, 0, Side::Bottom);
+        let (val, _) = eval(&mut pos);
+        assert_eq!(3, val);
+
+        pos.undo_move(0, 0, Side::Bottom);
+        pos.make_move(0, 2, Side::Left);
+        let (val, _) = eval(&mut pos);
+        assert_eq!(5, val);
+    }
 }
