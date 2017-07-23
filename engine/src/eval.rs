@@ -18,29 +18,84 @@
 */
 use game::{Move, Position, Side};
 use nimstring;
+use std::cmp;
 use std::collections::HashMap;
 use std::isize;
 
-// Evaluate a position given a set of moves to consider
-fn eval_moves(pos: &mut Position, moves: &Vec<Move>,
-              cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
+// Cache entries can be upper bounds, lower bounds or exact values
+enum CacheBound {
+    Upper,
+    Lower,
+    Exact,
+}
+
+// Evaluate a position.
+
+// This move returns the value of pos regardless of the current score.
+// We pass the score down so we can adjust alpha and beta properly as
+// we go.
+//
+// It is important to remember that if alpha-beta pruning occurs, the
+// value and best move returned by this function may not be correct:
+// the value is instead a lower bound which proves that this cannot be
+// an optimal node in the game tree.
+//
+// For more on this algorithm see https://en.wikipedia.org/wiki/Negamax
+fn eval_cache(pos: &mut Position,
+              score: isize, mut alpha: isize, mut beta: isize,
+              cache: &mut HashMap<usize, (isize, Move, CacheBound)>) -> (isize, Option<Move>) {
+    {
+        let cache_entry = cache.get(&pos.zhash());
+        match cache_entry {
+            Some(&(val, best_move, CacheBound::Exact)) => { return (val, Some(best_move)); },
+            Some(&(val, _, CacheBound::Lower)) => { alpha = cmp::max(alpha, val); },
+            Some(&(val, _, CacheBound::Upper)) => { beta = cmp::min(beta, val); },
+            None => {},
+        }
+        if let Some(&(val, best_move, _)) = cache_entry {
+            if alpha >= beta {
+                return (val, Some(best_move));
+            }
+        }
+    }
+
+    let moves = moves_to_consider(pos);
     if moves.is_empty() {
         return (0, None);
     }
+    let alpha_orig = alpha;
     let mut value = isize::MIN;
     let mut best_move = moves[0];
-    for &m in moves {
+    for &m in &moves {
         let outcome = pos.make_move(m.x, m.y, m.side);
-        let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
-        let (next_val, _) = eval_cache(pos, cache);
-        let sub_val = (outcome.coins_captured as isize) + sign * next_val;
+        let captures = outcome.coins_captured as isize;
+        let (sign, next_alpha, next_beta) = if captures > 0 {
+            (1, alpha, beta)
+        } else {
+            (-1, -beta, -alpha)
+        };
+        let (next_val, _) = eval_cache(pos, score + captures, next_alpha, next_beta, cache);
         pos.undo_move(m.x, m.y, m.side);
-        if sub_val > value {
-            value = sub_val;
+        let next_val = captures + sign * next_val;
+        if next_val > value {
+            value = next_val;
             best_move = m;
         }
+        let alpha = cmp::max(score + next_val, alpha);
+        if alpha >= beta {
+            break;
+        }
     }
-    cache.insert(pos.zhash(), (value, best_move));
+
+    // TODO: Can we ever have both upper and lower bounds for the same position trampling each other here?
+    let cache_bound = if value <= alpha_orig {
+        CacheBound::Upper
+    } else if value >= beta {
+        CacheBound::Lower
+    } else {
+        CacheBound::Exact
+    };
+    cache.insert(pos.zhash(), (value, best_move, cache_bound));
     (value, Some(best_move))
 }
 
@@ -88,6 +143,7 @@ fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
 
     // Consider only capturing all and double-dealing in the loony case
     // TODO: Use other canonical play results to further reduce the set of moves considered
+    // TODO: Try to sort the moves by likely descending strength, as this increases pruning effectiveness
     if is_loony {
         let capture = capture.unwrap();
         let ddeal_move = find_ddeal_move(pos, capture);
@@ -97,21 +153,12 @@ fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
     }
 }
 
-fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
-    // TODO: Use alpha-beta pruning
-    if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
-        return (val, Some(best_move));
-    }
-
-    let moves = moves_to_consider(pos);
-    eval_moves(pos, &moves, cache)
-}
-
 // Calculate the value function of a given position and a move which achieves that value
 pub fn eval(pos: &Position) -> (isize, Option<Move>) {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
-    eval_cache(&mut pos, &mut cache)
+    let max_score = (pos.width() * pos.height()) as isize;
+    eval_cache(&mut pos, 0, -max_score, max_score, &mut cache)
 }
 
 #[cfg(test)]
@@ -210,4 +257,15 @@ mod test {
         let (val, _) = eval(&mut pos);
         assert_eq!(5, val);
     }
+
+//    #[test]
+//    fn eval_p50() {
+//        let mut pos = p50();
+//        let (val, best_move) = eval(&mut pos);
+//        let best_move = best_move.unwrap();
+//        assert_eq!(4, val);
+//        assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 3, side: Side::Right})
+//                || pos.moves_equivalent(best_move, Move{x: 0, y: 3, side: Side::Bottom})
+//                || pos.moves_equivalent(best_move, Move{x: 0, y: 3, side: Side::Left}));
+//    }
 }
