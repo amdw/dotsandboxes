@@ -18,6 +18,7 @@ along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 extern crate rand;
 extern crate regex;
+extern crate time;
 
 pub mod game;
 pub mod nimstring;

@@ -20,9 +20,11 @@
 use game::{Move, Position, Side};
 use nimstring;
 use eval;
+
 use std::io::{self, BufRead};
 use std::fs::File;
 use regex::{Regex, Captures};
+use time;
 
 #[derive(PartialEq)]
 #[derive(Debug)]
@@ -151,9 +153,15 @@ fn main_loop_from(pos: &mut Position) {
     loop {
         println!("{}", pos);
         let command = get_next_command();
+        let start_time = time::precise_time_s();
         command.execute(pos);
+        let end_time = time::precise_time_s();
         if command == Command::Quit {
             break;
+        }
+        let elapsed = end_time - start_time;
+        if elapsed >= 0.1 {
+            println!("({:.1} seconds)", end_time - start_time);
         }
         println!();
     }
