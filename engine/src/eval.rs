@@ -98,7 +98,6 @@ fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
 }
 
 fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
-    // TODO: Use alpha-beta pruning
     if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
         return (val, Some(best_move));
     }
