@@ -166,6 +166,10 @@ mod test {
     use eval::*;
     use examples::*;
 
+    use rand::{Rng, SeedableRng, StdRng};
+    use std::cmp;
+    use time;
+
     #[test]
     fn eval_chain() {
         for i in 1..10 {
@@ -273,6 +277,78 @@ mod test {
         let (val, _) = eval(&mut pos);
         assert_eq!(-expected_val, val);
     }
+
+    // For use in generative tests
+    fn make_random_pos(r: &mut StdRng) -> Position {
+        let width: usize = r.gen_range(1, 3);
+        let height: usize = r.gen_range(1, 3);
+        let mut pos = Position::new_game(width, height);
+        let mut moves = pos.legal_moves();
+        r.shuffle(moves.as_mut_slice());
+        let move_count = r.gen_range(0, moves.len() + 1);
+        for i in 0..move_count {
+            let m = moves[i];
+            pos.make_move(m.x, m.y, m.side);
+        }
+        pos
+    }
+
+    // Dumb evaluation algorithm to compare to optimised one
+    fn naive_minimax(pos: &mut Position) -> isize {
+        let moves = pos.legal_moves();
+        if moves.is_empty() {
+            return 0;
+        }
+        let mut result = isize::MIN;
+        for m in &moves {
+            let outcome = pos.make_move(m.x, m.y, m.side);
+            let captures = outcome.coins_captured as isize;
+            let m_val = if captures > 0 {
+                captures + naive_minimax(pos)
+            } else {
+                -naive_minimax(pos)
+            };
+            pos.undo_move(m.x, m.y, m.side);
+            result = cmp::max(result, m_val);
+        }
+        result
+    }
+
+    #[test]
+    fn matches_naive_minimax() {
+        let test_time_s = 10 as f64;
+        let seed: &[_] = &[1234];
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut i = 0;
+        let start_time = time::precise_time_s();
+        loop {
+            let mut pos = make_random_pos(&mut r);
+            let expected_val = naive_minimax(&mut pos);
+            let (val, best_move) = eval(&mut pos);
+            assert_eq!(expected_val, val, "Position {} value matches naive minimax", i);
+
+            if !pos.is_end_of_game() {
+                let best_move = best_move.unwrap();
+                let outcome = pos.make_move(best_move.x, best_move.y, best_move.side);
+                let captures = outcome.coins_captured as isize;
+                let (next_val, _) = eval(&mut pos);
+                let expected_next_val = if captures > 0 {
+                    expected_val - captures
+                } else {
+                    -expected_val
+                };
+                assert_eq!(expected_next_val, next_val);
+            }
+
+            let elapsed = time::precise_time_s() - start_time;
+            if elapsed >= test_time_s {
+                break;
+            }
+            i += 1;
+        }
+    }
+
+    // TODO: Test that rotations and reflections do not affect the evaluation
 
 //    #[test]
 //    fn eval_p50() {
