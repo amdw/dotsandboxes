@@ -69,12 +69,12 @@ fn eval_cache(pos: &mut Position,
     for &m in &moves {
         let outcome = pos.make_move(m.x, m.y, m.side);
         let captures = outcome.coins_captured as isize;
-        let (sign, next_alpha, next_beta) = if captures > 0 {
-            (1, alpha, beta)
+        let (sign, next_alpha, next_beta, next_score) = if captures > 0 {
+            (1, alpha, beta, score + captures)
         } else {
-            (-1, -beta, -alpha)
+            (-1, -beta, -alpha, -score)
         };
-        let (next_val, _) = eval_cache(pos, score + captures, next_alpha, next_beta, cache);
+        let (next_val, _) = eval_cache(pos, next_score, next_alpha, next_beta, cache);
         pos.undo_move(m.x, m.y, m.side);
         let next_val = captures + sign * next_val;
         if next_val > value {
