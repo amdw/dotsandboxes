@@ -171,7 +171,12 @@ mod test {
         for i in 1..10 {
             let mut chain = make_chain(i);
             let (val, _) = eval(&mut chain);
-            assert_eq!(-(i as isize), val);
+            let expected_val = -(i as isize);
+            assert_eq!(expected_val, val, "Closed {}-chain", i);
+            chain.make_move(0, 0, Side::Left);
+            let (val, best_move) = eval(&mut chain);
+            assert_eq!(-expected_val, val, "Opened {}-chain", i);
+            assert!(chain.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
         }
     }
 
@@ -182,7 +187,12 @@ mod test {
         for i in 2..10 {
             let mut pos = double_chain(i);
             let (val, _) = eval(&mut pos);
-            assert_eq!(4 - 2*(i as isize), val, "Evaluation of double chain length {}", i);
+            let expected_val = 4 - 2*(i as isize);
+            assert_eq!(expected_val, val, "Evaluation of double chain length {}", i);
+            pos.make_move(0, 0, Side::Left);
+            let (val, best_move) = eval(&mut pos);
+            assert_eq!(-expected_val, val, "Evaluation of opened double chain length {}", i);
+            assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
         }
     }
 
@@ -218,19 +228,11 @@ mod test {
         for i in 2..8 {
             let mut pos = double_loop(i);
             let (val, _) = eval(&mut pos);
-            assert_eq!(8 - 4*(i as isize), val, "Evaluation of double loop width {}", i);
-        }
-    }
-
-    #[test]
-    fn eval_open_chain() {
-        for i in 2..8 {
-            let mut pos = make_chain(i);
-            pos.make_move(0, 0, Side::Left);
-            let (val, best_move) = eval(&mut pos);
-            assert_eq!(i as isize, val, "Evaluation of open {}-chain", i);
-            let best_move = best_move.unwrap();
-            assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Right}));
+            let expected_val = 8 - 4*(i as isize);
+            assert_eq!(expected_val, val, "Evaluation of double loop width {}", i);
+            pos.make_move(0, 0, Side::Right);
+            let (val, _) = eval(&mut pos);
+            assert_eq!(-expected_val, val, "Evaluation of opened double loop width {}", i);
         }
     }
 
