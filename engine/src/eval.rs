@@ -260,6 +260,20 @@ mod test {
         assert_eq!(5, val);
     }
 
+    #[test]
+    fn eval_ex3p12() {
+        let mut pos = ex3p12();
+        let (val, best_move) = eval(&mut pos);
+        let best_move = best_move.unwrap();
+        let expected_val = 9;
+        assert_eq!(expected_val, val);
+        assert!(pos.moves_equivalent(best_move, Move{x: 4, y: 0, side: Side::Bottom}));
+
+        pos.make_move(4, 0, Side::Bottom);
+        let (val, _) = eval(&mut pos);
+        assert_eq!(-expected_val, val);
+    }
+
 //    #[test]
 //    fn eval_p50() {
 //        let mut pos = p50();
