@@ -31,7 +31,7 @@ vc.tex:
 	bash vc -m
 
 pylint:
-	python3-pylint *.py
+	pylint-3 *.py
 
 clean:
 	-rm -v *.pdf* *.svg *.pyc vc.tex *.log *.aux *.toc
