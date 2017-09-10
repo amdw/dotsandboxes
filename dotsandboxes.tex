@@ -232,14 +232,14 @@ from playing $m$, and
 \begin{equation*}
   I_m =
   \begin{cases}
-    -1 & \text{if } c_m = 0,\\
-    1 & \text{if } c_m > 0
+    1 & \text{if $m$ ends with a capture},\\
+    -1 & \text{otherwise}
   \end{cases}
 \end{equation*}
 then $$V(P) = \max_{m \in \mathcal{M}_P}(c_m + I_mV(P_m))$$
 
 The indicator $I_m$ is required to take care of the fact that the
-player to move in $P_m$ depends on whether $m$ captured any coins.
+player to move in $P_m$ depends on whether $m$ ends with a capture.
 
 This definition may feel a little awkward, but it is helpful when, for
 example, comparing a sequence of moves which terminates the first
