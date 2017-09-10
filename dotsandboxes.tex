@@ -886,6 +886,54 @@ For larger $k$, the oscillations as $i$ is increased are even larger,
 as the significance of who wins the $k$-chain becomes greater. For
 example $V(S_{i,10})$ is $-10$ for even $i$ and $+8$ for odd $i$.
 
+\subsection{Summary}
+
+The concepts in this section are absolutely central to dots-and-boxes
+strategy.
+
+\emph{Double-dealing moves} sacrifice a small number of coins (two on
+a chain, four on a loop) to force the opponent to play first in the
+rest of the position.
+
+If a double-dealing move is available, it is also possible to capture
+all available coins and play first in the rest of the position
+yourself. The ability to choose freely between these two options is
+very powerful, allowing the player to capture at least half the
+remaining coins in the position if exercised correctly.
+
+A \emph{loony position} is one where a double-dealing move is
+possible, and a \emph{loony move} is a move resulting in a loony
+position. Many of the more advanced aspects of dots-and-boxes strategy
+revolve around trying to avoid making a loony move, or forcing the
+opponent to do so. The only way a player can win the game after making
+a loony move is if he already has a large enough lead to outweigh the
+coins his opponent can win from the resulting loony position.
+
+A \emph{long} chain or loop is one which can only be opened by a loony
+move. A \emph{very-long} chain or loop is one with enough coins that
+when it is opened, a double-dealing move can be played without net
+loss.
+
+In a non-loony position, any available coins can always be captured
+immediately, without further analysis. In a loony position, any
+available coins other than the two or four required to play a
+double-dealing move can similarly always be captured.
+
+A \emph{half-hearted handout}, being a type of loony move, is never
+better than the corresponding (non-loony) \emph{hard-hearted handout},
+and opening a longer independent chain or loop is never better than
+opening a shorter one.
+
+Once a loony move has been made, the correct strategy is to maintain
+control (by avoiding loony moves of your own) to the end of the game,
+provided there is enough potential profit in very-long chains and
+loops to outweigh any coins sacrificed, which is normally the case in
+practice.
+
+If there are not enough coins in very-long structures to outweigh
+sacrifices for control, the analysis is more complex, sometimes
+requiring loony moves.
+
 \section{Middlegame fundamentals}
 
 Having established some basic principles of endgame play, we now
