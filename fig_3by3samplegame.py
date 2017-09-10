@@ -34,20 +34,22 @@ def main():
     pos.move_highlight_and_add(2, 1, "top")
 
     pos.move_highlight_and_add(1, 1, "right")
-    pos.move_highlight_and_add(0, 0, "top")
-    pos.move_highlight_and_add(1, 0, "right")
-
-    pos.move_highlight_and_add(0, 1, "bottom")
-    pos.move_highlight_and_add(2, 2, "bottom")
-    pos.move_highlight_and_add(2, 2, "right")
-    pos.move_highlight_and_add(2, 0, "top")
-    pos.move_highlight_and_add(2, 0, "right")
-    pos.move_highlight_and_add(0, 2, "left")
-    pos.move_highlight_and_add(0, 2, "bottom")
-    pos.move_highlight_and_add(0, 0, "right")
-    pos.move_highlight_and_add(0, 0, "left")
     pos.move_highlight_and_add(1, 0, "top")
     pos.move_highlight_and_add(0, 1, "left")
+    pos.move_highlight_and_add(0, 0, "top")
+
+    pos.move_highlight_and_add(0, 0, "right")
+    pos.move_highlight_and_add(0, 0, "left")
+    pos.move_highlight_and_add(1, 0, "right")
+    pos.move_highlight_and_add(0, 2, "left")
+
+    pos.move_highlight_and_add(2, 0, "top")
+    pos.move_highlight_and_add(2, 0, "right")
+    pos.move_highlight_and_add(2, 2, "bottom")
+    pos.move_highlight_and_add(2, 2, "right")
+
+    pos.move_highlight_and_add(0, 2, "bottom")
+    pos.move_highlight_and_add(0, 2, "top")
     pos.move_highlight_and_add(0, 1, "right")
 
     layout.render()
