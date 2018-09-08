@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -232,12 +232,18 @@ mod test {
 
     // For use in generative tests
     fn make_random_pos(r: &mut StdRng) -> Position {
-        let width: usize = r.gen_range(1, 3);
-        let height: usize = r.gen_range(1, 3);
+        let width: usize = r.gen_range(1, 4);
+        let height: usize = r.gen_range(1, 4);
         let mut pos = Position::new_game(width, height);
         let mut moves = pos.legal_moves();
         r.shuffle(moves.as_mut_slice());
-        let move_count = r.gen_range(0, moves.len() + 1);
+        let max_remaining_moves = 9; // Limits running cost of naive minimax
+        let min_move_count: usize = if moves.len() > max_remaining_moves {
+            moves.len() - max_remaining_moves
+        } else {
+            0
+        };
+        let move_count = r.gen_range(min_move_count, moves.len() + 1);
         for i in 0..move_count {
             let m = moves[i];
             pos.make_move(m.x, m.y, m.side);
@@ -269,7 +275,8 @@ mod test {
     #[test]
     fn matches_naive_minimax() {
         let test_time_s = 10 as f64;
-        let seed: &[_] = &[1234];
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 123;
         let mut r: StdRng = SeedableRng::from_seed(seed);
         let mut i = 0;
         let start_time = time::precise_time_s();

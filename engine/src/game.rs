@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -409,7 +409,9 @@ struct ZHash {
 
 impl ZHash {
     fn new(width: usize, height: usize) -> ZHash {
-        let seed: &[_] = &[width, height];
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = width as u8;
+        seed[1] = height as u8;
         let mut r: StdRng = SeedableRng::from_seed(seed);
         let mut top_strings: Vec<usize> = Vec::with_capacity(width);
         let mut left_strings: Vec<usize> = Vec::with_capacity(height);
