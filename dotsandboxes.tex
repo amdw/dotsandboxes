@@ -108,16 +108,20 @@ Dots-and-boxes is a special case of a more general game called
     player who has taken more coins.
 \end{enumerate}
 
-The equivalences between strings-and-coins and dots-and-boxes are as
-follows:
+Specifically, the $m \times n$ game of dots-and-boxes is the special
+case of strings-and-coins where $mn$ coins are connected in a
+rectangular $m \times n$ grid, with the outer coins connected to the
+ground (the four corner coins having two ground links each, and the
+other edge coins having one ground link each). The equivalences
+between the two games are as follows:
 
 \begin{itemize}
-\item A coin in strings-and-coins is equivalent to a box in
-  dots-and-boxes (and the capture of a coin is equivalent to the
-  completion of a box).
-\item A string is equivalent to a place where a line can be drawn
-  (horizontal strings are equivalent to vertical lines and vice
-  versa).
+\item A box in dots-and-boxes is equivalent to a coin in
+  strings-and-coins (and the completion of a box is equivalent to the
+  capture of a coin).
+\item A place where a line can be drawn in dots-and-boxes is
+  equivalent to a string in strings-and-coins (vertical lines are
+  equivalent to horizontal strings and vice versa).
 \item Lines at the edge of a dots-and-boxes position are equivalent to
   ground strings, and internal lines are equivalent to strings
   connecting two coins.
@@ -137,29 +141,25 @@ shown, along with the score following that move.
   \label{samplesnc}
 \end{figure*}
 
-For those familiar with mathematical graph theory, a strings-and-coins
-position forms a \emph{multigraph}, with the vertices being the coins
-and the edges being the strings. The ground can be thought of as a
-special vertex which cannot be captured. (A position is a multigraph
-rather than an ordinary graph because a coin can have more than one
-string connecting it to the ground, or indeed another coin.)
-
-The $m \times n$ game of dots-and-boxes is the special case of
-strings-and-coins where $mn$ coins are connected in a rectangular $m
-\times n$ grid, with the outer coins connected to the ground (the four
-corner coins having two ground links each, and the other edge coins
-having one ground link each).
-
 Strings-and-coins is a more general game than dots-and-boxes, because
 in strings-and-coins it is possible to start with a position of any
 shape and connectivity whatsoever, whereas in dots-and-boxes, the
 ``coins'' are fixed in a rectangular grid, and all strings have length
 1 and are either vertical or horizontal. For example, in
 strings-and-coins it is possible to have a loop of three coins,
-whereas this is not possible in dots-and-boxes.
+whereas this is not possible in dots-and-boxes. This greater
+generality means that anything we learn about strings-and-coins will
+also apply to dots-and-boxes.
 
-Anything we learn about strings-and-coins will also apply to
-dots-and-boxes; we will therefore mostly focus our attention on
+Strings-and-coins is also of interest because it helps to focus the
+eye on the important aspects of positions, namely the coins and the
+connectivity between them, and to abstract away unimportant details
+which do not affect the play, such as the orientation and shape of
+chains or loops of coins. In the dots-and-boxes representation, by
+contrast, the eye tends to be drawn towards the lines, while the
+important things (the boxes and their connectivity) are empty space.
+
+For these reasons, we will mostly focus our attention on
 strings-and-coins, occasionally making reference to dots-and-boxes
 where something we learn has specific implications there.
 
@@ -2114,8 +2114,8 @@ the time of writing, of being available on Amazon Kindle!)
 
 \section*{Copyright notice}
 
-This paper is Copyright 2016 Andrew Medworth, and is licensed under a
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+This paper is Copyright 2016--2018 Andrew Medworth, and is licensed
+under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 International
 License\footnote{\texttt{http://creativecommons.org/licenses/by-nc-sa/4.0/}}.
 
