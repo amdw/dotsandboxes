@@ -214,52 +214,11 @@ according to whether $P$ is favourable or unfavourable for the player
 to move. $V(P)$ is also known as the \emph{minimax} value of $P$ and
 $V$ is the \emph{value function} of strings-and-coins.
 
-\subsection*{Computing the value function}
-
-We will often want to prove theorems about the value of certain
-positions, so it is important to consider how to calculate such
-values.
-
-The definition of the value function is recursive. The value of an
-empty position is of course zero, and this will be the base case for
-the recursion. The value of a non-empty position is the number of
-coins captured by the best move, plus the value of the resulting
-position from the perspective of the player moving.
-
-The simplest way of defining this is in terms of all possible turns,
-i.e.\ all possible sequences of moves from $P$ which hand over control
-to the opponent (which of course must consist of zero or more captures
-followed by a non-capture or the end of the game).
-
-Let $\mathcal{T}(P)$ be the set of legal turns starting from position
-$P$. If each turn $t \in \mathcal{T}(P)$ captures $c_t$ coins ($c_t \ge 0$)
-and results in position $P_t$, then $$V(P) = \max_{t \in \mathcal{T}(P)}(c_t - V(P_t))$$
-with a turn being the optimal choice if and only if it achieves this
-maximum. The minus sign is because $P_t$ will by definition occur
-with the opponent to move.
-
-More generally, if $\mathcal{M}_P$ is a set of sequences of moves by
-the same player from $P$ which are jointly exhaustive
-(i.e.\ $\mathcal{M}_P$ covers all legal possibilities from $P$), and
-for each such sequence $m \in \mathcal{M}_P$, $c_m$ is the number of
-coins captured by $m$ ($m \ge 0$), $P_m$ is the position resulting
-from playing $m$, and
-\begin{equation*}
-  I_m =
-  \begin{cases}
-    1 & \text{if $m$ ends with a capture},\\
-    -1 & \text{otherwise}
-  \end{cases}
-\end{equation*}
-then $$V(P) = \max_{m \in \mathcal{M}_P}(c_m + I_mV(P_m))$$
-
-The indicator $I_m$ is required to take care of the fact that the
-player to move in $P_m$ depends on whether $m$ ends with a capture.
-
-This definition may feel a little awkward, but it is helpful when, for
-example, comparing a sequence of moves which terminates the first
-player's turn with a sequence which does not. We will see this
-definition of the value function in action later.
+The value function can be computed recursively: any terminal position
+has value zero, and the value of a non-terminal position is the
+maximum across all legal moves of any coins captured by the move plus
+the value of the resulting position (from the perspective of the
+correct player).
 
 \section{Endgame fundamentals}\label{endgamesection}
 
