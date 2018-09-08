@@ -1,6 +1,7 @@
 # Dots-and-boxes
 
-This repository is dedicated to the dots-and-boxes game.
+This repository is dedicated to [the dots-and-boxes
+game](https://en.wikipedia.org/wiki/Dots_and_Boxes).
 
 The main thing here is a draft of a paper I am writing on the game. A
 PDF version of this paper is available
