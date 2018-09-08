@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -298,6 +298,13 @@ mod tests {
         assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Bottom}));
         assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Left}));
         assert!(zero_moves.contains(&&Move{x: 0, y: 3, side: Side::Right}));
+    }
+
+    #[test]
+    fn icelandic_value_2by2() {
+       let pos = icelandic_game(2, 2);
+       let (val, _per_move) = calc_value_with_moves(&pos);
+       assert_eq!(Value::Nimber(2), val);
     }
 
     #[test]

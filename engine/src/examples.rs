@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -14,7 +14,7 @@
     GNU Affero General Public License for more details.
 
     You should have received a copy of the GNU Affero General Public License
-along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
+    along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use game::{Position, Side};
 
@@ -72,6 +72,17 @@ pub fn p50() -> Position {
     pos.make_move(1, 2, Side::Bottom);
     pos.make_move(2, 2, Side::Right);
     pos.make_move(2, 3, Side::Right);
+    pos
+}
+
+pub fn icelandic_game(width: usize, height: usize) -> Position {
+    let mut pos = Position::new_game(width, height);
+    for y in 0..height {
+        pos.make_move(0, y, Side::Left);
+    }
+    for x in 0..width {
+        pos.make_move(x, 0, Side::Top);
+    }
     pos
 }
 
