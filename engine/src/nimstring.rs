@@ -308,6 +308,21 @@ mod tests {
     }
 
     #[test]
+    fn ex6p1_value() {
+       let mut pos = ex6p2();
+       pos.make_move(1, 1, Side::Left); // Same position but rotated
+       let (val, _per_move) = calc_value_with_moves(&pos);
+       assert_eq!(Value::Nimber(3), val);
+    }
+
+    #[test]
+    fn ex6p2_value() {
+       let pos = ex6p2();
+       let (val, _per_move) = calc_value_with_moves(&pos);
+       assert_eq!(Value::Nimber(4), val);
+    }
+
+    #[test]
     fn conditional_looniness() {
         let mut pos = make_chain(5);
         assert_eq!(true, would_be_loony(&mut pos, 0, 0, Side::Left));

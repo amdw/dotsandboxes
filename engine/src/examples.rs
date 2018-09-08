@@ -173,3 +173,16 @@ pub fn ex3p12() -> Position {
     pos.make_move(4, 4, Side::Right);
     pos
 }
+
+// Create Exercise 6.2 from Berlekamp's book
+pub fn ex6p2() -> Position {
+    let mut pos = Position::new_game(3, 2);
+    for x in 0..3 {
+        pos.make_move(x, 0, Side::Top);
+    }
+    for y in 0..2 {
+        pos.make_move(2, y, Side::Right);
+    }
+    pos.make_move(1, 0, Side::Bottom);
+    pos
+}
