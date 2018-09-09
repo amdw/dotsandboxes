@@ -5,7 +5,7 @@ game](https://en.wikipedia.org/wiki/Dots_and_Boxes).
 
 The main thing here is a draft of a paper I am writing on the game. A
 PDF version of this paper is available
-[here](https://drive.google.com/file/d/0B6taft2ONgxhaXRiNG4xbjhfOE0/view?usp=sharing),
+[here](https://drive.google.com/file/d/1Dbq7iX3e1XMhzlHDKxCzgZLkPZItVVLd/view?usp=sharing),
 though this may not always be up-to-date with the head of this
 repository (the commit used to generate the PDF may be found in the
 footnote at the end).
