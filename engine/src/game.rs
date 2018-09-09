@@ -191,7 +191,7 @@ impl Position {
     // Make a given move on the board, and indicate the outcome.
     pub fn make_move(self: &mut Position, x: usize, y: usize, s: Side) -> MoveOutcome {
         if !self.is_legal_move(x, y, s) {
-            panic!(format!("Illegal move x = {}, y = {}, s = {:?}", x, y, s));
+            panic!(format!("Illegal move x = {}, y = {}, s = {:?}, pos:\n{}", x, y, s, self));
         }
         match (x, y, s) {
             (0, y, Side::Left) => self.left_strings[y] = false,

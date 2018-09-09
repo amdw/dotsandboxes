@@ -323,6 +323,14 @@ mod tests {
     }
 
     #[test]
+    fn ex7p2_value() {
+       let pos = ex7p2();
+       let (val, per_move) = calc_value_with_moves(&pos);
+       assert_eq!(Value::Nimber(6), val);
+       assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 4, y: 3, side: Side::Right}).unwrap());
+    }
+
+    #[test]
     fn conditional_looniness() {
         let mut pos = make_chain(5);
         assert_eq!(true, would_be_loony(&mut pos, 0, 0, Side::Left));

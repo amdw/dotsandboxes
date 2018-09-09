@@ -186,3 +186,28 @@ pub fn ex6p2() -> Position {
     pos.make_move(1, 0, Side::Bottom);
     pos
 }
+
+// Create Exercise 7.2 from Berlekamp's book
+pub fn ex7p2() -> Position {
+    let mut pos = Position::new_game(5, 5);
+    pos.make_move(0, 0, Side::Right);
+    pos.make_move(1, 0, Side::Right);
+    pos.make_move(3, 0, Side::Right);
+    pos.make_move(0, 1, Side::Left);
+    pos.make_move(0, 1, Side::Right);
+    pos.make_move(3, 1, Side::Right);
+    pos.make_move(1, 1, Side::Bottom);
+    pos.make_move(2, 1, Side::Bottom);
+    pos.make_move(3, 1, Side::Bottom);
+    pos.make_move(0, 2, Side::Bottom);
+    pos.make_move(0, 2, Side::Right);
+    pos.make_move(2, 2, Side::Bottom);
+    pos.make_move(3, 2, Side::Right);
+    pos.make_move(4, 2, Side::Right);
+    pos.make_move(1, 3, Side::Right);
+    pos.make_move(3, 3, Side::Right);
+    pos.make_move(3, 3, Side::Bottom);
+    pos.make_move(1, 4, Side::Right);
+    pos.make_move(2, 4, Side::Right);
+    pos
+}
