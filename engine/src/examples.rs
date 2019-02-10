@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -18,6 +18,7 @@
 */
 use game::{Position, Side};
 
+// Top of example from page 50 of Berlekamp's book
 pub fn p50_top() -> Position {
     let mut pos = Position::new_game(5, 2);
     pos.make_move(0, 0, Side::Top);
@@ -34,6 +35,7 @@ pub fn p50_top() -> Position {
     pos
 }
 
+// Bottom-left of example from page 50 of Berlekamp's book
 pub fn p50_bottomleft() -> Position {
     let mut pos = Position::new_game(3, 2);
     pos.make_move(0, 0, Side::Top);
@@ -45,6 +47,7 @@ pub fn p50_bottomleft() -> Position {
     pos
 }
 
+// Bottom-right of example from page 50 of Berlekamp's book
 pub fn p50_bottomright() -> Position {
     let mut pos = Position::new_game(2, 2);
     pos.make_move(0, 0, Side::Top);
@@ -54,6 +57,7 @@ pub fn p50_bottomright() -> Position {
     pos
 }
 
+// Example from page 50 of Berlekamp's book
 pub fn p50() -> Position {
     let mut pos = Position::new_game(5, 4);
     pos.make_move(0, 0, Side::Top);
