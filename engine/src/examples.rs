@@ -16,12 +16,12 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, Side, CompoundPosition};
+use game::{SimplePosition, Side, CompoundPosition};
 use std::iter;
 
 // Top of example from page 50 of Berlekamp's book
-pub fn p50_top() -> Position {
-    let mut pos = Position::new_game(5, 2);
+pub fn p50_top() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(5, 2);
     pos.make_move(0, 0, Side::Top);
     pos.make_move(1, 0, Side::Top);
     pos.make_move(0, 0, Side::Left);
@@ -37,8 +37,8 @@ pub fn p50_top() -> Position {
 }
 
 // Bottom-left of example from page 50 of Berlekamp's book
-pub fn p50_bottomleft() -> Position {
-    let mut pos = Position::new_game(3, 2);
+pub fn p50_bottomleft() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(3, 2);
     pos.make_move(0, 0, Side::Top);
     pos.make_move(1, 0, Side::Top);
     pos.make_move(2, 0, Side::Top);
@@ -49,8 +49,8 @@ pub fn p50_bottomleft() -> Position {
 }
 
 // Bottom-right of example from page 50 of Berlekamp's book
-pub fn p50_bottomright() -> Position {
-    let mut pos = Position::new_game(2, 2);
+pub fn p50_bottomright() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(2, 2);
     pos.make_move(0, 0, Side::Top);
     pos.make_move(1, 0, Side::Top);
     pos.make_move(0, 0, Side::Left);
@@ -59,8 +59,8 @@ pub fn p50_bottomright() -> Position {
 }
 
 // Example from page 50 of Berlekamp's book
-pub fn p50() -> Position {
-    let mut pos = Position::new_game(5, 4);
+pub fn p50() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(5, 4);
     pos.make_move(0, 0, Side::Top);
     pos.make_move(0, 0, Side::Left);
     pos.make_move(1, 0, Side::Top);
@@ -80,8 +80,8 @@ pub fn p50() -> Position {
     pos
 }
 
-pub fn icelandic_game(width: usize, height: usize) -> Position {
-    let mut pos = Position::new_game(width, height);
+pub fn icelandic_game(width: usize, height: usize) -> SimplePosition {
+    let mut pos = SimplePosition::new_game(width, height);
     for y in 0..height {
         pos.make_move(0, y, Side::Left);
     }
@@ -92,8 +92,8 @@ pub fn icelandic_game(width: usize, height: usize) -> Position {
 }
 
 // Construct a position consisting of a given number of equally-sized chains.
-pub fn multi_chains(chain_size: usize, chain_count: usize) -> Position {
-    let mut pos = Position::new_game(chain_size, chain_count);
+pub fn multi_chains(chain_size: usize, chain_count: usize) -> SimplePosition {
+    let mut pos = SimplePosition::new_game(chain_size, chain_count);
     for x in 0..chain_size {
         pos.make_move(x, 0, Side::Top);
         for y in 0..chain_count {
@@ -103,18 +103,18 @@ pub fn multi_chains(chain_size: usize, chain_count: usize) -> Position {
     pos
 }
 // Create a position consisting of a single horizontal chain of a given length.
-pub fn make_chain(length: usize) -> Position {
+pub fn make_chain(length: usize) -> SimplePosition {
     multi_chains(length, 1)
 }
 
 // Create a position consisting of two horizontal chains of a given length.
-pub fn double_chain(length: usize) -> Position {
+pub fn double_chain(length: usize) -> SimplePosition {
     multi_chains(length, 2)
 }
 
 // Create a position consisting of two loops of a given width.
-pub fn double_loop(width: usize) -> Position {
-    let mut pos = Position::new_game(width, 4);
+pub fn double_loop(width: usize) -> SimplePosition {
+    let mut pos = SimplePosition::new_game(width, 4);
     for i in 0..width {
         pos.make_move(i, 0, Side::Top);
         pos.make_move(i, 1, Side::Bottom);
@@ -132,8 +132,8 @@ pub fn double_loop(width: usize) -> Position {
 }
 
 // Create Exercise 3.1 from Berlekamp's book
-pub fn ex3p1() -> Position {
-    let mut pos = Position::new_game(3, 3);
+pub fn ex3p1() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(3, 3);
     pos.make_move(0, 0, Side::Top);
     pos.make_move(0, 0, Side::Left);
     pos.make_move(1, 0, Side::Top);
@@ -148,8 +148,8 @@ pub fn ex3p1() -> Position {
 }
 
 // Create Exercise 3.12 from Berlekamp's book
-pub fn ex3p12() -> Position {
-    let mut pos = Position::new_game(5, 5);
+pub fn ex3p12() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(5, 5);
     for i in 0..5 {
         pos.make_move(i, 0, Side::Top);
     }
@@ -180,8 +180,8 @@ pub fn ex3p12() -> Position {
 }
 
 // Create Exercise 6.2 from Berlekamp's book
-pub fn ex6p2() -> Position {
-    let mut pos = Position::new_game(3, 2);
+pub fn ex6p2() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(3, 2);
     for x in 0..3 {
         pos.make_move(x, 0, Side::Top);
     }
@@ -193,8 +193,8 @@ pub fn ex6p2() -> Position {
 }
 
 // Create Exercise 7.2 from Berlekamp's book
-pub fn ex7p2() -> Position {
-    let mut pos = Position::new_game(5, 5);
+pub fn ex7p2() -> SimplePosition {
+    let mut pos = SimplePosition::new_game(5, 5);
     pos.make_move(0, 0, Side::Right);
     pos.make_move(1, 0, Side::Right);
     pos.make_move(3, 0, Side::Right);
@@ -220,7 +220,7 @@ pub fn ex7p2() -> Position {
 // Construct the one-long-chain multiple-three-chain positions from the paper.
 // The long chain is the 0th part, the 3-chains parts 1-n.
 pub fn one_long_multi_three(three_chain_count: usize, long_chain_size: usize) -> CompoundPosition {
-    let mut parts: Vec<Position> = Vec::with_capacity(three_chain_count + 1);
+    let mut parts: Vec<SimplePosition> = Vec::with_capacity(three_chain_count + 1);
     parts.push(make_chain(long_chain_size));
     parts.extend(iter::repeat(make_chain(3)).take(three_chain_count));
     CompoundPosition::new_game(parts)

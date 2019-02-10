@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -17,7 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use game::{Move, Position, Side};
+use game::{Move, SimplePosition, Side};
 use nimstring;
 use eval;
 
@@ -38,7 +38,7 @@ enum Command {
 }
 
 impl Command {
-    fn execute(self: &Command, pos: &mut Position) {
+    fn execute(self: &Command, pos: &mut SimplePosition) {
         match self {
             &Command::MakeMove(m) => {
                 if pos.is_legal_move(m.x, m.y, m.side) {
@@ -149,7 +149,7 @@ fn get_next_command() -> Command {
     }
 }
 
-fn main_loop_from(pos: &mut Position) {
+fn main_loop_from(pos: &mut SimplePosition) {
     loop {
         println!("{}", pos);
         let command = get_next_command();
@@ -169,7 +169,7 @@ fn main_loop_from(pos: &mut Position) {
 
 // Enter the main loop of the CLI from the start of the game
 pub fn main_loop_start(width: usize, height: usize) {
-    main_loop_from(&mut Position::new_game(width, height));
+    main_loop_from(&mut SimplePosition::new_game(width, height));
 }
 
 // Execute a given file of commands (which must have the dimensions of the position on the first line)
@@ -183,7 +183,7 @@ pub fn main_loop_file(filename: &str) {
     let size_caps = size_re.captures(&size_spec).expect(&format!("Could not read board size from [{}]", size_spec));
     let width = size_caps[1].parse::<usize>().unwrap();
     let height = size_caps[2].parse::<usize>().unwrap();
-    let mut pos = Position::new_game(width, height);
+    let mut pos = SimplePosition::new_game(width, height);
     for line in lines {
         let line = line.expect("Could not read line from file");
         if line.trim().len() == 0 {

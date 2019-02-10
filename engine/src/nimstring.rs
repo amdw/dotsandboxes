@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, Side, Move};
+use game::{SimplePosition, Side, Move};
 use splitter;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -53,7 +53,7 @@ impl fmt::Display for Value {
 }
 
 // If there is a coin connected to (x,y) on one of the given sides, return one such, else None.
-fn connected_coin(pos: &Position, x: usize, y: usize, sides: Vec<Side>) -> Option<(usize, usize, Side)> {
+fn connected_coin(pos: &SimplePosition, x: usize, y: usize, sides: Vec<Side>) -> Option<(usize, usize, Side)> {
     for &s in &sides {
         if pos.is_legal_move(x, y, s) {
             if let Some((nx, ny)) = pos.offset(x, y, s) {
@@ -65,7 +65,7 @@ fn connected_coin(pos: &Position, x: usize, y: usize, sides: Vec<Side>) -> Optio
 }
 
 // Indicate whether a given position is loony
-pub fn is_loony(pos: &Position) -> bool {
+pub fn is_loony(pos: &SimplePosition) -> bool {
     for x in 0..pos.width() {
         for y in 0..pos.height() {
             if pos.valency(x, y) != 1 {
@@ -96,7 +96,7 @@ pub fn is_loony(pos: &Position) -> bool {
 // Note that a move is loony iff it returns true here *and* it is not a capture.
 // A capture is never a loony move but can return true here (e.g. capturing
 // the first coin of an open 3-chain).
-pub fn would_be_loony(pos: &mut Position, x: usize, y: usize, s: Side) -> bool {
+pub fn would_be_loony(pos: &mut SimplePosition, x: usize, y: usize, s: Side) -> bool {
     pos.make_move(x, y, s);
     let result = is_loony(pos);
     pos.undo_move(x, y, s);
@@ -114,7 +114,7 @@ fn mex(s: HashSet<usize>) -> usize {
     }
 }
 
-fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
+fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Value {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
     if let Some(&v) = cache.get(&pos.zhash()) {
         return v;
@@ -162,7 +162,7 @@ fn calc_value(pos: &mut Position, cache: &mut HashMap<usize, Value>) -> Value {
 
 // Calculate the Nimstring value of a position, along with the values attained
 // by each of the legal moves.
-pub fn calc_value_with_moves(pos: &Position) -> (Value, HashMap<Move, Value>) {
+pub fn calc_value_with_moves(pos: &SimplePosition) -> (Value, HashMap<Move, Value>) {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
     let val = calc_value(&mut pos, &mut cache);

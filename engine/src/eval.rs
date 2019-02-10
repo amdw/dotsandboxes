@@ -16,13 +16,13 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Move, Position, Side};
+use game::{Move, SimplePosition, Side};
 use nimstring;
 use std::collections::HashMap;
 use std::isize;
 
 // Evaluate a position given a set of moves to consider
-fn eval_moves(pos: &mut Position, moves: &Vec<Move>,
+fn eval_moves(pos: &mut SimplePosition, moves: &Vec<Move>,
               cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
     if moves.is_empty() {
         return (0, None);
@@ -45,7 +45,7 @@ fn eval_moves(pos: &mut Position, moves: &Vec<Move>,
 }
 
 // Given a loony position and the capture, find the corresponding double-dealing move
-fn find_ddeal_move(pos: &Position, capture: Move) -> Move {
+fn find_ddeal_move(pos: &SimplePosition, capture: Move) -> Move {
     // (capture.x, capture.y) might be the valency-1 coin or the valency-2 one
     let (v2_x, v2_y, excl_side) = if pos.valency(capture.x, capture.y) == 1 {
         let (x, y) = pos.offset(capture.x, capture.y, capture.side).unwrap();
@@ -69,7 +69,7 @@ fn find_ddeal_move(pos: &Position, capture: Move) -> Move {
 }
 
 // Determine what moves deserve consideration in a given position
-fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
+fn moves_to_consider(pos: &mut SimplePosition) -> Vec<Move> {
     let legal_moves = pos.legal_moves();
 
     // If there are any captures which don't affect looniness, just go ahead and make those
@@ -97,7 +97,7 @@ fn moves_to_consider(pos: &mut Position) -> Vec<Move> {
     }
 }
 
-fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
+fn eval_cache(pos: &mut SimplePosition, cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
     if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
         return (val, Some(best_move));
     }
@@ -107,7 +107,7 @@ fn eval_cache(pos: &mut Position, cache: &mut HashMap<usize, (isize, Move)>) -> 
 }
 
 // Calculate the value function of a given position and a move which achieves that value
-pub fn eval(pos: &Position) -> (isize, Option<Move>) {
+pub fn eval(pos: &SimplePosition) -> (isize, Option<Move>) {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
     eval_cache(&mut pos, &mut cache)
@@ -233,10 +233,10 @@ mod test {
     }
 
     // For use in generative tests
-    fn make_random_pos(r: &mut StdRng) -> Position {
+    fn make_random_pos(r: &mut StdRng) -> SimplePosition {
         let width: usize = r.gen_range(1, 4);
         let height: usize = r.gen_range(1, 4);
-        let mut pos = Position::new_game(width, height);
+        let mut pos = SimplePosition::new_game(width, height);
         let mut moves = pos.legal_moves();
         moves.as_mut_slice().shuffle(r);
         let max_remaining_moves = 9; // Limits running cost of naive minimax
@@ -254,7 +254,7 @@ mod test {
     }
 
     // Dumb evaluation algorithm to compare to optimised one
-    fn naive_minimax(pos: &mut Position) -> isize {
+    fn naive_minimax(pos: &mut SimplePosition) -> isize {
         let moves = pos.legal_moves();
         if moves.is_empty() {
             return 0;
@@ -286,7 +286,7 @@ mod test {
             let mut pos = make_random_pos(&mut r);
             let expected_val = naive_minimax(&mut pos);
             let (val, best_move) = eval(&mut pos);
-            assert_eq!(expected_val, val, "Position {} value matches naive minimax", i);
+            assert_eq!(expected_val, val, "SimplePosition {} value matches naive minimax", i);
 
             if !pos.is_end_of_game() {
                 let best_move = best_move.unwrap();

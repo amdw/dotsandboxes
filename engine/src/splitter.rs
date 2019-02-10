@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,19 +16,19 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, Side};
+use game::{SimplePosition, Side};
 use std::cmp;
 use std::iter;
 
 // A fragment extracted from a larger position.
 pub struct PositionFragment {
-    pub pos: Position,
+    pub pos: SimplePosition,
     pub x_offset: usize,
     pub y_offset: usize,
 }
 
 // Depth-first search to find all coordinates which are part of the fragment including (x, y)
-fn search(pos: &Position, x: usize, y: usize,
+fn search(pos: &SimplePosition, x: usize, y: usize,
           visited: &mut Vec<Vec<bool>>, frag_coords: &mut Vec<(usize, usize)>) {
     visited[x][y] = true;
     frag_coords.push((x, y));
@@ -44,12 +44,12 @@ fn search(pos: &Position, x: usize, y: usize,
 }
 
 // Build a PositionFragment from a list of coordinates
-fn make_fragment(pos: &Position, coords: &Vec<(usize, usize)>) -> PositionFragment {
+fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> PositionFragment {
     let (x_left, x_right, y_top, y_bottom) = coords.iter().fold(
         (coords[0].0, coords[0].0, coords[0].1, coords[0].1),
         |(xl, xr, yt, yb), &(x, y)| (cmp::min(xl, x), cmp::max(xr, x), cmp::min(yt, y), cmp::max(yb, y))
     );
-    let mut frag_pos = Position::new_end_game(x_right - x_left + 1, y_bottom - y_top + 1);
+    let mut frag_pos = SimplePosition::new_end_game(x_right - x_left + 1, y_bottom - y_top + 1);
     for &(x, y) in coords {
         let (frag_x, frag_y) = (x - x_left, y - y_top);
         for side in Side::all() {
@@ -64,7 +64,7 @@ fn make_fragment(pos: &Position, coords: &Vec<(usize, usize)>) -> PositionFragme
 // Split a position into its independent fragments.
 // If the position is fully connected, the result will consist of a single element
 // representing the whole position.
-pub fn split(pos: &Position) -> Vec<PositionFragment> {
+pub fn split(pos: &SimplePosition) -> Vec<PositionFragment> {
     let mut visited: Vec<Vec<bool>> = Vec::with_capacity(pos.width());
     for _ in 0..pos.width() {
         visited.push(iter::repeat(false).take(pos.height()).collect());
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn split_unsplittable() {
-        let pos = Position::new_game(3, 3);
+        let pos = SimplePosition::new_game(3, 3);
         let parts = split(&pos);
         assert_eq!(1, parts.len());
         let frag = &parts[0];

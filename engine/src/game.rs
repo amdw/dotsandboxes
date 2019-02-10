@@ -104,7 +104,7 @@ impl fmt::Display for Move {
 // Position coordinates originate at the top left and are 0-based,
 // so x=1,y=2 is the second square in the third row.
 #[derive(Clone)]
-pub struct Position {
+pub struct SimplePosition {
     top_strings: Vec<bool>,
     left_strings: Vec<bool>,
     down_strings: Vec<Vec<bool>>,
@@ -112,18 +112,18 @@ pub struct Position {
     zhash: ZHash,
 }
 
-impl Position {
+impl SimplePosition {
     // Create a new dots-and-boxes position of a given size.
-    pub fn new_game(width: usize, height: usize) -> Position {
-        Position::make_position(width, height, true)
+    pub fn new_game(width: usize, height: usize) -> SimplePosition {
+        SimplePosition::make_position(width, height, true)
     }
 
     // Create a new dots-and-boxes position of a given size but with all moves completed.
-    pub fn new_end_game(width: usize, height: usize) -> Position {
-        Position::make_position(width, height, false)
+    pub fn new_end_game(width: usize, height: usize) -> SimplePosition {
+        SimplePosition::make_position(width, height, false)
     }
 
-    fn make_position(width: usize, height: usize, init_string: bool) -> Position {
+    fn make_position(width: usize, height: usize, init_string: bool) -> SimplePosition {
         let top_strings = iter::repeat(init_string).take(width).collect();
         let left_strings = iter::repeat(init_string).take(height).collect();
         let mut right_strings = Vec::with_capacity(width);
@@ -132,7 +132,7 @@ impl Position {
             right_strings.push(iter::repeat(init_string).take(height).collect());
             down_strings.push(iter::repeat(init_string).take(height).collect());
         }
-        Position {
+        SimplePosition {
             top_strings: top_strings,
             left_strings: left_strings,
             down_strings: down_strings,
@@ -141,16 +141,16 @@ impl Position {
         }
     }
 
-    pub fn width(self: &Position) -> usize {
+    pub fn width(self: &SimplePosition) -> usize {
         self.top_strings.len()
     }
 
-    pub fn height(self: &Position) -> usize {
+    pub fn height(self: &SimplePosition) -> usize {
         self.left_strings.len()
     }
 
     // Indicate whether a given move is legal in the current position.
-    pub fn is_legal_move(self: &Position, x: usize, y: usize, s: Side) -> bool {
+    pub fn is_legal_move(self: &SimplePosition, x: usize, y: usize, s: Side) -> bool {
         if x >= self.down_strings.len() {
             return false;
         }
@@ -168,7 +168,7 @@ impl Position {
     }
 
     // Indicate whether a given square has been captured.
-    pub fn is_captured(self: &Position, x: usize, y: usize) -> bool {
+    pub fn is_captured(self: &SimplePosition, x: usize, y: usize) -> bool {
         !self.is_legal_move(x, y, Side::Left) &&
             !self.is_legal_move(x, y, Side::Right) &&
             !self.is_legal_move(x, y, Side::Top) &&
@@ -176,7 +176,7 @@ impl Position {
     }
 
     // Indicate how many coins a given move would capture (either 0, 1 or 2)
-    pub fn would_capture(self: &Position, x: usize, y: usize, s: Side) -> isize {
+    pub fn would_capture(self: &SimplePosition, x: usize, y: usize, s: Side) -> isize {
         let mut result = 0;
         if self.valency(x, y) == 1 {
             result += 1;
@@ -190,7 +190,7 @@ impl Position {
     }
 
     // Make a given move on the board, and indicate the outcome.
-    pub fn make_move(self: &mut Position, x: usize, y: usize, s: Side) -> MoveOutcome {
+    pub fn make_move(self: &mut SimplePosition, x: usize, y: usize, s: Side) -> MoveOutcome {
         if !self.is_legal_move(x, y, s) {
             panic!(format!("Illegal move x = {}, y = {}, s = {:?}, pos:\n{}", x, y, s, self));
         }
@@ -234,7 +234,7 @@ impl Position {
 
     // Undo a given move by putting the line back on the board.
     // Behaviour if the move was never made in the first place is undefined.
-    pub fn undo_move(self: &mut Position, x: usize, y: usize, s: Side) {
+    pub fn undo_move(self: &mut SimplePosition, x: usize, y: usize, s: Side) {
         match (x, y, s) {
             (0, y, Side::Left) => self.left_strings[y] = true,
             (x, 0, Side::Top) => self.top_strings[x] = true,
@@ -247,7 +247,7 @@ impl Position {
     }
 
     // Indicate whether the game is over (i.e. whether all strings have been cut).
-    pub fn is_end_of_game(self: &Position) -> bool {
+    pub fn is_end_of_game(self: &SimplePosition) -> bool {
         for &b in self.left_strings.iter() {
             if b {
                 return false;
@@ -276,7 +276,7 @@ impl Position {
     }
 
     // Compute all possible legal moves in the position.
-    pub fn legal_moves(self: &Position) -> Vec<Move> {
+    pub fn legal_moves(self: &SimplePosition) -> Vec<Move> {
         let mut result: Vec<Move> = Vec::new();
         for (x, &b) in self.top_strings.iter().enumerate() {
             if b {
@@ -302,7 +302,7 @@ impl Position {
     }
 
     // Valency or degree of coin at a given position
-    pub fn valency(self: &Position, x: usize, y: usize) -> usize {
+    pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
         let mut result = 0;
         for s in Side::all() {
             if self.is_legal_move(x, y, s) {
@@ -314,7 +314,7 @@ impl Position {
 
     // Move from the square indicated in the direction indicated by the side,
     // returning a result only if that square is still on the board
-    pub fn offset(self: &Position, x: usize, y: usize, s: Side) -> Option<(usize, usize)> {
+    pub fn offset(self: &SimplePosition, x: usize, y: usize, s: Side) -> Option<(usize, usize)> {
         match (x, y, s) {
             (0, _, Side::Left) => None,
             (x, _, Side::Right) if x == self.width()-1 => None,
@@ -331,7 +331,7 @@ impl Position {
     // i.e. they refer to the same "logical" move on the board.
     // For example (0,0) Right is equivalent to (1,0) Left
     // (provided the board is at least two columns wide).
-    pub fn moves_equivalent(self: &Position, move1: Move, move2: Move) -> bool {
+    pub fn moves_equivalent(self: &SimplePosition, move1: Move, move2: Move) -> bool {
         if move1 == move2 {
             true
         }
@@ -346,13 +346,13 @@ impl Position {
     // Current Zobrist hash value for position.
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
-    pub fn zhash(self: &Position) -> usize {
+    pub fn zhash(self: &SimplePosition) -> usize {
         self.zhash.current_value()
     }
 }
 
-impl PartialEq for Position {
-    fn eq(self: &Position, other: &Position) -> bool {
+impl PartialEq for SimplePosition {
+    fn eq(self: &SimplePosition, other: &SimplePosition) -> bool {
         if self.width() != other.width() || self.height() != other.height() {
             return false;
         }
@@ -369,10 +369,10 @@ impl PartialEq for Position {
     }
 }
 
-impl Eq for Position {}
+impl Eq for SimplePosition {}
 
-impl fmt::Display for Position {
-    fn fmt(self: &Position, f: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Display for SimplePosition {
+    fn fmt(self: &SimplePosition, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "  ")?;
         for i in 0..self.width() {
             write!(f, " {}", i % 10)?;
@@ -465,7 +465,7 @@ impl ZHash {
 // the paper.
 #[derive(Clone)]
 pub struct CompoundPosition {
-    parts: Vec<Position>,
+    parts: Vec<SimplePosition>,
 }
 
 #[derive(Clone)]
@@ -489,7 +489,7 @@ impl fmt::Display for CPosMove {
 }
 
 impl CompoundPosition {
-    pub fn new_game(parts: Vec<Position>) -> CompoundPosition {
+    pub fn new_game(parts: Vec<SimplePosition>) -> CompoundPosition {
         CompoundPosition{ parts: parts }
     }
 
@@ -572,7 +572,7 @@ mod tests {
 
     #[test]
     fn simple_capture() {
-        let mut pos = Position::new_game(3, 3);
+        let mut pos = SimplePosition::new_game(3, 3);
         for i in 0..3 {
             for j in 0..3 {
                 assert_eq!(true, pos.is_legal_move(i, j, Side::Left));
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn corners() {
-        let mut pos = Position::new_game(3, 3);
+        let mut pos = SimplePosition::new_game(3, 3);
         for &(x, y) in [(0, 0), (0, 2), (2, 0), (2, 2)].iter() {
             let mut sides_captured = 0;
             for s in Side::all() {
@@ -652,7 +652,7 @@ mod tests {
 
     #[test]
     fn double_cross() {
-        let mut pos = Position::new_game(2, 1);
+        let mut pos = SimplePosition::new_game(2, 1);
         assert_eq!(2, pos.width());
         assert_eq!(1, pos.height());
         let moves = [(0, 0, Side::Top), (0, 0, Side::Bottom),
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn undo() {
-        let mut pos = Position::new_game(3, 3);
+        let mut pos = SimplePosition::new_game(3, 3);
         pos.make_move(1, 1, Side::Top);
         pos.make_move(1, 1, Side::Left);
         pos.undo_move(1, 1, Side::Top);
@@ -702,7 +702,7 @@ mod tests {
 
     #[test]
     fn pos_display() {
-        let mut pos = Position::new_game(3, 3);
+        let mut pos = SimplePosition::new_game(3, 3);
         pos.make_move(1, 1, Side::Top);
         pos.make_move(0, 0, Side::Top);
         pos.make_move(0, 2, Side::Left);
@@ -725,7 +725,7 @@ mod tests {
 
     #[test]
     fn big_pos_display() {
-        let pos = Position::new_game(12, 12);
+        let pos = SimplePosition::new_game(12, 12);
         let actual = format!("{}", pos);
         let lines: Vec<&str> = actual.split("\n").collect();
         assert_eq!("   0 1 2 3 4 5 6 7 8 9 0 1", lines[0]);
@@ -734,7 +734,7 @@ mod tests {
 
     #[test]
     fn legal_moves() {
-        let mut pos = Position::new_game(2, 2);
+        let mut pos = SimplePosition::new_game(2, 2);
         let moves = pos.legal_moves();
         assert_eq!(12, moves.len());
         // Edge moves, for which there is only one representation
@@ -764,7 +764,7 @@ mod tests {
 
     #[test]
     fn offsets() {
-        let pos = Position::new_game(2, 2);
+        let pos = SimplePosition::new_game(2, 2);
 
         assert_eq!(None, pos.offset(0, 0, Side::Top));
         assert_eq!(None, pos.offset(0, 0, Side::Left));
@@ -789,7 +789,7 @@ mod tests {
 
     #[test]
     fn move_equivalences() {
-        let pos = Position::new_game(2, 2);
+        let pos = SimplePosition::new_game(2, 2);
 
         // A move is always equivalent to itself
         assert!(pos.moves_equivalent(Move{x: 0, y: 0, side: Side::Left},
@@ -823,7 +823,7 @@ mod tests {
 
     #[test]
     fn zhashes() {
-        let mut pos = Position::new_game(3, 3);
+        let mut pos = SimplePosition::new_game(3, 3);
         let mut hashes: Vec<usize> = Vec::new();
         let mut moves: Vec<Move> = Vec::new();
         while !pos.is_end_of_game() {
@@ -852,18 +852,18 @@ mod tests {
     #[test]
     fn zhashes_across_position() {
         let (width, height) = (3, 4);
-        let mut pos1 = Position::new_game(width, height);
-        let mut pos2 = Position::new_game(width, height);
+        let mut pos1 = SimplePosition::new_game(width, height);
+        let mut pos2 = SimplePosition::new_game(width, height);
         assert_eq!(pos1.zhash(), pos2.zhash());
         pos1.make_move(1, 1, Side::Top);
         pos2.make_move(1, 1, Side::Top);
         assert_eq!(pos1.zhash(), pos2.zhash());
 
-        assert_eq!(Position::new_end_game(width, height).zhash(),
-                   Position::new_end_game(width, height).zhash());
+        assert_eq!(SimplePosition::new_end_game(width, height).zhash(),
+                   SimplePosition::new_end_game(width, height).zhash());
     }
 
-    fn all_hashes(pos: &mut Position) -> HashSet<usize> {
+    fn all_hashes(pos: &mut SimplePosition) -> HashSet<usize> {
         let mut hashes = HashSet::new();
         loop {
             hashes.insert(pos.zhash());
@@ -881,8 +881,8 @@ mod tests {
     #[test]
     fn zhashes_across_games() {
         let (width, height) = (3, 4);
-        let mut pos1 = Position::new_game(width, height);
-        let mut pos2 = Position::new_game(height, width);
+        let mut pos1 = SimplePosition::new_game(width, height);
+        let mut pos2 = SimplePosition::new_game(height, width);
         let hashes1 = all_hashes(&mut pos1);
         let hashes2 = all_hashes(&mut pos2);
         let intersect: HashSet<usize> = hashes1.intersection(&hashes2).cloned().collect();
@@ -892,7 +892,7 @@ mod tests {
     #[test]
     fn end_position() {
         let (width, height) = (3, 4);
-        let pos = Position::new_end_game(width, height);
+        let pos = SimplePosition::new_end_game(width, height);
         for i in 0..width {
             for j in 0..height {
                 for s in Side::all() {
