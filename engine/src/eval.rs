@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -118,7 +118,9 @@ mod test {
     use eval::*;
     use examples::*;
 
-    use rand::{Rng, SeedableRng, StdRng};
+    use rand::{Rng, SeedableRng};
+    use rand::rngs::StdRng;
+    use rand::seq::SliceRandom;
     use std::cmp;
     use time;
 
@@ -236,7 +238,7 @@ mod test {
         let height: usize = r.gen_range(1, 4);
         let mut pos = Position::new_game(width, height);
         let mut moves = pos.legal_moves();
-        r.shuffle(moves.as_mut_slice());
+        moves.as_mut_slice().shuffle(r);
         let max_remaining_moves = 9; // Limits running cost of naive minimax
         let min_move_count: usize = if moves.len() > max_remaining_moves {
             moves.len() - max_remaining_moves

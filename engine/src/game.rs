@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2018 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,7 +16,8 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use rand::{Rng, SeedableRng, StdRng};
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
 use std::fmt;
 use std::iter;
 
