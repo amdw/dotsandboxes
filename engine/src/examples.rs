@@ -16,7 +16,8 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, Side};
+use game::{Position, Side, CompoundPosition};
+use std::iter;
 
 // Top of example from page 50 of Berlekamp's book
 pub fn p50_top() -> Position {
@@ -214,4 +215,13 @@ pub fn ex7p2() -> Position {
     pos.make_move(1, 4, Side::Right);
     pos.make_move(2, 4, Side::Right);
     pos
+}
+
+// Construct the one-long-chain multiple-three-chain positions from the paper.
+// The long chain is the 0th part, the 3-chains parts 1-n.
+pub fn one_long_multi_three(three_chain_count: usize, long_chain_size: usize) -> CompoundPosition {
+    let mut parts: Vec<Position> = Vec::with_capacity(three_chain_count + 1);
+    parts.push(make_chain(long_chain_size));
+    parts.extend(iter::repeat(make_chain(3)).take(three_chain_count));
+    CompoundPosition::new_game(parts)
 }

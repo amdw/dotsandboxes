@@ -457,6 +457,113 @@ impl ZHash {
     }
 }
 
+// TODO: Extract trait from the simple and compound positions so analysis functions work on both
+
+// Representation of a position composed of multiple rectangular dots-and-boxes
+// positions. This allows some additional strings-and-coins positions to be
+// represented, such as the one-large-chain-multiple-3-chains positions from
+// the paper.
+#[derive(Clone)]
+pub struct CompoundPosition {
+    parts: Vec<Position>,
+}
+
+#[derive(Clone)]
+#[derive(Copy)]
+#[derive(Debug)]
+pub struct CPosMove {
+    pub part: usize,
+    pub m: Move,
+}
+
+impl CPosMove {
+    pub fn new(part: usize, x: usize, y: usize, side: Side) -> CPosMove {
+        CPosMove{ part: part, m: Move{ x: x, y: y, side: side }}
+    }
+}
+
+impl fmt::Display for CPosMove {
+    fn fmt(self: &CPosMove, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Part {}: {}", self.part, self.m)
+    }
+}
+
+impl CompoundPosition {
+    pub fn new_game(parts: Vec<Position>) -> CompoundPosition {
+        CompoundPosition{ parts: parts }
+    }
+
+    pub fn is_legal_move(self: &CompoundPosition, m: CPosMove) -> bool {
+        if let Some(p) = self.parts.get(m.part) {
+            p.is_legal_move(m.m.x, m.m.y, m.m.side)
+        } else {
+            false
+        }
+    }
+
+    pub fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
+        self.parts[m.part].make_move(m.m.x, m.m.y, m.m.side)
+    }
+
+    pub fn undo_move(self: &mut CompoundPosition, m: CPosMove) {
+        self.parts[m.part].undo_move(m.m.x, m.m.y, m.m.side)
+    }
+
+    pub fn is_end_of_game(self: &CompoundPosition) -> bool {
+        for part in self.parts.iter() {
+            if !part.is_end_of_game() {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn legal_moves(self: &CompoundPosition) -> Vec<CPosMove> {
+        let mut result: Vec<CPosMove> = Vec::new();
+        for (i, part) in self.parts.iter().enumerate() {
+            for &m in part.legal_moves().iter() {
+                result.push(CPosMove{ part: i, m: m });
+            }
+        }
+        result
+    }
+
+    pub fn zhash(self: &CompoundPosition) -> usize {
+        let mut result = 0;
+        for part in self.parts.iter() {
+            result ^= part.zhash();
+        }
+        result
+    }
+}
+
+impl PartialEq for CompoundPosition {
+    fn eq(self: &CompoundPosition, other: &CompoundPosition) -> bool {
+        if self.parts.len() == other.parts.len() {
+            for (i, part) in self.parts.iter().enumerate() {
+                if !part.eq(&other.parts[i]) {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl Eq for CompoundPosition {}
+
+impl fmt::Display for CompoundPosition {
+    fn fmt(self: &CompoundPosition, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, part) in self.parts.iter().enumerate() {
+            write!(f, "Component {}:\n", i)?;
+            write!(f, "{}", part)?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use game::*;
@@ -821,6 +928,72 @@ mod tests {
             for other_side in Side::all() {
                 assert_eq!(side != other_side, sides.contains(&other_side));
             }
+        }
+    }
+
+    #[test]
+    fn compound_move() {
+        assert_eq!("Part 1: (2, 3) Right", format!("{}", CPosMove::new(1, 2, 3, Side::Right)));
+    }
+
+    #[test]
+    fn compound_position() {
+        let mut pos = one_long_multi_three(3, 4);
+        let init_hash = pos.zhash();
+        assert_eq!(true, pos.is_legal_move(CPosMove::new(0, 3, 0, Side::Right)));
+        assert_eq!(false, pos.is_legal_move(CPosMove::new(0, 4, 0, Side::Right)));
+        assert_eq!(false, pos.is_legal_move(CPosMove::new(4, 0, 0, Side::Left)));
+        let legal_moves = pos.legal_moves();
+        // 5 legal moves for the 4-chain, 4 for each of the 3 3-chains
+        assert_eq!(17, legal_moves.len());
+        for &m in legal_moves.iter() {
+            assert_eq!(false, pos.is_end_of_game());
+            pos.make_move(m);
+            assert!(init_hash != pos.zhash());
+        }
+        assert_eq!(true, pos.is_end_of_game());
+        let final_hash = pos.zhash();
+        assert!(final_hash != 0);
+        for &m in legal_moves.iter() {
+            pos.undo_move(m);
+            assert!(final_hash != pos.zhash());
+            assert_eq!(false, pos.is_end_of_game());
+        }
+        assert_eq!(init_hash, pos.zhash());
+    }
+
+    #[test]
+    fn compound_pos_eq() {
+        let pos = one_long_multi_three(3, 4);
+        assert_eq!(true, pos.eq(&one_long_multi_three(3, 4)));
+        assert_eq!(false, pos.eq(&one_long_multi_three(4, 4)));
+        assert_eq!(false, pos.eq(&one_long_multi_three(3, 5)));
+    }
+
+    #[test]
+    fn compound_pos_display() {
+        let pos = one_long_multi_three(2, 4);
+        let expected = vec!("Component 0:",
+                            "   0 1 2 3",
+                            "  +-+-+-+-+",
+                            "0          ",
+                            "  +-+-+-+-+",
+                            "Component 1:",
+                            "   0 1 2",
+                            "  +-+-+-+",
+                            "0        ",
+                            "  +-+-+-+",
+                            "Component 2:",
+                            "   0 1 2",
+                            "  +-+-+-+",
+                            "0        ",
+                            "  +-+-+-+",
+                            "");
+        let display = format!("{}", pos);
+        let actual: Vec<&str> = display.split("\n").collect();
+        assert_eq!(expected.len(), actual.len());
+        for i in 0..expected.len() {
+            assert_eq!(expected[i], actual[i], "strings mismatch at position {}", i);
         }
     }
 }
