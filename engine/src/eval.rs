@@ -107,6 +107,9 @@ fn eval_cache(pos: &mut SimplePosition, cache: &mut HashMap<usize, (isize, Move)
 }
 
 // Calculate the value function of a given position and a move which achieves that value
+// TODO Change these functions to work on CompoundPosition.
+// Ideally we would work generically on a Position trait, but to do this efficiently
+// would require specialization: https://github.com/rust-lang/rust/issues/31844
 pub fn eval(pos: &SimplePosition) -> (isize, Option<Move>) {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();

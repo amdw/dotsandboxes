@@ -176,7 +176,7 @@ impl SimplePosition {
     }
 
     // Indicate how many coins a given move would capture (either 0, 1 or 2)
-    pub fn would_capture(self: &SimplePosition, x: usize, y: usize, s: Side) -> isize {
+    pub fn would_capture(self: &SimplePosition, x: usize, y: usize, s: Side) -> usize {
         let mut result = 0;
         if self.valency(x, y) == 1 {
             result += 1;
@@ -462,7 +462,7 @@ impl ZHash {
     }
 }
 
-// TODO: Extract trait from the simple and compound positions so analysis functions work on both
+// TODO: Extract trait from the simple and compound positions to ensure consistent interface
 
 // Representation of a position composed of multiple rectangular dots-and-boxes
 // positions. This allows some additional strings-and-coins positions to be
@@ -502,12 +502,20 @@ impl CompoundPosition {
         CompoundPosition{ parts: parts }
     }
 
+    pub fn from_single(pos: SimplePosition) -> CompoundPosition {
+        CompoundPosition{ parts: vec!(pos) }
+    }
+
     pub fn is_legal_move(self: &CompoundPosition, m: CPosMove) -> bool {
         if let Some(p) = self.parts.get(m.part) {
             p.is_legal_move(m.m.x, m.m.y, m.m.side)
         } else {
             false
         }
+    }
+
+    pub fn would_capture(self: &CompoundPosition, m: CPosMove) -> usize {
+        self.parts[m.part].would_capture(m.m.x, m.m.y, m.m.side)
     }
 
     pub fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
@@ -957,12 +965,14 @@ mod tests {
         assert_eq!(17, legal_moves.len());
         for &m in legal_moves.iter() {
             assert_eq!(false, pos.is_end_of_game());
-            pos.make_move(m);
+            let wc = pos.would_capture(m);
+            let outcome = pos.make_move(m);
+            assert_eq!(wc, outcome.coins_captured);
             assert!(init_hash != pos.zhash());
         }
         assert_eq!(true, pos.is_end_of_game());
         let final_hash = pos.zhash();
-        assert!(final_hash != 0);
+        assert_ne!(0, final_hash);
         for &m in legal_moves.iter() {
             pos.undo_move(m);
             assert!(final_hash != pos.zhash());
