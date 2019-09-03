@@ -410,9 +410,14 @@ struct ZHash {
 
 impl ZHash {
     fn new(width: usize, height: usize) -> ZHash {
+        ZHash::new_seeded(width, height, 0)
+    }
+
+    fn new_seeded(width: usize, height: usize, extra_seed: usize) -> ZHash {
         let mut seed: [u8; 32] = [0; 32];
         seed[0] = width as u8;
         seed[1] = height as u8;
+        seed[2] = extra_seed as u8;
         let mut r: StdRng = SeedableRng::from_seed(seed);
         let mut top_strings: Vec<usize> = Vec::with_capacity(width);
         let mut left_strings: Vec<usize> = Vec::with_capacity(height);
@@ -489,7 +494,11 @@ impl fmt::Display for CPosMove {
 }
 
 impl CompoundPosition {
-    pub fn new_game(parts: Vec<SimplePosition>) -> CompoundPosition {
+    pub fn new_game(mut parts: Vec<SimplePosition>) -> CompoundPosition {
+        // We need different components to have different zhashes even if identical
+        for idx in 0..parts.len() {
+            parts[idx].zhash = ZHash::new_seeded(parts[idx].width(), parts[idx].height(), idx);
+        }
         CompoundPosition{ parts: parts }
     }
 
@@ -995,5 +1004,26 @@ mod tests {
         for i in 0..expected.len() {
             assert_eq!(expected[i], actual[i], "strings mismatch at position {}", i);
         }
+    }
+
+    #[test]
+    fn compound_pos_zhash() {
+        let simple = SimplePosition::new_game(3, 1);
+        let legals = simple.legal_moves();
+
+        // We don't want the zhash to be zero just because the two sub-positions
+        // have equal and cancelling hashes
+        let mut pos = CompoundPosition::new_game(
+            vec!(SimplePosition::new_game(3, 1), SimplePosition::new_game(3, 1)));
+        let mut hashes = HashSet::new();
+        hashes.insert(pos.zhash());
+        for &m in &legals {
+            for p in 0..2 {
+                pos.make_move(CPosMove{part: p, m: m});
+                hashes.insert(pos.zhash());
+            }
+        }
+        assert_eq!(legals.len() * 2 + 1, hashes.len());
+        assert_eq!(false, hashes.contains(&0));
     }
 }
