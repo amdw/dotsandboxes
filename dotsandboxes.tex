@@ -1715,7 +1715,9 @@ of what other positions are added. The third comes from the fact that
 in Nimstring, any loony move is a losing move, so when evaluating a
 position, loony moves can be ignored: if only loony moves are
 available, the first player is losing, so the value of the position is
-$0 = \mex()$.)
+$0 = \mex()$.\footnote{Note that $\loony$ behaves a bit like an
+  ``infinite nimber'', as adding any regular nimber to it results in
+  itself, and it has no effect on the $\mex$ function.})
 
 We can then calculate the value of any Nimstring position as follows:
 
