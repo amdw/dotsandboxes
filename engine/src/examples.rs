@@ -225,3 +225,18 @@ pub fn one_long_multi_three(three_chain_count: usize, long_chain_size: usize) ->
     parts.extend(iter::repeat(make_chain(3)).take(three_chain_count));
     CompoundPosition::new_game(parts)
 }
+
+#[cfg(test)]
+mod tests {
+    use examples::*;
+    use game::*;
+
+    #[test]
+    fn test_olmt_indep() {
+        let mut pos = one_long_multi_three(2, 5);
+        assert_eq!(14, pos.legal_moves().len());
+        // Just to assert that the repeated components are really cloned/independent
+        pos.make_move(CPosMove::new(1, 0, 0, Side::Right));
+        assert_eq!(13, pos.legal_moves().len());
+    }
+}
