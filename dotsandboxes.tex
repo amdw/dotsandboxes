@@ -962,10 +962,45 @@ exactly how\footnote{I have never seen this theorem stated in quite
   is $$1 + S - C + D$$
 \end{gamelength}
 \begin{proof}
-  This is rather laborious, so to avoid distracting readers who would
-  rather skip it, I have put it in Appendix \ref{gamelengthproof}. (I
-  would appreciate hearing from any reader who knows of a simpler
-  proof of this result.)
+  Consider a game starting from a position with $C$ coins and $S$
+  strings. As the game progresses, let $s$, $c$, $d$ and $t$ track,
+  respectively, the number of strings removed, coins captured,
+  double-crossed moves made and turns completed.
+
+  At the beginning of the game, clearly $$s = c = d = t = 0$$
+
+  Since a move is by definition the removal of one string, each move
+  increases $s$ by $1$, and may increase $c$, $d$ and/or $t$,
+  depending whether it captures coins or ends a turn.
+
+  Any move which does not end the game must be one of the following
+  types:
+
+  \begin{itemize}
+    \item A move which captures no coins. This ends a turn, so $t$
+      increases by $1$ and $c$ and $d$ are unchanged.
+    \item A move which captures one coin. This increases $c$ by $1$,
+      but does not end a turn, so $d$ and $t$ are unchanged.
+    \item A double-crossed move. This increases $c$ by $2$ and $d$ by
+      $1$, but does not end a turn, so $t$ is unchanged.
+  \end{itemize}
+
+  Each of these leaves the quantity $s - c + d - t$ unchanged, and
+  since this quantity is zero at the start of the game, we have $$t =
+  s - c + d$$ at every move of the game, up to the last move.
+
+  The final move of the game must either be a single-coin capture or a
+  double-crossed move, capturing the last one or two coins. Such moves
+  leave the quantity $s - c + d$ unchanged. The only difference
+  between the final move and any other capture is that it completes a
+  turn (and thus increases $t$ by $1$).
+
+  Thus, at the end of the game, $$s - c + d - t = -1$$ and at this
+  point obviously $s = S$, $c = C$, and also $d = D$, the number of
+  double-crossed moves in the whole game. Hence at the end of the
+  game, $$t = 1 + S - C + D$$ as required.\footnote{I am grateful to
+    Konstantin Likhomanov for pointing out this proof, which is
+    significantly simpler and more elegant than my previous attempt.}
 \end{proof}
 
 Applying this to dots-and-boxes gives the following elegant
@@ -1805,227 +1840,6 @@ will win.
 \end{figure}
 
 \appendix
-
-\section{Proof of Theorem \ref{gamelength}}\label{gamelengthproof}
-
-We proceed by induction on $S$.
-
-The base case is $S=1$. There are exactly two positions with a
-single string:
-
-\begin{itemize}
-  \item a single coin connected to the ground, in which case $C=1$ and
-    $D=0$ (since a double-crossed move requires at least two coins)
-  \item a pair of connected coins with no connections to the ground,
-    in which case $C=2$ and $D=1$ (since the only move available is
-    a double-crossed move).
-\end{itemize}
-
-In both these cases, since there is only one string to remove, the
-game will clearly consist of a single turn, and in both cases also
-$1+S-C+D = 1$, so the base case is proved.
-
-For the inductive step, we assume the result is true for an
-arbitrary position $P$ with $s$ strings and $c$ coins, i.e.\ that any
-game starting from $P$ with $d$ double-crossed moves will have
-$1+s-c+d$ turns. We are required to show that if we add one string
-to $P$, the result still holds for the resulting position $P'$ with
-$s+1$ strings.
-
-To do this, we consider an arbitrary game starting from $P'$. We
-imagine making the same sequence of moves (excluding the new string)
-starting from $P$, and examine the relationship between the number
-of turns in the two games. We will call the two games ``the $P'$
-game'' and ``the $P$ game'' for short.
-
-The only ways of adding one string to a strings-and-coins position
-are as follows:
-
-\begin{enumerate}
-  \item Adding a new independent component with a single string
-  \item Adding a new string connecting an existing coin to the
-    ground
-  \item Adding a new coin connected to an existing coin
-  \item Adding a new string connecting two existing coins
-\end{enumerate}
-
-We need to consider each of these.
-
-The first case is quite straightforward. There are only two possible
-one-string components we can add: the same two we examined above in
-the base case. Neither one affects the total number of turns in the
-game: taking the new string will capture at least one coin and thus
-will not pass control to the other player, and nor will it have any
-effect on the rest of the position. The $P'$ and $P$ games will thus
-have exactly the same number of turns.
-
-Adding a single new coin connected to the ground increases both $S$
-and $C$ by 1 but cannot affect $D$; adding a pair of new coins
-connected together increases $S$ and $D$ by 1 and $C$ by 2. Both
-additions therefore leave the quantity $1+S-C+D$ unchanged, as
-required. This is summarised in Table \ref{gamelengthcase1}.
-
-\begin{table*}[p]
-  \centering
-  \begin{tabular}{c c c c c}
-    New component & $\Delta S$ & $\Delta C$ & $\Delta D$ & $\Delta$
-    turns \\
-    \hline
-    Single coin connected to ground & $+1$ & $+1$ & 0 & 0 \\
-    Pair of connected coins & $+1$ & $+2$ & $+1$ & 0
-  \end{tabular}
-  \caption{New independent component with a single string}
-  \label{gamelengthcase1}
-\end{table*}
-
-The other cases require a little more care, because depending on the
-circumstances, they might or might not affect $D$ and the number of
-turns.
-
-Consider the second case, where we add a new string connecting an
-existing coin, which we will call $\alpha$, to the ground. If removing
-this new string does \emph{not} capture $\alpha$ in the $P'$ game,
-then that move will pass control to the other player, and each
-subsequent move will be made by the opposite player to its equivalent
-in the $P$ game. The $P'$ game thus has one more turn, but the same
-number of double-crossed moves (as taking a ground string cannot be a
-double-crossed move), which is exactly what the theorem requires, as
-$S$ has increased by 1 but the other quantities have stayed the same.
-
-Suppose alternatively that removing the new string \emph{does} capture
-$\alpha$ (which will not be a double-crossed move, as removing a
-string connected to the ground never is). Then the difference between
-the two games depends on whether the capture of $\alpha$ in the $P$
-game is a double-crossed move. If so, then the same move in the $P'$
-game will still be a capture, but not a double-crossed move, and so
-$D$ is 1 less than in the $P$ game, but the number of turns is the
-same. On the other hand, if the capture of $\alpha$ in the $P$ game is
-\emph{not} a double-crossed move, then the same move in the $P'$ game
-will not be a capture at all, and hence will pass control to the
-opponent, which it does not do in the $P$ game, in which case the two
-games have the same number of double-crossed moves, but the $P'$ game
-has one more turn.
-
-Both these cases satisfy the requirements of the theorem: in one case
-$S$ increases, $D$ decreases and the number of turns stays the same,
-and in the other, $S$ increases, $D$ stays the same, and the number of
-turns increases. These sub-cases are summarised in Table
-\ref{gamelengthcase2}.
-
-\begin{table*}[p]
-  \centering
-  \begin{tabular}{c c c c c c}
-    $\sigma$ caps.\ $\alpha$ in $P'$ game & Cap.\ of $\alpha$
-    in $P$ game is d-c & $\Delta S$ & $\Delta C$ & $\Delta D$ &
-    $\Delta$ turns \\
-    \hline
-    No & Either & $+1$ & 0 & 0 & $+1$ \\
-    Yes & No & $+1$ & 0 & 0 & $+1$ \\
-    Yes & Yes & $+1$ & 0 & $-1$ & 0
-  \end{tabular}
-  \caption{New string $\sigma$ connecting existing coin $\alpha$ to
-    the ground}
-  \label{gamelengthcase2}
-\end{table*}
-
-Now we move on to the third case, where we add a new coin $\alpha$ to
-$P$, connected to an existing coin which we will call $\beta$.
-
-In this case, the first key question is whether the capture of
-$\alpha$ in the $P'$ game is a double-crossed move. If not, the $P$
-and $P'$ games have the same number of turns and the same number of
-double-crossed moves, as the capture of $\beta$ in the $P'$ game is a
-double-crossed move if and only if it also is in the $P$ game.
-
-If the capture of $\alpha$ in the $P'$ game \emph{is} a double-crossed
-move, then we need to know whether the capture of $\beta$ is a
-double-crossed move in the $P$ game. If so, then the same move in the
-$P'$ game is a capture but not a double-crossed move, so there is no
-net change in the number of double-crossed moves or the number of
-turns. If not, then the equivalent move in the $P'$ game is not a
-capture at all, so we have an extra double-crossed move in the $P'$
-game as well as an extra turn.
-
-All three sub-cases satisfy the requirements of the theorem: there is
-no change in the quantity $1+S-C$, and we either have the same number
-of turns and the same number of double-crossed moves, or one extra
-double-crossed move and one extra turn. This is summarised in Table
-\ref{gamelengthcase3}.
-
-\begin{table*}[p]
-  \centering
-  \begin{tabular}{c c c c c c}
-    $\sigma$ in $P'$ game is d-c & Cap.\ of $\beta$ in $P$
-    game is d-c & $\Delta S$ & $\Delta C$ & $\Delta D$ & $\Delta$
-    turns \\
-    \hline
-    No & Either & $+1$ & $+1$ & 0 & 0 \\
-    Yes & No & $+1$ & $+1$ & $+1$ & $+1$ \\
-    Yes & Yes & $+1$ & $+1$ & 0 & 0
-  \end{tabular}
-  \caption{New coin $\alpha$ connected to existing coin $\beta$ by new
-  string $\sigma$}
-  \label{gamelengthcase3}
-\end{table*}
-
-Finally, we turn our attention to the fourth case, where we add a new
-string between two existing coins, $\alpha$ and $\beta$.
-
-First, we ask whether removing this string is a capture in the $P'$
-game. If not, the two games have the same number of double-crossed
-moves, but the $P'$ game has an extra turn.
-
-Otherwise, we ask whether this move in the $P'$ game is a
-double-crossed move. If not, it captures exactly one of $\alpha$ or
-$\beta$, and we have the same situation as in case 2 where removing
-the new string is a capture in the $P'$ game: we either have one fewer
-double-crossed move and the same number of turns, or the same number
-of double-crossed moves and one more turn.
-
-If the new string in the $P'$ game is a double-crossed move, the
-outcome depends on whether the captures of $\alpha$ and $\beta$ in the
-$P$ game are double-crossed moves. Both, one and neither are all
-possibilities.
-
-\begin{itemize}
-\item If both, we have replaced two double-crossed moves with one,
-  with no change in the number of turns (as the relevant moves are all
-  captures).
-\item If one (without loss of generality we can let it be $\alpha$),
-  we have not changed the number of double-crossed moves, but we have
-  added a turn, as the capture of $\beta$ in the $P$ game is not a
-  capture at all in the $P'$ game.
-\item If neither, we have added one double-crossed move, and we have
-  added \emph{two} turns to the game, as neither of the captures of
-  $\alpha$ and $\beta$ in the $P$ game are captures at all in the $P'$
-  game.
-\end{itemize}
-
-In all three cases, we have met the requirements of the theorem, as
-the change in the number of turns is the same as the change in
-$1+S-C+D$. These sub-cases are summarised in Table
-\ref{gamelengthcase4}.
-
-\begin{table*}[p]
-  \centering
-  \begin{tabular}{c c c c c c c}
-    $\sigma$ cap.\ in $P'$ game & $\sigma$ d-c in $P'$ game &
-    Caps.\ of $\sigma$ in $P'$ d-c in $P$ & $\Delta S$ & $\Delta
-    C$ & $\Delta D$ & $\Delta$ turns \\
-    \hline
-    No & No & N/A & $+1$ & 0 & 0 & $+1$ \\
-    Yes & No & No & $+1$ & 0 & 0 & $+1$ \\
-    Yes & No & Yes & $+1$ & 0 & $-1$ & 0 \\
-    Yes & Yes & Neither & $+1$ & 0 & $+1$ & $+2$ \\
-    Yes & Yes & One & $+1$ & 0 & 0 & $+1$ \\
-    Yes & Yes & Both & $+1$ & 0 & $-1$ & 0
-  \end{tabular}
-  \caption{New string $\sigma$ connecting existing coins $\alpha$
-    and $\beta$}
-  \label{gamelengthcase4}
-\end{table*}
-
-There are no remaining cases, and thus the proof is complete.
 
 \section{A note on sources}
 
