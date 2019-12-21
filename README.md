@@ -107,7 +107,7 @@ the unit tests.
 
 # Licensing
 
-All material in this repository is Copyright 2016-2018 Andrew Medworth
+All material in this repository is Copyright 2016-2019 Andrew Medworth
 (github@medworth.org.uk).
 
 The Dots-and-Boxes paper is licensed under a Creative Commons license
