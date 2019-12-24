@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{SimplePosition, Side, Move};
+use game::{Position, SimplePosition, Side, Move};
 use splitter;
 use std::collections::{HashMap, HashSet};
 use std::fmt;

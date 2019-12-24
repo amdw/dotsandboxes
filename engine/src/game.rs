@@ -102,6 +102,16 @@ impl fmt::Display for Move {
     }
 }
 
+pub trait Position<M> {
+    fn is_legal_move(&self, m: M) -> bool;
+    fn would_capture(&self, m: M) -> usize;
+    fn make_move(&mut self, m: M) -> MoveOutcome;
+    fn undo_move(&mut self, m: M);
+    fn is_end_of_game(&self) -> bool;
+    fn legal_moves(&self) -> Vec<M>;
+    fn zhash(&self) -> usize;
+}
+
 // An m*n dots-and-boxes position is represented as:
 // * a row of top ground links
 // * a column of left ground links
@@ -155,156 +165,12 @@ impl SimplePosition {
         self.left_strings.len()
     }
 
-    // Indicate whether a given move is legal in the current position.
-    pub fn is_legal_move(self: &SimplePosition, m: Move) -> bool {
-        if m.x >= self.down_strings.len() {
-            return false;
-        }
-        if m.y >= self.left_strings.len() {
-            return false;
-        }
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y],
-            (x, 0, Side::Top) => self.top_strings[x],
-            (x, y, Side::Top) => self.down_strings[x][y-1],
-            (x, y, Side::Bottom) => self.down_strings[x][y],
-            (x, y, Side::Left) => self.right_strings[x-1][y],
-            (x, y, Side::Right) => self.right_strings[x][y],
-        }
-    }
-
     // Indicate whether a given square has been captured.
     pub fn is_captured(self: &SimplePosition, x: usize, y: usize) -> bool {
         !self.is_legal_move(Move{x: x, y: y, side: Side::Left}) &&
             !self.is_legal_move(Move{x: x, y: y, side: Side::Right}) &&
             !self.is_legal_move(Move{x: x, y: y, side: Side::Top}) &&
             !self.is_legal_move(Move{x: x, y: y, side: Side::Bottom})
-    }
-
-    // Indicate how many coins a given move would capture (either 0, 1 or 2)
-    pub fn would_capture(self: &SimplePosition, m: Move) -> usize {
-        let mut result = 0;
-        if self.valency(m.x, m.y) == 1 {
-            result += 1;
-        }
-        if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
-            if self.valency(nx, ny) == 1 {
-                result += 1;
-            }
-        }
-        result
-    }
-
-    // Make a given move on the board, and indicate the outcome.
-    pub fn make_move(self: &mut SimplePosition, m: Move) -> MoveOutcome {
-        if !self.is_legal_move(m) {
-            panic!(format!("Illegal move {}, pos:\n{}", m, self));
-        }
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y] = false,
-            (x, 0, Side::Top) => self.top_strings[x] = false,
-            (x, y, Side::Top) => self.down_strings[x][y-1] = false,
-            (x, y, Side::Bottom) => self.down_strings[x][y] = false,
-            (x, y, Side::Left) => self.right_strings[x-1][y] = false,
-            (x, y, Side::Right) => self.right_strings[x][y] = false,
-        }
-        let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
-        if m.side == Side::Left && m.x > 0 {
-            if self.is_captured(m.x-1, m.y) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Right && m.x < self.top_strings.len()-1 {
-            if self.is_captured(m.x+1, m.y) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Top && m.y > 0 {
-            if self.is_captured(m.x, m.y-1) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Bottom && m.y < self.left_strings.len()-1 {
-            if self.is_captured(m.x, m.y+1) {
-                captures += 1
-            }
-        }
-        let end_of_game = self.is_end_of_game();
-        self.zhash.toggle_element(m);
-        MoveOutcome {
-            coins_captured: captures,
-            end_of_turn: captures == 0 || end_of_game,
-            end_of_game: end_of_game,
-        }
-    }
-
-    // Undo a given move by putting the line back on the board.
-    // Behaviour if the move was never made in the first place is undefined.
-    pub fn undo_move(self: &mut SimplePosition, m: Move) {
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y] = true,
-            (x, 0, Side::Top) => self.top_strings[x] = true,
-            (x, y, Side::Top) => self.down_strings[x][y-1] = true,
-            (x, y, Side::Bottom) => self.down_strings[x][y] = true,
-            (x, y, Side::Left) => self.right_strings[x-1][y] = true,
-            (x, y, Side::Right) => self.right_strings[x][y] = true,
-        }
-        self.zhash.toggle_element(m);
-    }
-
-    // Indicate whether the game is over (i.e. whether all strings have been cut).
-    pub fn is_end_of_game(self: &SimplePosition) -> bool {
-        for &b in self.left_strings.iter() {
-            if b {
-                return false;
-            }
-        }
-        for &b in self.top_strings.iter() {
-            if b {
-                return false;
-            }
-        }
-        for row in self.down_strings.iter() {
-            for &b in row {
-                if b {
-                    return false;
-                }
-            }
-        }
-        for col in self.right_strings.iter() {
-            for &b in col {
-                if b {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
-    // Compute all possible legal moves in the position.
-    pub fn legal_moves(self: &SimplePosition) -> Vec<Move> {
-        let mut result: Vec<Move> = Vec::new();
-        for (x, &b) in self.top_strings.iter().enumerate() {
-            if b {
-                result.push(Move{ x: x, y: 0, side: Side::Top });
-            }
-        }
-        for (y, &b) in self.left_strings.iter().enumerate() {
-            if b {
-                result.push(Move{ x: 0, y: y, side: Side::Left });
-            }
-        }
-        for x in 0..self.top_strings.len() {
-            for y in 0..self.left_strings.len() {
-                if self.down_strings[x][y] {
-                    result.push(Move{ x: x, y: y, side: Side::Bottom });
-                }
-                if self.right_strings[x][y] {
-                    result.push(Move{ x: x, y: y, side: Side::Right })
-                }
-            }
-        }
-        result
     }
 
     // Valency or degree of coin at a given position
@@ -348,11 +214,157 @@ impl SimplePosition {
             false
         }
     }
+}
+
+impl Position<Move> for SimplePosition {
+    // Indicate whether a given move is legal in the current position.
+    fn is_legal_move(self: &SimplePosition, m: Move) -> bool {
+        if m.x >= self.down_strings.len() {
+            return false;
+        }
+        if m.y >= self.left_strings.len() {
+            return false;
+        }
+        match (m.x, m.y, m.side) {
+            (0, y, Side::Left) => self.left_strings[y],
+            (x, 0, Side::Top) => self.top_strings[x],
+            (x, y, Side::Top) => self.down_strings[x][y-1],
+            (x, y, Side::Bottom) => self.down_strings[x][y],
+            (x, y, Side::Left) => self.right_strings[x-1][y],
+            (x, y, Side::Right) => self.right_strings[x][y],
+        }
+    }
+
+    // Indicate how many coins a given move would capture (either 0, 1 or 2)
+    fn would_capture(self: &SimplePosition, m: Move) -> usize {
+        let mut result = 0;
+        if self.valency(m.x, m.y) == 1 {
+            result += 1;
+        }
+        if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
+            if self.valency(nx, ny) == 1 {
+                result += 1;
+            }
+        }
+        result
+    }
+
+    // Make a given move on the board, and indicate the outcome.
+    fn make_move(self: &mut SimplePosition, m: Move) -> MoveOutcome {
+        if !self.is_legal_move(m) {
+            panic!(format!("Illegal move {}, pos:\n{}", m, self));
+        }
+        match (m.x, m.y, m.side) {
+            (0, y, Side::Left) => self.left_strings[y] = false,
+            (x, 0, Side::Top) => self.top_strings[x] = false,
+            (x, y, Side::Top) => self.down_strings[x][y-1] = false,
+            (x, y, Side::Bottom) => self.down_strings[x][y] = false,
+            (x, y, Side::Left) => self.right_strings[x-1][y] = false,
+            (x, y, Side::Right) => self.right_strings[x][y] = false,
+        }
+        let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
+        if m.side == Side::Left && m.x > 0 {
+            if self.is_captured(m.x-1, m.y) {
+                captures += 1
+            }
+        }
+        if m.side == Side::Right && m.x < self.top_strings.len()-1 {
+            if self.is_captured(m.x+1, m.y) {
+                captures += 1
+            }
+        }
+        if m.side == Side::Top && m.y > 0 {
+            if self.is_captured(m.x, m.y-1) {
+                captures += 1
+            }
+        }
+        if m.side == Side::Bottom && m.y < self.left_strings.len()-1 {
+            if self.is_captured(m.x, m.y+1) {
+                captures += 1
+            }
+        }
+        let end_of_game = self.is_end_of_game();
+        self.zhash.toggle_element(m);
+        MoveOutcome {
+            coins_captured: captures,
+            end_of_turn: captures == 0 || end_of_game,
+            end_of_game: end_of_game,
+        }
+    }
+
+    // Undo a given move by putting the line back on the board.
+    // Behaviour if the move was never made in the first place is undefined.
+    fn undo_move(self: &mut SimplePosition, m: Move) {
+        match (m.x, m.y, m.side) {
+            (0, y, Side::Left) => self.left_strings[y] = true,
+            (x, 0, Side::Top) => self.top_strings[x] = true,
+            (x, y, Side::Top) => self.down_strings[x][y-1] = true,
+            (x, y, Side::Bottom) => self.down_strings[x][y] = true,
+            (x, y, Side::Left) => self.right_strings[x-1][y] = true,
+            (x, y, Side::Right) => self.right_strings[x][y] = true,
+        }
+        self.zhash.toggle_element(m);
+    }
+
+    // Indicate whether the game is over (i.e. whether all strings have been cut).
+    fn is_end_of_game(self: &SimplePosition) -> bool {
+        for &b in self.left_strings.iter() {
+            if b {
+                return false;
+            }
+        }
+        for &b in self.top_strings.iter() {
+            if b {
+                return false;
+            }
+        }
+        for row in self.down_strings.iter() {
+            for &b in row {
+                if b {
+                    return false;
+                }
+            }
+        }
+        for col in self.right_strings.iter() {
+            for &b in col {
+                if b {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    // Compute all possible legal moves in the position.
+    fn legal_moves(self: &SimplePosition) -> Vec<Move> {
+        let mut result: Vec<Move> = Vec::new();
+        for (x, &b) in self.top_strings.iter().enumerate() {
+            if b {
+                result.push(Move{ x: x, y: 0, side: Side::Top });
+            }
+        }
+        for (y, &b) in self.left_strings.iter().enumerate() {
+            if b {
+                result.push(Move{ x: 0, y: y, side: Side::Left });
+            }
+        }
+        for x in 0..self.top_strings.len() {
+            for y in 0..self.left_strings.len() {
+                if self.down_strings[x][y] {
+                    result.push(Move{ x: x, y: y, side: Side::Bottom });
+                }
+                if self.right_strings[x][y] {
+                    result.push(Move{ x: x, y: y, side: Side::Right })
+                }
+            }
+        }
+        result
+    }
 
     // Current Zobrist hash value for position.
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
-    pub fn zhash(self: &SimplePosition) -> usize {
+    fn zhash(self: &SimplePosition) -> usize {
         self.zhash.current_value()
     }
 }
@@ -513,8 +525,10 @@ impl CompoundPosition {
     pub fn from_single(pos: SimplePosition) -> CompoundPosition {
         CompoundPosition{ parts: vec!(pos) }
     }
+}
 
-    pub fn is_legal_move(self: &CompoundPosition, m: CPosMove) -> bool {
+impl Position<CPosMove> for CompoundPosition {
+    fn is_legal_move(self: &CompoundPosition, m: CPosMove) -> bool {
         if let Some(p) = self.parts.get(m.part) {
             p.is_legal_move(m.m)
         } else {
@@ -522,19 +536,19 @@ impl CompoundPosition {
         }
     }
 
-    pub fn would_capture(self: &CompoundPosition, m: CPosMove) -> usize {
+    fn would_capture(self: &CompoundPosition, m: CPosMove) -> usize {
         self.parts[m.part].would_capture(m.m)
     }
 
-    pub fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
+    fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
         self.parts[m.part].make_move(m.m)
     }
 
-    pub fn undo_move(self: &mut CompoundPosition, m: CPosMove) {
+    fn undo_move(self: &mut CompoundPosition, m: CPosMove) {
         self.parts[m.part].undo_move(m.m)
     }
 
-    pub fn is_end_of_game(self: &CompoundPosition) -> bool {
+    fn is_end_of_game(self: &CompoundPosition) -> bool {
         for part in self.parts.iter() {
             if !part.is_end_of_game() {
                 return false;
@@ -543,7 +557,7 @@ impl CompoundPosition {
         true
     }
 
-    pub fn legal_moves(self: &CompoundPosition) -> Vec<CPosMove> {
+    fn legal_moves(self: &CompoundPosition) -> Vec<CPosMove> {
         let mut result: Vec<CPosMove> = Vec::new();
         for (i, part) in self.parts.iter().enumerate() {
             for &m in part.legal_moves().iter() {
@@ -553,7 +567,7 @@ impl CompoundPosition {
         result
     }
 
-    pub fn zhash(self: &CompoundPosition) -> usize {
+    fn zhash(self: &CompoundPosition) -> usize {
         let mut result = 0;
         for part in self.parts.iter() {
             result ^= part.zhash();

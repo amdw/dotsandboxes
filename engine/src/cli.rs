@@ -17,7 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use game::{Move, SimplePosition, Side};
+use game::{Move, Position, SimplePosition, Side};
 use nimstring;
 use eval;
 

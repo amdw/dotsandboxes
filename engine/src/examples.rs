@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Move, SimplePosition, Side, CompoundPosition};
+use game::{Move, Position, SimplePosition, Side, CompoundPosition};
 use std::iter;
 
 // Top of example from page 50 of Berlekamp's book
