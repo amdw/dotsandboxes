@@ -76,7 +76,7 @@ fn moves_to_consider(pos: &mut SimplePosition) -> Vec<Move> {
     let is_loony = nimstring::is_loony(pos);
     let mut capture: Option<Move> = None;
     for &m in &legal_moves {
-        let captures = pos.would_capture(m.x, m.y, m.side);
+        let captures = pos.would_capture(m);
         if captures == 0 {
             continue;
         }

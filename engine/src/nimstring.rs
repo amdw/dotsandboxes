@@ -125,8 +125,8 @@ fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Va
     }
 
     let legal_moves = pos.legal_moves();
-    for m in &legal_moves {
-        if pos.would_capture(m.x, m.y, m.side) > 0 {
+    for &m in &legal_moves {
+        if pos.would_capture(m) > 0 {
             pos.make_move(m.x, m.y, m.side);
             let result = calc_value(pos, cache);
             pos.undo_move(m.x, m.y, m.side);

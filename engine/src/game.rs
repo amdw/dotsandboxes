@@ -176,12 +176,12 @@ impl SimplePosition {
     }
 
     // Indicate how many coins a given move would capture (either 0, 1 or 2)
-    pub fn would_capture(self: &SimplePosition, x: usize, y: usize, s: Side) -> usize {
+    pub fn would_capture(self: &SimplePosition, m: Move) -> usize {
         let mut result = 0;
-        if self.valency(x, y) == 1 {
+        if self.valency(m.x, m.y) == 1 {
             result += 1;
         }
-        if let Some((nx, ny)) = self.offset(x, y, s) {
+        if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
             if self.valency(nx, ny) == 1 {
                 result += 1;
             }
@@ -517,7 +517,7 @@ impl CompoundPosition {
     }
 
     pub fn would_capture(self: &CompoundPosition, m: CPosMove) -> usize {
-        self.parts[m.part].would_capture(m.m.x, m.m.y, m.m.side)
+        self.parts[m.part].would_capture(m.m)
     }
 
     pub fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
@@ -625,7 +625,7 @@ mod tests {
         assert_eq!(2, pos.valency(1, 1));
         assert_eq!(3, pos.valency(1, 2));
 
-        assert_eq!(0, pos.would_capture(1, 1, Side::Left));
+        assert_eq!(0, pos.would_capture(Move{x: 1, y: 1, side: Side::Left}));
         let outcome = pos.make_move(1, 1, Side::Left);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
@@ -636,7 +636,7 @@ mod tests {
         assert_eq!(1, pos.valency(1, 1));
         assert_eq!(3, pos.valency(0, 1));
 
-        assert_eq!(1, pos.would_capture(1, 1, Side::Top));
+        assert_eq!(1, pos.would_capture(Move{x: 1, y: 1, side: Side::Top}));
         let outcome = pos.make_move(1, 1, Side::Top);
         assert_eq!(1, outcome.coins_captured);
         assert_eq!(false, outcome.end_of_turn);
@@ -684,7 +684,7 @@ mod tests {
         ];
         for &m in moves.iter() {
             assert_eq!(true, pos.is_legal_move(m));
-            assert_eq!(0, pos.would_capture(m.x, m.y, m.side));
+            assert_eq!(0, pos.would_capture(m));
             let outcome = pos.make_move(m.x, m.y, m.side);
             assert_eq!(false, pos.is_legal_move(m));
             assert_eq!(0, outcome.coins_captured);
@@ -693,7 +693,7 @@ mod tests {
             assert_eq!(false, pos.is_end_of_game());
         }
         assert_eq!(true, pos.is_legal_move(Move{x: 0, y: 0, side: Side::Right}));
-        assert_eq!(2, pos.would_capture(0, 0, Side::Right));
+        assert_eq!(2, pos.would_capture(Move{x: 0, y: 0, side: Side::Right}));
         let outcome = pos.make_move(0, 0, Side::Right);
         assert_eq!(2, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_game);
