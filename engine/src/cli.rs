@@ -42,13 +42,13 @@ impl Command {
         match self {
             &Command::MakeMove(m) => {
                 if pos.is_legal_move(m) {
-                    pos.make_move(m.x, m.y, m.side);
+                    pos.make_move(m);
                 }
                 else {
                     println!("Not a legal move: {}", m);
                 }
             },
-            &Command::UndoMove(m) => { pos.undo_move(m.x, m.y, m.side); },
+            &Command::UndoMove(m) => { pos.undo_move(m); },
             &Command::CalcNimstringValue => {
                 let (val, per_move) = nimstring::calc_value_with_moves(pos);
                 println!("Position value is {}", val);

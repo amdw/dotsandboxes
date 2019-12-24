@@ -30,11 +30,11 @@ fn eval_moves(pos: &mut SimplePosition, moves: &Vec<Move>,
     let mut value = isize::MIN;
     let mut best_move = moves[0];
     for &m in moves {
-        let outcome = pos.make_move(m.x, m.y, m.side);
+        let outcome = pos.make_move(m);
         let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
         let (next_val, _) = eval_cache(pos, cache);
         let sub_val = (outcome.coins_captured as isize) + sign * next_val;
-        pos.undo_move(m.x, m.y, m.side);
+        pos.undo_move(m);
         if sub_val > value {
             value = sub_val;
             best_move = m;
@@ -81,7 +81,7 @@ fn moves_to_consider(pos: &mut SimplePosition) -> Vec<Move> {
             continue;
         }
         capture = Some(m);
-        if !is_loony || nimstring::would_be_loony(pos, m.x, m.y, m.side) {
+        if !is_loony || nimstring::would_be_loony(pos, m) {
             return vec!(m);
         }
     }
@@ -134,7 +134,7 @@ mod test {
             let (val, _) = eval(&mut chain);
             let expected_val = -(i as isize);
             assert_eq!(expected_val, val, "Closed {}-chain", i);
-            chain.make_move(0, 0, Side::Left);
+            chain.make_move(Move{x: 0, y: 0, side: Side::Left});
             let (val, best_move) = eval(&mut chain);
             assert_eq!(-expected_val, val, "Opened {}-chain", i);
             assert!(chain.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
@@ -150,7 +150,7 @@ mod test {
             let (val, _) = eval(&mut pos);
             let expected_val = 4 - 2*(i as isize);
             assert_eq!(expected_val, val, "Evaluation of double chain length {}", i);
-            pos.make_move(0, 0, Side::Left);
+            pos.make_move(Move{x: 0, y: 0, side: Side::Left});
             let (val, best_move) = eval(&mut pos);
             assert_eq!(-expected_val, val, "Evaluation of opened double chain length {}", i);
             assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
@@ -163,22 +163,22 @@ mod test {
 
         let (val, _) = eval(&mut pos);
         assert_eq!(-2, val);
-        pos.make_move(0, 0, Side::Left);
+        pos.make_move(Move{x: 0, y: 0, side: Side::Left});
 
         let (val, best_move) = eval(&mut pos);
         assert_eq!(2, val);
         assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
-        pos.make_move(0, 0, Side::Right);
+        pos.make_move(Move{x: 0, y: 0, side: Side::Right});
 
         let (val, best_move) = eval(&mut pos);
         assert_eq!(1, val);
         assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 1, y: 0, side: Side::Right}));
-        pos.make_move(1, 0, Side::Right);
+        pos.make_move(Move{x: 1, y: 0, side: Side::Right});
 
         let (val, best_move) = eval(&mut pos);
         assert_eq!(0, val);
         assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 2, y: 0, side: Side::Right}));
-        pos.make_move(2, 0, Side::Right);
+        pos.make_move(Move{x: 2, y: 0, side: Side::Right});
 
         let (val, _) = eval(&mut pos);
         assert_eq!(-1, val);
@@ -191,7 +191,7 @@ mod test {
             let (val, _) = eval(&mut pos);
             let expected_val = 8 - 4*(i as isize);
             assert_eq!(expected_val, val, "Evaluation of double loop width {}", i);
-            pos.make_move(0, 0, Side::Right);
+            pos.make_move(Move{x: 0, y: 0, side: Side::Right});
             let (val, _) = eval(&mut pos);
             assert_eq!(-expected_val, val, "Evaluation of opened double loop width {}", i);
         }
@@ -205,18 +205,18 @@ mod test {
         assert_eq!(3, val);
         assert!(pos.moves_equivalent(best_move, Move{x: 2, y: 1, side: Side::Bottom}));
 
-        pos.make_move(2, 1, Side::Bottom);
+        pos.make_move(Move{x: 2, y: 1, side: Side::Bottom});
         let (val, best_move) = eval(&mut pos);
         let best_move = best_move.unwrap();
         assert_eq!(-3, val);
         assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Bottom}));
 
-        pos.make_move(0, 0, Side::Bottom);
+        pos.make_move(Move{x: 0, y: 0, side: Side::Bottom});
         let (val, _) = eval(&mut pos);
         assert_eq!(3, val);
 
-        pos.undo_move(0, 0, Side::Bottom);
-        pos.make_move(0, 2, Side::Left);
+        pos.undo_move(Move{x: 0, y: 0, side: Side::Bottom});
+        pos.make_move(Move{x: 0, y: 2, side: Side::Left});
         let (val, _) = eval(&mut pos);
         assert_eq!(5, val);
     }
@@ -230,7 +230,7 @@ mod test {
         assert_eq!(expected_val, val);
         assert!(pos.moves_equivalent(best_move, Move{x: 4, y: 0, side: Side::Bottom}));
 
-        pos.make_move(4, 0, Side::Bottom);
+        pos.make_move(Move{x: 4, y: 0, side: Side::Bottom});
         let (val, _) = eval(&mut pos);
         assert_eq!(-expected_val, val);
     }
@@ -251,7 +251,7 @@ mod test {
         let move_count = r.gen_range(min_move_count, moves.len() + 1);
         for i in 0..move_count {
             let m = moves[i];
-            pos.make_move(m.x, m.y, m.side);
+            pos.make_move(m);
         }
         pos
     }
@@ -263,15 +263,15 @@ mod test {
             return 0;
         }
         let mut result = isize::MIN;
-        for m in &moves {
-            let outcome = pos.make_move(m.x, m.y, m.side);
+        for &m in &moves {
+            let outcome = pos.make_move(m);
             let captures = outcome.coins_captured as isize;
             let m_val = if captures > 0 {
                 captures + naive_minimax(pos)
             } else {
                 -naive_minimax(pos)
             };
-            pos.undo_move(m.x, m.y, m.side);
+            pos.undo_move(m);
             result = cmp::max(result, m_val);
         }
         result
@@ -293,7 +293,7 @@ mod test {
 
             if !pos.is_end_of_game() {
                 let best_move = best_move.unwrap();
-                let outcome = pos.make_move(best_move.x, best_move.y, best_move.side);
+                let outcome = pos.make_move(best_move);
                 let captures = outcome.coins_captured as isize;
                 let (next_val, _) = eval(&mut pos);
                 let expected_next_val = if captures > 0 {

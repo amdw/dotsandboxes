@@ -16,22 +16,22 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{SimplePosition, Side, CompoundPosition};
+use game::{Move, SimplePosition, Side, CompoundPosition};
 use std::iter;
 
 // Top of example from page 50 of Berlekamp's book
 pub fn p50_top() -> SimplePosition {
     let mut pos = SimplePosition::new_game(5, 2);
-    pos.make_move(0, 0, Side::Top);
-    pos.make_move(1, 0, Side::Top);
-    pos.make_move(0, 0, Side::Left);
-    pos.make_move(0, 1, Side::Left);
-    pos.make_move(1, 0, Side::Bottom);
-    pos.make_move(2, 0, Side::Bottom);
-    pos.make_move(3, 0, Side::Bottom);
-    pos.make_move(3, 0, Side::Right);
+    pos.make_move(Move::new(0, 0, Side::Top));
+    pos.make_move(Move::new(1, 0, Side::Top));
+    pos.make_move(Move::new(0, 0, Side::Left));
+    pos.make_move(Move::new(0, 1, Side::Left));
+    pos.make_move(Move::new(1, 0, Side::Bottom));
+    pos.make_move(Move::new(2, 0, Side::Bottom));
+    pos.make_move(Move::new(3, 0, Side::Bottom));
+    pos.make_move(Move::new(3, 0, Side::Right));
     for i in 0..5 {
-        pos.make_move(i, 1, Side::Bottom);
+        pos.make_move(Move::new(i, 1, Side::Bottom));
     }
     pos
 }
@@ -39,54 +39,54 @@ pub fn p50_top() -> SimplePosition {
 // Bottom-left of example from page 50 of Berlekamp's book
 pub fn p50_bottomleft() -> SimplePosition {
     let mut pos = SimplePosition::new_game(3, 2);
-    pos.make_move(0, 0, Side::Top);
-    pos.make_move(1, 0, Side::Top);
-    pos.make_move(2, 0, Side::Top);
-    pos.make_move(2, 0, Side::Right);
-    pos.make_move(2, 1, Side::Right);
-    pos.make_move(1, 0, Side::Bottom);
+    pos.make_move(Move::new(0, 0, Side::Top));
+    pos.make_move(Move::new(1, 0, Side::Top));
+    pos.make_move(Move::new(2, 0, Side::Top));
+    pos.make_move(Move::new(2, 0, Side::Right));
+    pos.make_move(Move::new(2, 1, Side::Right));
+    pos.make_move(Move::new(1, 0, Side::Bottom));
     pos
 }
 
 // Bottom-right of example from page 50 of Berlekamp's book
 pub fn p50_bottomright() -> SimplePosition {
     let mut pos = SimplePosition::new_game(2, 2);
-    pos.make_move(0, 0, Side::Top);
-    pos.make_move(1, 0, Side::Top);
-    pos.make_move(0, 0, Side::Left);
-    pos.make_move(0, 1, Side::Left);
+    pos.make_move(Move::new(0, 0, Side::Top));
+    pos.make_move(Move::new(1, 0, Side::Top));
+    pos.make_move(Move::new(0, 0, Side::Left));
+    pos.make_move(Move::new(0, 1, Side::Left));
     pos
 }
 
 // Example from page 50 of Berlekamp's book
 pub fn p50() -> SimplePosition {
     let mut pos = SimplePosition::new_game(5, 4);
-    pos.make_move(0, 0, Side::Top);
-    pos.make_move(0, 0, Side::Left);
-    pos.make_move(1, 0, Side::Top);
-    pos.make_move(1, 0, Side::Bottom);
-    pos.make_move(2, 0, Side::Bottom);
-    pos.make_move(3, 0, Side::Bottom);
-    pos.make_move(3, 0, Side::Right);
-    pos.make_move(0, 1, Side::Left);
-    pos.make_move(0, 1, Side::Bottom);
-    pos.make_move(1, 1, Side::Bottom);
-    pos.make_move(2, 1, Side::Bottom);
-    pos.make_move(3, 1, Side::Bottom);
-    pos.make_move(4, 1, Side::Bottom);
-    pos.make_move(1, 2, Side::Bottom);
-    pos.make_move(2, 2, Side::Right);
-    pos.make_move(2, 3, Side::Right);
+    pos.make_move(Move::new(0, 0, Side::Top));
+    pos.make_move(Move::new(0, 0, Side::Left));
+    pos.make_move(Move::new(1, 0, Side::Top));
+    pos.make_move(Move::new(1, 0, Side::Bottom));
+    pos.make_move(Move::new(2, 0, Side::Bottom));
+    pos.make_move(Move::new(3, 0, Side::Bottom));
+    pos.make_move(Move::new(3, 0, Side::Right));
+    pos.make_move(Move::new(0, 1, Side::Left));
+    pos.make_move(Move::new(0, 1, Side::Bottom));
+    pos.make_move(Move::new(1, 1, Side::Bottom));
+    pos.make_move(Move::new(2, 1, Side::Bottom));
+    pos.make_move(Move::new(3, 1, Side::Bottom));
+    pos.make_move(Move::new(4, 1, Side::Bottom));
+    pos.make_move(Move::new(1, 2, Side::Bottom));
+    pos.make_move(Move::new(2, 2, Side::Right));
+    pos.make_move(Move::new(2, 3, Side::Right));
     pos
 }
 
 pub fn icelandic_game(width: usize, height: usize) -> SimplePosition {
     let mut pos = SimplePosition::new_game(width, height);
     for y in 0..height {
-        pos.make_move(0, y, Side::Left);
+        pos.make_move(Move::new(0, y, Side::Left));
     }
     for x in 0..width {
-        pos.make_move(x, 0, Side::Top);
+        pos.make_move(Move::new(x, 0, Side::Top));
     }
     pos
 }
@@ -95,9 +95,9 @@ pub fn icelandic_game(width: usize, height: usize) -> SimplePosition {
 pub fn multi_chains(chain_size: usize, chain_count: usize) -> SimplePosition {
     let mut pos = SimplePosition::new_game(chain_size, chain_count);
     for x in 0..chain_size {
-        pos.make_move(x, 0, Side::Top);
+        pos.make_move(Move::new(x, 0, Side::Top));
         for y in 0..chain_count {
-            pos.make_move(x, y, Side::Bottom);
+            pos.make_move(Move::new(x, y, Side::Bottom));
         }
     }
     pos
@@ -116,17 +116,17 @@ pub fn double_chain(length: usize) -> SimplePosition {
 pub fn double_loop(width: usize) -> SimplePosition {
     let mut pos = SimplePosition::new_game(width, 4);
     for i in 0..width {
-        pos.make_move(i, 0, Side::Top);
-        pos.make_move(i, 1, Side::Bottom);
-        pos.make_move(i, 3, Side::Bottom);
+        pos.make_move(Move::new(i, 0, Side::Top));
+        pos.make_move(Move::new(i, 1, Side::Bottom));
+        pos.make_move(Move::new(i, 3, Side::Bottom));
     }
     for i in 0..4 {
-        pos.make_move(0, i, Side::Left);
-        pos.make_move(width-1, i, Side::Right);
+        pos.make_move(Move::new(0, i, Side::Left));
+        pos.make_move(Move::new(width-1, i, Side::Right));
     }
     for i in 1..width-1 {
-        pos.make_move(i, 0, Side::Bottom);
-        pos.make_move(i, 2, Side::Bottom);
+        pos.make_move(Move::new(i, 0, Side::Bottom));
+        pos.make_move(Move::new(i, 2, Side::Bottom));
     }
     pos
 }
@@ -134,16 +134,16 @@ pub fn double_loop(width: usize) -> SimplePosition {
 // Create Exercise 3.1 from Berlekamp's book
 pub fn ex3p1() -> SimplePosition {
     let mut pos = SimplePosition::new_game(3, 3);
-    pos.make_move(0, 0, Side::Top);
-    pos.make_move(0, 0, Side::Left);
-    pos.make_move(1, 0, Side::Top);
-    pos.make_move(1, 0, Side::Bottom);
-    pos.make_move(2, 0, Side::Bottom);
-    pos.make_move(0, 1, Side::Left);
-    pos.make_move(0, 1, Side::Right);
-    pos.make_move(0, 2, Side::Right);
-    pos.make_move(1, 2, Side::Bottom);
-    pos.make_move(2, 2, Side::Right);
+    pos.make_move(Move::new(0, 0, Side::Top));
+    pos.make_move(Move::new(0, 0, Side::Left));
+    pos.make_move(Move::new(1, 0, Side::Top));
+    pos.make_move(Move::new(1, 0, Side::Bottom));
+    pos.make_move(Move::new(2, 0, Side::Bottom));
+    pos.make_move(Move::new(0, 1, Side::Left));
+    pos.make_move(Move::new(0, 1, Side::Right));
+    pos.make_move(Move::new(0, 2, Side::Right));
+    pos.make_move(Move::new(1, 2, Side::Bottom));
+    pos.make_move(Move::new(2, 2, Side::Right));
     pos
 }
 
@@ -151,31 +151,31 @@ pub fn ex3p1() -> SimplePosition {
 pub fn ex3p12() -> SimplePosition {
     let mut pos = SimplePosition::new_game(5, 5);
     for i in 0..5 {
-        pos.make_move(i, 0, Side::Top);
+        pos.make_move(Move::new(i, 0, Side::Top));
     }
-    pos.make_move(0, 0, Side::Bottom);
-    pos.make_move(2, 0, Side::Right);
-    pos.make_move(0, 1, Side::Left);
-    pos.make_move(1, 1, Side::Bottom);
-    pos.make_move(1, 1, Side::Right);
-    pos.make_move(2, 1, Side::Right);
-    pos.make_move(3, 1, Side::Bottom);
-    pos.make_move(4, 1, Side::Bottom);
-    pos.make_move(0, 2, Side::Right);
-    pos.make_move(0, 2, Side::Bottom);
-    pos.make_move(2, 2, Side::Right);
-    pos.make_move(2, 2, Side::Bottom);
-    pos.make_move(4, 2, Side::Right);
-    pos.make_move(0, 3, Side::Right);
-    pos.make_move(2, 3, Side::Bottom);
-    pos.make_move(3, 3, Side::Bottom);
-    pos.make_move(3, 3, Side::Right);
-    pos.make_move(4, 3, Side::Right);
-    pos.make_move(0, 4, Side::Right);
-    pos.make_move(1, 4, Side::Right);
-    pos.make_move(3, 4, Side::Bottom);
-    pos.make_move(4, 4, Side::Bottom);
-    pos.make_move(4, 4, Side::Right);
+    pos.make_move(Move::new(0, 0, Side::Bottom));
+    pos.make_move(Move::new(2, 0, Side::Right));
+    pos.make_move(Move::new(0, 1, Side::Left));
+    pos.make_move(Move::new(1, 1, Side::Bottom));
+    pos.make_move(Move::new(1, 1, Side::Right));
+    pos.make_move(Move::new(2, 1, Side::Right));
+    pos.make_move(Move::new(3, 1, Side::Bottom));
+    pos.make_move(Move::new(4, 1, Side::Bottom));
+    pos.make_move(Move::new(0, 2, Side::Right));
+    pos.make_move(Move::new(0, 2, Side::Bottom));
+    pos.make_move(Move::new(2, 2, Side::Right));
+    pos.make_move(Move::new(2, 2, Side::Bottom));
+    pos.make_move(Move::new(4, 2, Side::Right));
+    pos.make_move(Move::new(0, 3, Side::Right));
+    pos.make_move(Move::new(2, 3, Side::Bottom));
+    pos.make_move(Move::new(3, 3, Side::Bottom));
+    pos.make_move(Move::new(3, 3, Side::Right));
+    pos.make_move(Move::new(4, 3, Side::Right));
+    pos.make_move(Move::new(0, 4, Side::Right));
+    pos.make_move(Move::new(1, 4, Side::Right));
+    pos.make_move(Move::new(3, 4, Side::Bottom));
+    pos.make_move(Move::new(4, 4, Side::Bottom));
+    pos.make_move(Move::new(4, 4, Side::Right));
     pos
 }
 
@@ -183,37 +183,37 @@ pub fn ex3p12() -> SimplePosition {
 pub fn ex6p2() -> SimplePosition {
     let mut pos = SimplePosition::new_game(3, 2);
     for x in 0..3 {
-        pos.make_move(x, 0, Side::Top);
+        pos.make_move(Move::new(x, 0, Side::Top));
     }
     for y in 0..2 {
-        pos.make_move(2, y, Side::Right);
+        pos.make_move(Move::new(2, y, Side::Right));
     }
-    pos.make_move(1, 0, Side::Bottom);
+    pos.make_move(Move::new(1, 0, Side::Bottom));
     pos
 }
 
 // Create Exercise 7.2 from Berlekamp's book
 pub fn ex7p2() -> SimplePosition {
     let mut pos = SimplePosition::new_game(5, 5);
-    pos.make_move(0, 0, Side::Right);
-    pos.make_move(1, 0, Side::Right);
-    pos.make_move(3, 0, Side::Right);
-    pos.make_move(0, 1, Side::Left);
-    pos.make_move(0, 1, Side::Right);
-    pos.make_move(3, 1, Side::Right);
-    pos.make_move(1, 1, Side::Bottom);
-    pos.make_move(2, 1, Side::Bottom);
-    pos.make_move(3, 1, Side::Bottom);
-    pos.make_move(0, 2, Side::Bottom);
-    pos.make_move(0, 2, Side::Right);
-    pos.make_move(2, 2, Side::Bottom);
-    pos.make_move(3, 2, Side::Right);
-    pos.make_move(4, 2, Side::Right);
-    pos.make_move(1, 3, Side::Right);
-    pos.make_move(3, 3, Side::Right);
-    pos.make_move(3, 3, Side::Bottom);
-    pos.make_move(1, 4, Side::Right);
-    pos.make_move(2, 4, Side::Right);
+    pos.make_move(Move::new(0, 0, Side::Right));
+    pos.make_move(Move::new(1, 0, Side::Right));
+    pos.make_move(Move::new(3, 0, Side::Right));
+    pos.make_move(Move::new(0, 1, Side::Left));
+    pos.make_move(Move::new(0, 1, Side::Right));
+    pos.make_move(Move::new(3, 1, Side::Right));
+    pos.make_move(Move::new(1, 1, Side::Bottom));
+    pos.make_move(Move::new(2, 1, Side::Bottom));
+    pos.make_move(Move::new(3, 1, Side::Bottom));
+    pos.make_move(Move::new(0, 2, Side::Bottom));
+    pos.make_move(Move::new(0, 2, Side::Right));
+    pos.make_move(Move::new(2, 2, Side::Bottom));
+    pos.make_move(Move::new(3, 2, Side::Right));
+    pos.make_move(Move::new(4, 2, Side::Right));
+    pos.make_move(Move::new(1, 3, Side::Right));
+    pos.make_move(Move::new(3, 3, Side::Right));
+    pos.make_move(Move::new(3, 3, Side::Bottom));
+    pos.make_move(Move::new(1, 4, Side::Right));
+    pos.make_move(Move::new(2, 4, Side::Right));
     pos
 }
 

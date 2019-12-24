@@ -53,10 +53,11 @@ fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> Position
     for &(x, y) in coords {
         let (frag_x, frag_y) = (x - x_left, y - y_top);
         for side in Side::all() {
+            let frag_move = Move{x: frag_x, y: frag_y, side: side};
             let legal_in_pos = pos.is_legal_move(Move{x: x, y: y, side: side});
-            let legal_in_frag = frag_pos.is_legal_move(Move{x: frag_x, y: frag_y, side: side});
+            let legal_in_frag = frag_pos.is_legal_move(frag_move);
             if legal_in_pos && !legal_in_frag {
-                frag_pos.undo_move(frag_x, frag_y, side);
+                frag_pos.undo_move(frag_move);
             }
         }
     }

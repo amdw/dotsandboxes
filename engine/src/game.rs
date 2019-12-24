@@ -90,6 +90,12 @@ pub struct Move {
     pub side: Side,
 }
 
+impl Move {
+    pub fn new(x: usize, y: usize, side: Side) -> Move {
+        Move{x: x, y: y, side: side}
+    }
+}
+
 impl fmt::Display for Move {
     fn fmt(self: &Move, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {}) {}", self.x, self.y, self.side)
@@ -190,11 +196,11 @@ impl SimplePosition {
     }
 
     // Make a given move on the board, and indicate the outcome.
-    pub fn make_move(self: &mut SimplePosition, x: usize, y: usize, s: Side) -> MoveOutcome {
-        if !self.is_legal_move(Move{x: x, y: y, side: s}) {
-            panic!(format!("Illegal move x = {}, y = {}, s = {:?}, pos:\n{}", x, y, s, self));
+    pub fn make_move(self: &mut SimplePosition, m: Move) -> MoveOutcome {
+        if !self.is_legal_move(m) {
+            panic!(format!("Illegal move {}, pos:\n{}", m, self));
         }
-        match (x, y, s) {
+        match (m.x, m.y, m.side) {
             (0, y, Side::Left) => self.left_strings[y] = false,
             (x, 0, Side::Top) => self.top_strings[x] = false,
             (x, y, Side::Top) => self.down_strings[x][y-1] = false,
@@ -202,29 +208,29 @@ impl SimplePosition {
             (x, y, Side::Left) => self.right_strings[x-1][y] = false,
             (x, y, Side::Right) => self.right_strings[x][y] = false,
         }
-        let mut captures = if self.is_captured(x, y) { 1 } else { 0 };
-        if s == Side::Left && x > 0 {
-            if self.is_captured(x-1, y) {
+        let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
+        if m.side == Side::Left && m.x > 0 {
+            if self.is_captured(m.x-1, m.y) {
                 captures += 1
             }
         }
-        if s == Side::Right && x < self.top_strings.len()-1 {
-            if self.is_captured(x+1, y) {
+        if m.side == Side::Right && m.x < self.top_strings.len()-1 {
+            if self.is_captured(m.x+1, m.y) {
                 captures += 1
             }
         }
-        if s == Side::Top && y > 0 {
-            if self.is_captured(x, y-1) {
+        if m.side == Side::Top && m.y > 0 {
+            if self.is_captured(m.x, m.y-1) {
                 captures += 1
             }
         }
-        if s == Side::Bottom && y < self.left_strings.len()-1 {
-            if self.is_captured(x, y+1) {
+        if m.side == Side::Bottom && m.y < self.left_strings.len()-1 {
+            if self.is_captured(m.x, m.y+1) {
                 captures += 1
             }
         }
         let end_of_game = self.is_end_of_game();
-        self.zhash.toggle_element(x, y, s);
+        self.zhash.toggle_element(m);
         MoveOutcome {
             coins_captured: captures,
             end_of_turn: captures == 0 || end_of_game,
@@ -234,8 +240,8 @@ impl SimplePosition {
 
     // Undo a given move by putting the line back on the board.
     // Behaviour if the move was never made in the first place is undefined.
-    pub fn undo_move(self: &mut SimplePosition, x: usize, y: usize, s: Side) {
-        match (x, y, s) {
+    pub fn undo_move(self: &mut SimplePosition, m: Move) {
+        match (m.x, m.y, m.side) {
             (0, y, Side::Left) => self.left_strings[y] = true,
             (x, 0, Side::Top) => self.top_strings[x] = true,
             (x, y, Side::Top) => self.down_strings[x][y-1] = true,
@@ -243,7 +249,7 @@ impl SimplePosition {
             (x, y, Side::Left) => self.right_strings[x-1][y] = true,
             (x, y, Side::Right) => self.right_strings[x][y] = true,
         }
-        self.zhash.toggle_element(x, y, s);
+        self.zhash.toggle_element(m);
     }
 
     // Indicate whether the game is over (i.e. whether all strings have been cut).
@@ -452,8 +458,8 @@ impl ZHash {
         self.current_val
     }
 
-    fn toggle_element(self: &mut ZHash, x: usize, y: usize, side: Side) {
-        match (x, y, side) {
+    fn toggle_element(self: &mut ZHash, m: Move) {
+        match (m.x, m.y, m.side) {
             (0, y, Side::Left) => self.current_val ^= self.left_strings[y],
             (x, 0, Side::Top) => self.current_val ^= self.top_strings[x],
             (x, y, Side::Left) => self.current_val ^= self.right_strings[x-1][y],
@@ -521,11 +527,11 @@ impl CompoundPosition {
     }
 
     pub fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
-        self.parts[m.part].make_move(m.m.x, m.m.y, m.m.side)
+        self.parts[m.part].make_move(m.m)
     }
 
     pub fn undo_move(self: &mut CompoundPosition, m: CPosMove) {
-        self.parts[m.part].undo_move(m.m.x, m.m.y, m.m.side)
+        self.parts[m.part].undo_move(m.m)
     }
 
     pub fn is_end_of_game(self: &CompoundPosition) -> bool {
@@ -605,7 +611,7 @@ mod tests {
         assert_eq!(false, pos.is_legal_move(Move{x: 2, y: 3, side: Side::Left}));
         assert_eq!(false, pos.is_legal_move(Move{x: 3, y: 2, side: Side::Left}));
 
-        let outcome = pos.make_move(1, 1, Side::Right);
+        let outcome = pos.make_move(Move{x: 1, y: 1, side: Side::Right});
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
@@ -615,7 +621,7 @@ mod tests {
         assert_eq!(3, pos.valency(1, 1));
         assert_eq!(3, pos.valency(2, 1));
 
-        let outcome = pos.make_move(1, 1, Side::Bottom);
+        let outcome = pos.make_move(Move{x: 1, y: 1, side: Side::Bottom});
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
@@ -626,7 +632,7 @@ mod tests {
         assert_eq!(3, pos.valency(1, 2));
 
         assert_eq!(0, pos.would_capture(Move{x: 1, y: 1, side: Side::Left}));
-        let outcome = pos.make_move(1, 1, Side::Left);
+        let outcome = pos.make_move(Move{x: 1, y: 1, side: Side::Left});
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
@@ -637,7 +643,7 @@ mod tests {
         assert_eq!(3, pos.valency(0, 1));
 
         assert_eq!(1, pos.would_capture(Move{x: 1, y: 1, side: Side::Top}));
-        let outcome = pos.make_move(1, 1, Side::Top);
+        let outcome = pos.make_move(Move{x: 1, y: 1, side: Side::Top});
         assert_eq!(1, outcome.coins_captured);
         assert_eq!(false, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
@@ -656,9 +662,10 @@ mod tests {
         for &(x, y) in [(0, 0), (0, 2), (2, 0), (2, 2)].iter() {
             let mut sides_captured = 0;
             for s in Side::all() {
-                assert_eq!(true, pos.is_legal_move(Move{x: x, y: y, side: s}));
-                let outcome = pos.make_move(x, y, s);
-                assert_eq!(false, pos.is_legal_move(Move{x: x, y: y, side: s}));
+                let m = Move{x: x, y: y, side: s};
+                assert_eq!(true, pos.is_legal_move(m));
+                let outcome = pos.make_move(m);
+                assert_eq!(false, pos.is_legal_move(m));
                 sides_captured += 1;
                 assert_eq!(sides_captured == 4, pos.is_captured(x, y));
                 assert_eq!(if sides_captured == 4 { 1 } else { 0 }, outcome.coins_captured);
@@ -685,16 +692,17 @@ mod tests {
         for &m in moves.iter() {
             assert_eq!(true, pos.is_legal_move(m));
             assert_eq!(0, pos.would_capture(m));
-            let outcome = pos.make_move(m.x, m.y, m.side);
+            let outcome = pos.make_move(m);
             assert_eq!(false, pos.is_legal_move(m));
             assert_eq!(0, outcome.coins_captured);
             assert_eq!(true, outcome.end_of_turn);
             assert_eq!(false, outcome.end_of_game);
             assert_eq!(false, pos.is_end_of_game());
         }
-        assert_eq!(true, pos.is_legal_move(Move{x: 0, y: 0, side: Side::Right}));
-        assert_eq!(2, pos.would_capture(Move{x: 0, y: 0, side: Side::Right}));
-        let outcome = pos.make_move(0, 0, Side::Right);
+        let dc = Move{x: 0, y: 0, side: Side::Right};
+        assert_eq!(true, pos.is_legal_move(dc));
+        assert_eq!(2, pos.would_capture(dc));
+        let outcome = pos.make_move(dc);
         assert_eq!(2, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_game);
         assert_eq!(true, outcome.end_of_turn);
@@ -705,10 +713,11 @@ mod tests {
     #[test]
     fn undo() {
         let mut pos = SimplePosition::new_game(3, 3);
-        pos.make_move(1, 1, Side::Top);
-        pos.make_move(1, 1, Side::Left);
-        pos.undo_move(1, 1, Side::Top);
-        pos.undo_move(0, 1, Side::Right);
+        let t = Move{x: 1, y: 1, side: Side::Top};
+        pos.make_move(t);
+        pos.make_move(Move{x: 1, y: 1, side: Side::Left});
+        pos.undo_move(t);
+        pos.undo_move(Move{x: 0, y: 1, side: Side::Right});
         for i in 0..2 {
             for j in 0..2 {
                 for s in Side::all() {
@@ -727,9 +736,9 @@ mod tests {
     #[test]
     fn pos_display() {
         let mut pos = SimplePosition::new_game(3, 3);
-        pos.make_move(1, 1, Side::Top);
-        pos.make_move(0, 0, Side::Top);
-        pos.make_move(0, 2, Side::Left);
+        pos.make_move(Move{x: 1, y: 1, side: Side::Top});
+        pos.make_move(Move{x: 0, y: 0, side: Side::Top});
+        pos.make_move(Move{x: 0, y: 2, side: Side::Left});
         let display = format!("{}", pos);
         let expected = vec!("   0 1 2",
                             "  +-+ + +",
@@ -780,7 +789,7 @@ mod tests {
                     moves.contains(&Move{ x: 1, y: j, side: Side::Left }));
         }
 
-        pos.make_move(0, 0, Side::Bottom);
+        pos.make_move(Move{x: 0, y: 0, side: Side::Bottom});
         let moves = pos.legal_moves();
         assert!(!moves.contains(&Move{ x: 0, y: 0, side: Side::Bottom }) &&
                 !moves.contains(&Move{ x: 0, y: 1, side: Side::Top }));
@@ -837,9 +846,10 @@ mod tests {
         let pos1 = p50();
         let mut pos2 = p50();
         assert_eq!(true, pos1.eq(&pos2));
-        pos2.make_move(0, 3, Side::Bottom);
+        let m = Move{x: 0, y: 3, side: Side::Bottom};
+        pos2.make_move(m);
         assert_eq!(false, pos1.eq(&pos2));
-        pos2.undo_move(0, 3, Side::Bottom);
+        pos2.undo_move(m);
         assert_eq!(true, pos1.eq(&pos2));
 
         assert_eq!(false, pos1.eq(&p50_top()));
@@ -853,7 +863,7 @@ mod tests {
         while !pos.is_end_of_game() {
             hashes.push(pos.zhash());
             let m = pos.legal_moves()[0];
-            pos.make_move(m.x, m.y, m.side);
+            pos.make_move(m);
             moves.push(m);
         }
         hashes.push(pos.zhash());
@@ -867,7 +877,7 @@ mod tests {
             let hash = hashes.pop().unwrap();
             let m = moves.pop().unwrap();
             assert_eq!(hash, pos.zhash());
-            pos.undo_move(m.x, m.y, m.side);
+            pos.undo_move(m);
         }
         assert_eq!(1, hashes.len());
         assert_eq!(hashes.pop().unwrap(), pos.zhash());
@@ -879,8 +889,9 @@ mod tests {
         let mut pos1 = SimplePosition::new_game(width, height);
         let mut pos2 = SimplePosition::new_game(width, height);
         assert_eq!(pos1.zhash(), pos2.zhash());
-        pos1.make_move(1, 1, Side::Top);
-        pos2.make_move(1, 1, Side::Top);
+        let m = Move{x: 1, y: 1, side: Side::Top};
+        pos1.make_move(m);
+        pos2.make_move(m);
         assert_eq!(pos1.zhash(), pos2.zhash());
 
         assert_eq!(SimplePosition::new_end_game(width, height).zhash(),
@@ -897,7 +908,7 @@ mod tests {
                 break;
             }
             let m = legal_moves[0];
-            pos.make_move(m.x, m.y, m.side);
+            pos.make_move(m);
         }
         hashes
     }

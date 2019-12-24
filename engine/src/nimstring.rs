@@ -96,10 +96,10 @@ pub fn is_loony(pos: &SimplePosition) -> bool {
 // Note that a move is loony iff it returns true here *and* it is not a capture.
 // A capture is never a loony move but can return true here (e.g. capturing
 // the first coin of an open 3-chain).
-pub fn would_be_loony(pos: &mut SimplePosition, x: usize, y: usize, s: Side) -> bool {
-    pos.make_move(x, y, s);
+pub fn would_be_loony(pos: &mut SimplePosition, m: Move) -> bool {
+    pos.make_move(m);
     let result = is_loony(pos);
-    pos.undo_move(x, y, s);
+    pos.undo_move(m);
     result
 }
 
@@ -127,9 +127,9 @@ fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Va
     let legal_moves = pos.legal_moves();
     for &m in &legal_moves {
         if pos.would_capture(m) > 0 {
-            pos.make_move(m.x, m.y, m.side);
+            pos.make_move(m);
             let result = calc_value(pos, cache);
-            pos.undo_move(m.x, m.y, m.side);
+            pos.undo_move(m);
             cache.insert(pos.zhash(), result);
             return result
         }
@@ -148,12 +148,12 @@ fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Va
     }
 
     let mut options = HashSet::new();
-    for m in &legal_moves {
-        pos.make_move(m.x, m.y, m.side);
+    for &m in &legal_moves {
+        pos.make_move(m);
         if let Value::Nimber(n) = calc_value(pos, cache) {
             options.insert(n);
         }
-        pos.undo_move(m.x, m.y, m.side);
+        pos.undo_move(m);
     }
     let result = Value::Nimber(mex(options));
     cache.insert(pos.zhash(), result);
@@ -168,9 +168,9 @@ pub fn calc_value_with_moves(pos: &SimplePosition) -> (Value, HashMap<Move, Valu
     let val = calc_value(&mut pos, &mut cache);
     let mut per_move = HashMap::new();
     for m in pos.legal_moves() {
-        pos.make_move(m.x, m.y, m.side);
+        pos.make_move(m);
         per_move.insert(m, calc_value(&mut pos, &mut cache));
-        pos.undo_move(m.x, m.y, m.side);
+        pos.undo_move(m);
     }
     (val, per_move)
 }
@@ -219,16 +219,16 @@ mod tests {
         assert!(!is_loony(&pos));
         let mut cache = HashMap::new();
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
-        pos.make_move(0, 0, Side::Left);
+        pos.make_move(Move{x: 0, y: 0, side: Side::Left});
         assert!(is_loony(&pos));
         assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
-        pos.make_move(1, 0, Side::Left);
+        pos.make_move(Move{x: 1, y: 0, side: Side::Left});
         assert!(is_loony(&pos));
         assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
-        pos.make_move(2, 0, Side::Left);
+        pos.make_move(Move{x: 2, y: 0, side: Side::Left});
         assert!(!is_loony(&pos));
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
-        pos.make_move(2, 0, Side::Right);
+        pos.make_move(Move{x: 2, y: 0, side: Side::Right});
         assert!(!is_loony(&pos));
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
     }
@@ -236,8 +236,8 @@ mod tests {
     #[test]
     fn open_3loop_not_loony() {
         let mut pos = make_chain(3);
-        pos.make_move(0, 0, Side::Left);
-        pos.make_move(2, 0, Side::Right);
+        pos.make_move(Move{x: 0, y: 0, side: Side::Left});
+        pos.make_move(Move{x: 2, y: 0, side: Side::Right});
         assert_eq!(false, is_loony(&pos));
         let (val, _) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(0), val);
@@ -246,7 +246,7 @@ mod tests {
     #[test]
     fn nonzero_value() {
         let mut pos = make_chain(7);
-        pos.undo_move(3, 0, Side::Top);
+        pos.undo_move(Move{x: 3, y: 0, side: Side::Top});
         let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(1), val);
         assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 3, y: 0, side: Side::Top}).unwrap());
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn right_capture_detection() {
         let mut pos = make_chain(5);
-        pos.undo_move(3, 0, Side::Top);
+        pos.undo_move(Move{x: 3, y: 0, side: Side::Top});
         let (val, per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(1), val);
         assert_eq!(&Value::Nimber(0), per_move.get(&Move{x: 4, y: 0, side: Side::Right}).unwrap());
@@ -310,7 +310,7 @@ mod tests {
     #[test]
     fn ex6p1_value() {
        let mut pos = ex6p2();
-       pos.make_move(1, 1, Side::Left); // Same position but rotated
+       pos.make_move(Move{x: 1, y: 1, side: Side::Left}); // Same position but rotated
        let (val, _per_move) = calc_value_with_moves(&pos);
        assert_eq!(Value::Nimber(3), val);
     }
@@ -333,24 +333,24 @@ mod tests {
     #[test]
     fn conditional_looniness() {
         let mut pos = make_chain(5);
-        assert_eq!(true, would_be_loony(&mut pos, 0, 0, Side::Left));
-        pos.make_move(0, 0, Side::Left);
+        assert_eq!(true, would_be_loony(&mut pos, Move{x: 0, y: 0, side: Side::Left}));
+        pos.make_move(Move{x: 0, y: 0, side: Side::Left});
         assert_eq!(true, is_loony(&pos));
-        assert_eq!(true, would_be_loony(&mut pos, 1, 0, Side::Left));
-        pos.make_move(1, 0, Side::Left);
+        assert_eq!(true, would_be_loony(&mut pos, Move{x: 1, y: 0, side: Side::Left}));
+        pos.make_move(Move{x: 1, y: 0, side: Side::Left});
         assert_eq!(true, is_loony(&pos));
-        assert_eq!(true, would_be_loony(&mut pos, 2, 0, Side::Left));
-        pos.make_move(2, 0, Side::Left);
+        assert_eq!(true, would_be_loony(&mut pos, Move{x: 2, y: 0, side: Side::Left}));
+        pos.make_move(Move{x: 2, y: 0, side: Side::Left});
         assert_eq!(true, is_loony(&pos));
-        assert_eq!(true, would_be_loony(&mut pos, 3, 0, Side::Left));
-        pos.make_move(3, 0, Side::Left);
+        assert_eq!(true, would_be_loony(&mut pos, Move{x: 3, y: 0, side: Side::Left}));
+        pos.make_move(Move{x: 3, y: 0, side: Side::Left});
         assert_eq!(true, is_loony(&pos));
-        assert_eq!(false, would_be_loony(&mut pos, 4, 0, Side::Left));
-        assert_eq!(false, would_be_loony(&mut pos, 4, 0, Side::Right));
-        pos.make_move(4, 0, Side::Left);
+        assert_eq!(false, would_be_loony(&mut pos, Move{x: 4, y: 0, side: Side::Left}));
+        assert_eq!(false, would_be_loony(&mut pos, Move{x: 4, y: 0, side: Side::Right}));
+        pos.make_move(Move{x: 4, y: 0, side: Side::Left});
         assert_eq!(false, is_loony(&pos));
-        assert_eq!(false, would_be_loony(&mut pos, 4, 0, Side::Right));
-        pos.make_move(4, 0, Side::Right);
+        assert_eq!(false, would_be_loony(&mut pos, Move{x: 4, y: 0, side: Side::Right}));
+        pos.make_move(Move{x: 4, y: 0, side: Side::Right});
         assert_eq!(true, pos.is_end_of_game());
         assert_eq!(false, is_loony(&mut pos));
     }
