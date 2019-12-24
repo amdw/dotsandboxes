@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{SimplePosition, Side};
+use game::{Move, SimplePosition, Side};
 use std::cmp;
 use std::iter;
 
@@ -33,7 +33,7 @@ fn search(pos: &SimplePosition, x: usize, y: usize,
     visited[x][y] = true;
     frag_coords.push((x, y));
     for side in Side::all() {
-        if pos.is_legal_move(x, y, side) {
+        if pos.is_legal_move(Move{x: x, y: y, side: side}) {
             if let Some((next_x, next_y)) = pos.offset(x, y, side) {
                 if !visited[next_x][next_y] {
                     search(pos, next_x, next_y, visited, frag_coords);
@@ -53,7 +53,9 @@ fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> Position
     for &(x, y) in coords {
         let (frag_x, frag_y) = (x - x_left, y - y_top);
         for side in Side::all() {
-            if pos.is_legal_move(x, y, side) && !frag_pos.is_legal_move(frag_x, frag_y, side) {
+            let legal_in_pos = pos.is_legal_move(Move{x: x, y: y, side: side});
+            let legal_in_frag = frag_pos.is_legal_move(Move{x: frag_x, y: frag_y, side: side});
+            if legal_in_pos && !legal_in_frag {
                 frag_pos.undo_move(frag_x, frag_y, side);
             }
         }

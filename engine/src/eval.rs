@@ -60,7 +60,7 @@ fn find_ddeal_move(pos: &SimplePosition, capture: Move) -> Move {
     }
 
     for s in Side::all_except(excl_side) {
-        if pos.is_legal_move(v2_x, v2_y, s) {
+        if pos.is_legal_move(Move{x: v2_x, y: v2_y, side: s}) {
             return Move{x: v2_x, y: v2_y, side: s};
         }
     }

@@ -41,7 +41,7 @@ impl Command {
     fn execute(self: &Command, pos: &mut SimplePosition) {
         match self {
             &Command::MakeMove(m) => {
-                if pos.is_legal_move(m.x, m.y, m.side) {
+                if pos.is_legal_move(m) {
                     pos.make_move(m.x, m.y, m.side);
                 }
                 else {

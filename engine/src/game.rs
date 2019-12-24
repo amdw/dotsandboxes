@@ -150,14 +150,14 @@ impl SimplePosition {
     }
 
     // Indicate whether a given move is legal in the current position.
-    pub fn is_legal_move(self: &SimplePosition, x: usize, y: usize, s: Side) -> bool {
-        if x >= self.down_strings.len() {
+    pub fn is_legal_move(self: &SimplePosition, m: Move) -> bool {
+        if m.x >= self.down_strings.len() {
             return false;
         }
-        if y >= self.left_strings.len() {
+        if m.y >= self.left_strings.len() {
             return false;
         }
-        match (x, y, s) {
+        match (m.x, m.y, m.side) {
             (0, y, Side::Left) => self.left_strings[y],
             (x, 0, Side::Top) => self.top_strings[x],
             (x, y, Side::Top) => self.down_strings[x][y-1],
@@ -169,10 +169,10 @@ impl SimplePosition {
 
     // Indicate whether a given square has been captured.
     pub fn is_captured(self: &SimplePosition, x: usize, y: usize) -> bool {
-        !self.is_legal_move(x, y, Side::Left) &&
-            !self.is_legal_move(x, y, Side::Right) &&
-            !self.is_legal_move(x, y, Side::Top) &&
-            !self.is_legal_move(x, y, Side::Bottom)
+        !self.is_legal_move(Move{x: x, y: y, side: Side::Left}) &&
+            !self.is_legal_move(Move{x: x, y: y, side: Side::Right}) &&
+            !self.is_legal_move(Move{x: x, y: y, side: Side::Top}) &&
+            !self.is_legal_move(Move{x: x, y: y, side: Side::Bottom})
     }
 
     // Indicate how many coins a given move would capture (either 0, 1 or 2)
@@ -191,7 +191,7 @@ impl SimplePosition {
 
     // Make a given move on the board, and indicate the outcome.
     pub fn make_move(self: &mut SimplePosition, x: usize, y: usize, s: Side) -> MoveOutcome {
-        if !self.is_legal_move(x, y, s) {
+        if !self.is_legal_move(Move{x: x, y: y, side: s}) {
             panic!(format!("Illegal move x = {}, y = {}, s = {:?}, pos:\n{}", x, y, s, self));
         }
         match (x, y, s) {
@@ -305,7 +305,7 @@ impl SimplePosition {
     pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
         let mut result = 0;
         for s in Side::all() {
-            if self.is_legal_move(x, y, s) {
+            if self.is_legal_move(Move{x: x, y: y, side: s}) {
                 result += 1
             }
         }
@@ -359,7 +359,9 @@ impl PartialEq for SimplePosition {
         for x in 0..self.width() {
             for y in 0..self.height() {
                 for s in Side::all() {
-                    if self.is_legal_move(x, y, s) != other.is_legal_move(x, y, s) {
+                    let legal_here = self.is_legal_move(Move{x: x, y: y, side: s});
+                    let legal_there = other.is_legal_move(Move{x: x, y: y, side: s});
+                    if legal_here != legal_there {
                         return false;
                     }
                 }
@@ -508,7 +510,7 @@ impl CompoundPosition {
 
     pub fn is_legal_move(self: &CompoundPosition, m: CPosMove) -> bool {
         if let Some(p) = self.parts.get(m.part) {
-            p.is_legal_move(m.m.x, m.m.y, m.m.side)
+            p.is_legal_move(m.m)
         } else {
             false
         }
@@ -592,23 +594,23 @@ mod tests {
         let mut pos = SimplePosition::new_game(3, 3);
         for i in 0..3 {
             for j in 0..3 {
-                assert_eq!(true, pos.is_legal_move(i, j, Side::Left));
-                assert_eq!(true, pos.is_legal_move(i, j, Side::Right));
-                assert_eq!(true, pos.is_legal_move(i, j, Side::Bottom));
-                assert_eq!(true, pos.is_legal_move(i, j, Side::Top));
+                assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: Side::Left}));
+                assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: Side::Right}));
+                assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: Side::Bottom}));
+                assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: Side::Top}));
                 assert_eq!(4, pos.valency(i, j));
             }
         }
         // Out of bounds
-        assert_eq!(false, pos.is_legal_move(2, 3, Side::Left));
-        assert_eq!(false, pos.is_legal_move(3, 2, Side::Left));
+        assert_eq!(false, pos.is_legal_move(Move{x: 2, y: 3, side: Side::Left}));
+        assert_eq!(false, pos.is_legal_move(Move{x: 3, y: 2, side: Side::Left}));
 
         let outcome = pos.make_move(1, 1, Side::Right);
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
-        assert_eq!(false, pos.is_legal_move(1, 1, Side::Right));
-        assert_eq!(false, pos.is_legal_move(2, 1, Side::Left));
+        assert_eq!(false, pos.is_legal_move(Move{x: 1, y: 1, side: Side::Right}));
+        assert_eq!(false, pos.is_legal_move(Move{x: 2, y: 1, side: Side::Left}));
         assert_eq!(false, pos.is_captured(1, 1));
         assert_eq!(3, pos.valency(1, 1));
         assert_eq!(3, pos.valency(2, 1));
@@ -617,8 +619,8 @@ mod tests {
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
-        assert_eq!(false, pos.is_legal_move(1, 1, Side::Bottom));
-        assert_eq!(false, pos.is_legal_move(1, 2, Side::Top));
+        assert_eq!(false, pos.is_legal_move(Move{x: 1, y: 1, side: Side::Bottom}));
+        assert_eq!(false, pos.is_legal_move(Move{x: 1, y: 2, side: Side::Top}));
         assert_eq!(false, pos.is_captured(1, 1));
         assert_eq!(2, pos.valency(1, 1));
         assert_eq!(3, pos.valency(1, 2));
@@ -628,8 +630,8 @@ mod tests {
         assert_eq!(0, outcome.coins_captured);
         assert_eq!(true, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
-        assert_eq!(false, pos.is_legal_move(1, 1, Side::Left));
-        assert_eq!(false, pos.is_legal_move(0, 1, Side::Right));
+        assert_eq!(false, pos.is_legal_move(Move{x: 1, y: 1, side: Side::Left}));
+        assert_eq!(false, pos.is_legal_move(Move{x: 0, y: 1, side: Side::Right}));
         assert_eq!(false, pos.is_captured(1, 1));
         assert_eq!(1, pos.valency(1, 1));
         assert_eq!(3, pos.valency(0, 1));
@@ -639,8 +641,8 @@ mod tests {
         assert_eq!(1, outcome.coins_captured);
         assert_eq!(false, outcome.end_of_turn);
         assert_eq!(false, outcome.end_of_game);
-        assert_eq!(false, pos.is_legal_move(1, 1, Side::Top));
-        assert_eq!(false, pos.is_legal_move(1, 0, Side::Bottom));
+        assert_eq!(false, pos.is_legal_move(Move{x: 1, y: 1, side: Side::Top}));
+        assert_eq!(false, pos.is_legal_move(Move{x: 1, y: 0, side: Side::Bottom}));
         assert_eq!(true, pos.is_captured(1, 1));
         assert_eq!(0, pos.valency(1, 1));
         assert_eq!(3, pos.valency(1, 0));
@@ -654,9 +656,9 @@ mod tests {
         for &(x, y) in [(0, 0), (0, 2), (2, 0), (2, 2)].iter() {
             let mut sides_captured = 0;
             for s in Side::all() {
-                assert_eq!(true, pos.is_legal_move(x, y, s));
+                assert_eq!(true, pos.is_legal_move(Move{x: x, y: y, side: s}));
                 let outcome = pos.make_move(x, y, s);
-                assert_eq!(false, pos.is_legal_move(x, y, s));
+                assert_eq!(false, pos.is_legal_move(Move{x: x, y: y, side: s}));
                 sides_captured += 1;
                 assert_eq!(sides_captured == 4, pos.is_captured(x, y));
                 assert_eq!(if sides_captured == 4 { 1 } else { 0 }, outcome.coins_captured);
@@ -672,20 +674,25 @@ mod tests {
         let mut pos = SimplePosition::new_game(2, 1);
         assert_eq!(2, pos.width());
         assert_eq!(1, pos.height());
-        let moves = [(0, 0, Side::Top), (0, 0, Side::Bottom),
-                     (1, 0, Side::Top), (1, 0, Side::Bottom),
-                     (0, 0, Side::Left), (1, 0, Side::Right)];
-        for &(x, y, s) in moves.iter() {
-            assert_eq!(true, pos.is_legal_move(x, y, s));
-            assert_eq!(0, pos.would_capture(x, y, s));
-            let outcome = pos.make_move(x, y, s);
-            assert_eq!(false, pos.is_legal_move(x, y, s));
+        let moves = [
+            Move{x: 0, y: 0, side: Side::Top},
+            Move{x: 0, y: 0, side: Side::Bottom},
+            Move{x: 1, y: 0, side: Side::Top},
+            Move{x: 1, y: 0, side: Side::Bottom},
+            Move{x: 0, y: 0, side: Side::Left},
+            Move{x: 1, y: 0, side: Side::Right},
+        ];
+        for &m in moves.iter() {
+            assert_eq!(true, pos.is_legal_move(m));
+            assert_eq!(0, pos.would_capture(m.x, m.y, m.side));
+            let outcome = pos.make_move(m.x, m.y, m.side);
+            assert_eq!(false, pos.is_legal_move(m));
             assert_eq!(0, outcome.coins_captured);
             assert_eq!(true, outcome.end_of_turn);
             assert_eq!(false, outcome.end_of_game);
             assert_eq!(false, pos.is_end_of_game());
         }
-        assert_eq!(true, pos.is_legal_move(0, 0, Side::Right));
+        assert_eq!(true, pos.is_legal_move(Move{x: 0, y: 0, side: Side::Right}));
         assert_eq!(2, pos.would_capture(0, 0, Side::Right));
         let outcome = pos.make_move(0, 0, Side::Right);
         assert_eq!(2, outcome.coins_captured);
@@ -705,7 +712,7 @@ mod tests {
         for i in 0..2 {
             for j in 0..2 {
                 for s in Side::all() {
-                    assert_eq!(true, pos.is_legal_move(i, j, s));
+                    assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: s}));
                 }
             }
         }
@@ -913,7 +920,7 @@ mod tests {
         for i in 0..width {
             for j in 0..height {
                 for s in Side::all() {
-                    assert_eq!(false, pos.is_legal_move(i, j, s));
+                    assert_eq!(false, pos.is_legal_move(Move{x: i, y: j, side: s}));
                 }
             }
         }

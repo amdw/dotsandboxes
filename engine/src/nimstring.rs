@@ -55,7 +55,7 @@ impl fmt::Display for Value {
 // If there is a coin connected to (x,y) on one of the given sides, return one such, else None.
 fn connected_coin(pos: &SimplePosition, x: usize, y: usize, sides: Vec<Side>) -> Option<(usize, usize, Side)> {
     for &s in &sides {
-        if pos.is_legal_move(x, y, s) {
+        if pos.is_legal_move(Move{x: x, y: y, side: s}) {
             if let Some((nx, ny)) = pos.offset(x, y, s) {
                 return Some((nx, ny, s));
             }
