@@ -16,10 +16,11 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, SimplePosition, Side, Move};
+use game::{Position, SimplePosition, CompoundPosition, Side, Move, CPosMove};
 use splitter::SplittablePosition;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::hash::Hash;
 use std::ops;
 
 #[derive(Clone)]
@@ -52,6 +53,51 @@ impl fmt::Display for Value {
     }
 }
 
+pub trait NimstringPosition<M>: SplittablePosition<M> {
+    // Indicate whether a given position is loony
+    fn is_loony(&self) -> bool;
+}
+
+impl NimstringPosition<Move> for SimplePosition {
+    fn is_loony(self: &SimplePosition) -> bool {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                if self.valency(x, y) != 1 {
+                    continue
+                }
+                if let Some((neighbour_x, neighbour_y, side)) = connected_coin(self, x, y, Side::all()) {
+                    if self.valency(neighbour_x, neighbour_y) != 2 {
+                        continue
+                    }
+                    // We have found a capturable coin attached to a coin of valency 2 (o-o-?).
+                    // This means the position is loony unless there is a valency-1 coin
+                    // on the other side (o-o-o).
+                    let far_sides = Side::all_except(side.opposite());
+                    if let Some((far_x, far_y, _)) = connected_coin(self, neighbour_x, neighbour_y, far_sides) {
+                        if self.valency(far_x, far_y) == 1 {
+                            continue;
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+
+impl NimstringPosition<CPosMove> for CompoundPosition {
+    fn is_loony(self: &CompoundPosition) -> bool {
+        // A CompoundPosition is loony iff any of its parts is loony
+        for part in self.parts.iter() {
+            if part.is_loony() {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 // If there is a coin connected to (x,y) on one of the given sides, return one such, else None.
 fn connected_coin(pos: &SimplePosition, x: usize, y: usize, sides: Vec<Side>) -> Option<(usize, usize, Side)> {
     for &s in &sides {
@@ -64,41 +110,15 @@ fn connected_coin(pos: &SimplePosition, x: usize, y: usize, sides: Vec<Side>) ->
     None
 }
 
-// Indicate whether a given position is loony
-pub fn is_loony(pos: &SimplePosition) -> bool {
-    for x in 0..pos.width() {
-        for y in 0..pos.height() {
-            if pos.valency(x, y) != 1 {
-                continue
-            }
-            if let Some((neighbour_x, neighbour_y, side)) = connected_coin(pos, x, y, Side::all()) {
-                if pos.valency(neighbour_x, neighbour_y) != 2 {
-                    continue
-                }
-                // We have found a capturable coin attached to a coin of valency 2 (o-o-?).
-                // This means the position is loony unless there is a valency-1 coin
-                // on the other side (o-o-o).
-                let far_sides = Side::all_except(side.opposite());
-                if let Some((far_x, far_y, _)) = connected_coin(pos, neighbour_x, neighbour_y, far_sides) {
-                    if pos.valency(far_x, far_y) == 1 {
-                        continue;
-                    }
-                }
-                return true;
-            }
-        }
-    }
-    false
-}
-
 // Indicate whether a given move would result in a loony position
 // (regardless of whether the current position is loony).
 // Note that a move is loony iff it returns true here *and* it is not a capture.
 // A capture is never a loony move but can return true here (e.g. capturing
 // the first coin of an open 3-chain).
-pub fn would_be_loony(pos: &mut SimplePosition, m: Move) -> bool {
+pub fn would_be_loony<M, P>(pos: &mut P, m: M) -> bool
+where M: Copy, P: NimstringPosition<M> {
     pos.make_move(m);
-    let result = is_loony(pos);
+    let result = pos.is_loony();
     pos.undo_move(m);
     result
 }
@@ -114,12 +134,13 @@ fn mex(s: HashSet<usize>) -> usize {
     }
 }
 
-fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Value {
+fn calc_value<M, P>(pos: &mut P, cache: &mut HashMap<usize, Value>) -> Value
+where M: Copy, P: NimstringPosition<M> {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
     if let Some(&v) = cache.get(&pos.zhash()) {
         return v;
     }
-    if is_loony(pos) {
+    if pos.is_loony() {
         cache.insert(pos.zhash(), Value::Loony);
         return Value::Loony;
     }
@@ -162,7 +183,8 @@ fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Va
 
 // Calculate the Nimstring value of a position, along with the values attained
 // by each of the legal moves.
-pub fn calc_value_with_moves(pos: &SimplePosition) -> (Value, HashMap<Move, Value>) {
+pub fn calc_value_with_moves<M, P>(pos: &P) -> (Value, HashMap<M, Value>)
+where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
     let val = calc_value(&mut pos, &mut cache);
@@ -216,20 +238,20 @@ mod tests {
     #[test]
     fn basic_values() {
         let mut pos = make_chain(3);
-        assert!(!is_loony(&pos));
+        assert!(!pos.is_loony());
         let mut cache = HashMap::new();
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
         pos.make_move(Move{x: 0, y: 0, side: Side::Left});
-        assert!(is_loony(&pos));
+        assert!(pos.is_loony());
         assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
         pos.make_move(Move{x: 1, y: 0, side: Side::Left});
-        assert!(is_loony(&pos));
+        assert!(pos.is_loony());
         assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
         pos.make_move(Move{x: 2, y: 0, side: Side::Left});
-        assert!(!is_loony(&pos));
+        assert!(!pos.is_loony());
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
         pos.make_move(Move{x: 2, y: 0, side: Side::Right});
-        assert!(!is_loony(&pos));
+        assert!(!pos.is_loony());
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
     }
 
@@ -238,7 +260,7 @@ mod tests {
         let mut pos = make_chain(3);
         pos.make_move(Move{x: 0, y: 0, side: Side::Left});
         pos.make_move(Move{x: 2, y: 0, side: Side::Right});
-        assert_eq!(false, is_loony(&pos));
+        assert_eq!(false, pos.is_loony());
         let (val, _) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(0), val);
     }
@@ -335,23 +357,35 @@ mod tests {
         let mut pos = make_chain(5);
         assert_eq!(true, would_be_loony(&mut pos, Move{x: 0, y: 0, side: Side::Left}));
         pos.make_move(Move{x: 0, y: 0, side: Side::Left});
-        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, pos.is_loony());
         assert_eq!(true, would_be_loony(&mut pos, Move{x: 1, y: 0, side: Side::Left}));
         pos.make_move(Move{x: 1, y: 0, side: Side::Left});
-        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, pos.is_loony());
         assert_eq!(true, would_be_loony(&mut pos, Move{x: 2, y: 0, side: Side::Left}));
         pos.make_move(Move{x: 2, y: 0, side: Side::Left});
-        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, pos.is_loony());
         assert_eq!(true, would_be_loony(&mut pos, Move{x: 3, y: 0, side: Side::Left}));
         pos.make_move(Move{x: 3, y: 0, side: Side::Left});
-        assert_eq!(true, is_loony(&pos));
+        assert_eq!(true, pos.is_loony());
         assert_eq!(false, would_be_loony(&mut pos, Move{x: 4, y: 0, side: Side::Left}));
         assert_eq!(false, would_be_loony(&mut pos, Move{x: 4, y: 0, side: Side::Right}));
         pos.make_move(Move{x: 4, y: 0, side: Side::Left});
-        assert_eq!(false, is_loony(&pos));
+        assert_eq!(false, pos.is_loony());
         assert_eq!(false, would_be_loony(&mut pos, Move{x: 4, y: 0, side: Side::Right}));
         pos.make_move(Move{x: 4, y: 0, side: Side::Right});
         assert_eq!(true, pos.is_end_of_game());
-        assert_eq!(false, is_loony(&mut pos));
+        assert_eq!(false, pos.is_loony());
+    }
+
+    #[test]
+    fn compound_values() {
+        let mut pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        assert_eq!(false, pos.is_loony());
+        let (val, _per_move) = calc_value_with_moves(&pos);
+        assert_eq!(Value::Nimber(0), val);
+        pos.make_move(CPosMove::new(1, 0, 0, Side::Left));
+        assert_eq!(true, pos.is_loony());
+        let (val, _per_move) = calc_value_with_moves(&pos);
+        assert_eq!(Value::Loony, val);
     }
 }

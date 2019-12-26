@@ -17,7 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use game::{Move, Position, SimplePosition, Side};
-use nimstring;
+use nimstring::{self, NimstringPosition};
 use std::collections::HashMap;
 use std::isize;
 
@@ -73,7 +73,7 @@ fn moves_to_consider(pos: &mut SimplePosition) -> Vec<Move> {
     let legal_moves = pos.legal_moves();
 
     // If there are any captures which don't affect looniness, just go ahead and make those
-    let is_loony = nimstring::is_loony(pos);
+    let is_loony = pos.is_loony();
     let mut capture: Option<Move> = None;
     for &m in &legal_moves {
         let captures = pos.would_capture(m);

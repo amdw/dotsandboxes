@@ -494,6 +494,9 @@ pub struct CompoundPosition {
 #[derive(Clone)]
 #[derive(Copy)]
 #[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Eq)]
+#[derive(Hash)]
 pub struct CPosMove {
     pub part: usize,
     pub m: Move,
