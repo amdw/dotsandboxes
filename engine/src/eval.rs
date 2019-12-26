@@ -131,11 +131,11 @@ mod test {
     fn eval_chain() {
         for i in 1..10 {
             let mut chain = make_chain(i);
-            let (val, _) = eval(&mut chain);
+            let (val, _) = eval(&chain);
             let expected_val = -(i as isize);
             assert_eq!(expected_val, val, "Closed {}-chain", i);
             chain.make_move(Move{x: 0, y: 0, side: Side::Left});
-            let (val, best_move) = eval(&mut chain);
+            let (val, best_move) = eval(&chain);
             assert_eq!(-expected_val, val, "Opened {}-chain", i);
             assert!(chain.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
         }
@@ -143,15 +143,15 @@ mod test {
 
     #[test]
     fn eval_double_chain() {
-        let (val, _) = eval(&mut double_chain(1));
+        let (val, _) = eval(&double_chain(1));
         assert_eq!(0, val);
         for i in 2..10 {
             let mut pos = double_chain(i);
-            let (val, _) = eval(&mut pos);
+            let (val, _) = eval(&pos);
             let expected_val = 4 - 2*(i as isize);
             assert_eq!(expected_val, val, "Evaluation of double chain length {}", i);
             pos.make_move(Move{x: 0, y: 0, side: Side::Left});
-            let (val, best_move) = eval(&mut pos);
+            let (val, best_move) = eval(&pos);
             assert_eq!(-expected_val, val, "Evaluation of opened double chain length {}", i);
             assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
         }
@@ -161,26 +161,26 @@ mod test {
     fn eval_multi_chains() {
         let mut pos = multi_chains(3, 4);
 
-        let (val, _) = eval(&mut pos);
+        let (val, _) = eval(&pos);
         assert_eq!(-2, val);
         pos.make_move(Move{x: 0, y: 0, side: Side::Left});
 
-        let (val, best_move) = eval(&mut pos);
+        let (val, best_move) = eval(&pos);
         assert_eq!(2, val);
         assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 0, y: 0, side: Side::Right}));
         pos.make_move(Move{x: 0, y: 0, side: Side::Right});
 
-        let (val, best_move) = eval(&mut pos);
+        let (val, best_move) = eval(&pos);
         assert_eq!(1, val);
         assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 1, y: 0, side: Side::Right}));
         pos.make_move(Move{x: 1, y: 0, side: Side::Right});
 
-        let (val, best_move) = eval(&mut pos);
+        let (val, best_move) = eval(&pos);
         assert_eq!(0, val);
         assert!(pos.moves_equivalent(best_move.unwrap(), Move{x: 2, y: 0, side: Side::Right}));
         pos.make_move(Move{x: 2, y: 0, side: Side::Right});
 
-        let (val, _) = eval(&mut pos);
+        let (val, _) = eval(&pos);
         assert_eq!(-1, val);
     }
 
@@ -188,11 +188,11 @@ mod test {
     fn eval_double_loop() {
         for i in 2..8 {
             let mut pos = double_loop(i);
-            let (val, _) = eval(&mut pos);
+            let (val, _) = eval(&pos);
             let expected_val = 8 - 4*(i as isize);
             assert_eq!(expected_val, val, "Evaluation of double loop width {}", i);
             pos.make_move(Move{x: 0, y: 0, side: Side::Right});
-            let (val, _) = eval(&mut pos);
+            let (val, _) = eval(&pos);
             assert_eq!(-expected_val, val, "Evaluation of opened double loop width {}", i);
         }
     }
@@ -200,38 +200,38 @@ mod test {
     #[test]
     fn eval_ex3p1() {
         let mut pos = ex3p1();
-        let (val, best_move) = eval(&mut pos);
+        let (val, best_move) = eval(&pos);
         let best_move = best_move.unwrap();
         assert_eq!(3, val);
         assert!(pos.moves_equivalent(best_move, Move{x: 2, y: 1, side: Side::Bottom}));
 
         pos.make_move(Move{x: 2, y: 1, side: Side::Bottom});
-        let (val, best_move) = eval(&mut pos);
+        let (val, best_move) = eval(&pos);
         let best_move = best_move.unwrap();
         assert_eq!(-3, val);
         assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Bottom}));
 
         pos.make_move(Move{x: 0, y: 0, side: Side::Bottom});
-        let (val, _) = eval(&mut pos);
+        let (val, _) = eval(&pos);
         assert_eq!(3, val);
 
         pos.undo_move(Move{x: 0, y: 0, side: Side::Bottom});
         pos.make_move(Move{x: 0, y: 2, side: Side::Left});
-        let (val, _) = eval(&mut pos);
+        let (val, _) = eval(&pos);
         assert_eq!(5, val);
     }
 
     #[test]
     fn eval_ex3p12() {
         let mut pos = ex3p12();
-        let (val, best_move) = eval(&mut pos);
+        let (val, best_move) = eval(&pos);
         let best_move = best_move.unwrap();
         let expected_val = 9;
         assert_eq!(expected_val, val);
         assert!(pos.moves_equivalent(best_move, Move{x: 4, y: 0, side: Side::Bottom}));
 
         pos.make_move(Move{x: 4, y: 0, side: Side::Bottom});
-        let (val, _) = eval(&mut pos);
+        let (val, _) = eval(&pos);
         assert_eq!(-expected_val, val);
     }
 
@@ -288,14 +288,14 @@ mod test {
         loop {
             let mut pos = make_random_pos(&mut r);
             let expected_val = naive_minimax(&mut pos);
-            let (val, best_move) = eval(&mut pos);
+            let (val, best_move) = eval(&pos);
             assert_eq!(expected_val, val, "SimplePosition {} value matches naive minimax", i);
 
             if !pos.is_end_of_game() {
                 let best_move = best_move.unwrap();
                 let outcome = pos.make_move(best_move);
                 let captures = outcome.coins_captured as isize;
-                let (next_val, _) = eval(&mut pos);
+                let (next_val, _) = eval(&pos);
                 let expected_next_val = if captures > 0 {
                     expected_val - captures
                 } else {
@@ -317,7 +317,7 @@ mod test {
 //    #[test]
 //    fn eval_p50() {
 //        let mut pos = p50();
-//        let (val, best_move) = eval(&mut pos);
+//        let (val, best_move) = eval(&pos);
 //        let best_move = best_move.unwrap();
 //        assert_eq!(4, val);
 //        assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 3, side: Side::Right})
