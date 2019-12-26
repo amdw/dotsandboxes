@@ -116,6 +116,11 @@ pub trait Position<M> {
     fn is_end_of_game(&self) -> bool;
     // Compute all possible legal moves in the position.
     fn legal_moves(&self) -> Vec<M>;
+    // Indicate whether two moves are equivalent in the current position,
+    // i.e. they refer to the same "logical" move on the board.
+    // For example in a SimplePosition, (0,0) Right is equivalent to (1,0) Left
+    // (provided the board is at least two columns wide).
+    fn moves_equivalent(&self, m1: M, m2: M) -> bool;
     // Current Zobrist hash value for position.
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
@@ -206,22 +211,6 @@ impl SimplePosition {
             (x, y, Side::Right) => Some((x+1, y)),
             (x, y, Side::Top) => Some((x, y-1)),
             (x, y, Side::Bottom) => Some((x, y+1)),
-        }
-    }
-
-    // Indicate whether two moves are equivalent in the current position,
-    // i.e. they refer to the same "logical" move on the board.
-    // For example (0,0) Right is equivalent to (1,0) Left
-    // (provided the board is at least two columns wide).
-    pub fn moves_equivalent(self: &SimplePosition, move1: Move, move2: Move) -> bool {
-        if move1 == move2 {
-            true
-        }
-        else if let Some((n1x, n1y)) = self.offset(move1.x, move1.y, move1.side) {
-            move2.x == n1x && move2.y == n1y && move2.side == move1.side.opposite()
-        }
-        else {
-            false
         }
     }
 }
@@ -362,6 +351,18 @@ impl Position<Move> for SimplePosition {
             }
         }
         result
+    }
+
+    fn moves_equivalent(self: &SimplePosition, move1: Move, move2: Move) -> bool {
+        if move1 == move2 {
+            true
+        }
+        else if let Some((n1x, n1y)) = self.offset(move1.x, move1.y, move1.side) {
+            move2.x == n1x && move2.y == n1y && move2.side == move1.side.opposite()
+        }
+        else {
+            false
+        }
     }
 
     fn zhash(self: &SimplePosition) -> usize {
@@ -566,6 +567,10 @@ impl Position<CPosMove> for CompoundPosition {
             }
         }
         result
+    }
+
+    fn moves_equivalent(self: &CompoundPosition, move1: CPosMove, move2: CPosMove) -> bool {
+        move1.part == move2.part && self.parts[move1.part].moves_equivalent(move1.m, move2.m)
     }
 
     fn zhash(self: &CompoundPosition) -> usize {
@@ -854,6 +859,17 @@ mod tests {
         // Out of bounds
         assert!(!pos.moves_equivalent(Move{x: 1, y: 0, side: Side::Right},
                                       Move{x: 2, y: 0, side: Side::Left}));
+    }
+
+    #[test]
+    fn compound_move_equivalences() {
+        let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        assert_eq!(true, pos.moves_equivalent(CPosMove::new(0, 0, 0, Side::Left),
+                                              CPosMove::new(0, 0, 0, Side::Left)));
+        assert_eq!(true, pos.moves_equivalent(CPosMove::new(0, 0, 0, Side::Right),
+                                              CPosMove::new(0, 1, 0, Side::Left)));
+        assert_eq!(false, pos.moves_equivalent(CPosMove::new(0, 0, 0, Side::Left),
+                                               CPosMove::new(1, 0, 0, Side::Left)));
     }
 
     #[test]

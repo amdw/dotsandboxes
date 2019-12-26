@@ -16,14 +16,52 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Move, Position, SimplePosition, Side};
+use game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
 use nimstring::{self, NimstringPosition};
 use std::collections::HashMap;
 use std::isize;
 
+pub trait EvaluablePosition<M> : NimstringPosition<M> {
+    // Given a loony position and the capture, find the corresponding double-dealing move.
+    // Behaviour on a non-loony position is undefined.
+    fn find_ddeal_move(&self, m: M) -> M;
+}
+
+impl EvaluablePosition<Move> for SimplePosition {
+    fn find_ddeal_move(self: &SimplePosition, capture: Move) -> Move {
+        // (capture.x, capture.y) might be the valency-1 coin or the valency-2 one
+        let (v2_x, v2_y, excl_side) = if self.valency(capture.x, capture.y) == 1 {
+            let (x, y) = self.offset(capture.x, capture.y, capture.side).unwrap();
+            (x, y, capture.side.opposite())
+        } else {
+            (capture.x, capture.y, capture.side)
+        };
+
+        if self.valency(v2_x, v2_y) != 2 {
+            panic!("Expected ({},{}) to have valency 2, found {} in {}",
+                   v2_x, v2_y, self.valency(v2_x, v2_y), self);
+        }
+
+        for s in Side::all_except(excl_side) {
+            if self.is_legal_move(Move{x: v2_x, y: v2_y, side: s}) {
+                return Move{x: v2_x, y: v2_y, side: s};
+            }
+        }
+
+        panic!("Could not find double-dealing move corresponding to {} in {}", capture, self);
+    }
+}
+
+impl EvaluablePosition<CPosMove> for CompoundPosition {
+    fn find_ddeal_move(self: &CompoundPosition, capture: CPosMove) -> CPosMove {
+        CPosMove{part: capture.part, m: self.parts[capture.part].find_ddeal_move(capture.m)}
+    }
+}
+
 // Evaluate a position given a set of moves to consider
-fn eval_moves(pos: &mut SimplePosition, moves: &Vec<Move>,
-              cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
+fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>,
+              cache: &mut HashMap<usize, (isize, M)>) -> (isize, Option<M>)
+where M: Copy, P: EvaluablePosition<M> {
     if moves.is_empty() {
         return (0, None);
     }
@@ -44,37 +82,14 @@ fn eval_moves(pos: &mut SimplePosition, moves: &Vec<Move>,
     (value, Some(best_move))
 }
 
-// Given a loony position and the capture, find the corresponding double-dealing move
-fn find_ddeal_move(pos: &SimplePosition, capture: Move) -> Move {
-    // (capture.x, capture.y) might be the valency-1 coin or the valency-2 one
-    let (v2_x, v2_y, excl_side) = if pos.valency(capture.x, capture.y) == 1 {
-        let (x, y) = pos.offset(capture.x, capture.y, capture.side).unwrap();
-        (x, y, capture.side.opposite())
-    } else {
-        (capture.x, capture.y, capture.side)
-    };
-
-    if pos.valency(v2_x, v2_y) != 2 {
-        panic!("Expected ({},{}) to have valency 2, found {} in {}",
-               v2_x, v2_y, pos.valency(v2_x, v2_y), pos);
-    }
-
-    for s in Side::all_except(excl_side) {
-        if pos.is_legal_move(Move{x: v2_x, y: v2_y, side: s}) {
-            return Move{x: v2_x, y: v2_y, side: s};
-        }
-    }
-
-    panic!("Could not find double-dealing move corresponding to {} in {}", capture, pos);
-}
-
 // Determine what moves deserve consideration in a given position
-fn moves_to_consider(pos: &mut SimplePosition) -> Vec<Move> {
+fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
+where M: Copy, P: EvaluablePosition<M> {
     let legal_moves = pos.legal_moves();
 
     // If there are any captures which don't affect looniness, just go ahead and make those
     let is_loony = pos.is_loony();
-    let mut capture: Option<Move> = None;
+    let mut capture: Option<M> = None;
     for &m in &legal_moves {
         let captures = pos.would_capture(m);
         if captures == 0 {
@@ -90,14 +105,15 @@ fn moves_to_consider(pos: &mut SimplePosition) -> Vec<Move> {
     // TODO: Use other canonical play results to further reduce the set of moves considered
     if is_loony {
         let capture = capture.unwrap();
-        let ddeal_move = find_ddeal_move(pos, capture);
+        let ddeal_move = pos.find_ddeal_move(capture);
         vec!(capture, ddeal_move)
     } else {
         legal_moves
     }
 }
 
-fn eval_cache(pos: &mut SimplePosition, cache: &mut HashMap<usize, (isize, Move)>) -> (isize, Option<Move>) {
+fn eval_cache<M, P>(pos: &mut P, cache: &mut HashMap<usize, (isize, M)>) -> (isize, Option<M>)
+where M: Copy, P: EvaluablePosition<M> {
     if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
         return (val, Some(best_move));
     }
@@ -107,10 +123,8 @@ fn eval_cache(pos: &mut SimplePosition, cache: &mut HashMap<usize, (isize, Move)
 }
 
 // Calculate the value function of a given position and a move which achieves that value
-// TODO Change these functions to work on CompoundPosition.
-// Ideally we would work generically on a Position trait, but to do this efficiently
-// would require specialization: https://github.com/rust-lang/rust/issues/31844
-pub fn eval(pos: &SimplePosition) -> (isize, Option<Move>) {
+pub fn eval<M, P>(pos: &P) -> (isize, Option<M>)
+where M: Copy, P: EvaluablePosition<M> + Clone {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
     eval_cache(&mut pos, &mut cache)
@@ -233,6 +247,29 @@ mod test {
         pos.make_move(Move{x: 4, y: 0, side: Side::Bottom});
         let (val, _) = eval(&pos);
         assert_eq!(-expected_val, val);
+    }
+
+    #[test]
+    fn eval_one_three_one_four() {
+        // Evaluate P_{1,4} from the paper
+        let mut pos = one_long_multi_three(1, 4);
+        let (val, _) = eval(&pos);
+        assert_eq!(-3, val);
+
+        // Open the 3-chain
+        pos.make_move(CPosMove::new(1, 0, 0, Side::Left));
+        let (val, best_move) = eval(&pos);
+        assert_eq!(3, val);
+        assert!(best_move.is_some());
+        // Best move is to take the first coin
+        assert!(pos.moves_equivalent(best_move.unwrap(), CPosMove::new(1, 0, 0, Side::Right)));
+
+        pos.make_move(best_move.unwrap());
+        let (val, best_move) = eval(&pos);
+        assert_eq!(2, val);
+        assert!(best_move.is_some());
+        // Best after that is to double-deal
+        assert!(pos.moves_equivalent(best_move.unwrap(), CPosMove::new(1, 2, 0, Side::Right)));
     }
 
     // For use in generative tests
