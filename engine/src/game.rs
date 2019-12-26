@@ -906,6 +906,8 @@ mod tests {
         pos2.make_move(m);
         assert_eq!(pos1.zhash(), pos2.zhash());
 
+        assert_eq!(pos1.zhash(), CompoundPosition::from_single(pos1).zhash());
+
         assert_eq!(SimplePosition::new_end_game(width, height).zhash(),
                    SimplePosition::new_end_game(width, height).zhash());
     }
