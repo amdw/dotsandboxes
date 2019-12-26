@@ -17,7 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use game::{Position, SimplePosition, Side, Move};
-use splitter;
+use splitter::SplittablePosition;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::ops;
@@ -136,12 +136,12 @@ fn calc_value(pos: &mut SimplePosition, cache: &mut HashMap<usize, Value>) -> Va
     }
 
     // Try to split the position into independent parts which can be evaluated separately
-    let parts = splitter::split(pos);
+    let parts = pos.split();
     if parts.len() > 1 {
         let mut result = Value::Nimber(0);
         for mut part in parts {
-            let frag_value = calc_value(&mut part.pos, cache);
-            result = result + frag_value;
+            let part_value = calc_value(&mut part, cache);
+            result = result + part_value;
         }
         cache.insert(pos.zhash(), result);
         return result;

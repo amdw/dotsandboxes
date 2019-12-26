@@ -488,7 +488,7 @@ impl ZHash {
 // the paper.
 #[derive(Clone)]
 pub struct CompoundPosition {
-    parts: Vec<SimplePosition>,
+    pub(crate) parts: Vec<SimplePosition>,
 }
 
 #[derive(Clone)]

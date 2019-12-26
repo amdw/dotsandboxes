@@ -16,15 +16,46 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Move, Position, SimplePosition, Side};
+use game::{Move, CPosMove, Position, CompoundPosition, SimplePosition, Side};
 use std::cmp;
 use std::iter;
 
-// A fragment extracted from a larger position.
-pub struct PositionFragment {
-    pub pos: SimplePosition,
-    pub x_offset: usize,
-    pub y_offset: usize,
+pub trait SplittablePosition<M> : Position<M> {
+    // Split a Position into its independent fragments.
+    // If the position is fully connected, the result will consist of a single element
+    // representing the whole position.
+    fn split(&self) -> Vec<SimplePosition>;
+}
+
+impl SplittablePosition<Move> for SimplePosition {
+    fn split(self: &SimplePosition) -> Vec<SimplePosition> {
+        let mut visited: Vec<Vec<bool>> = Vec::with_capacity(self.width());
+        for _ in 0..self.width() {
+            visited.push(iter::repeat(false).take(self.height()).collect());
+        }
+        let mut result = Vec::new();
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                if !visited[x][y] && self.valency(x, y) > 0 {
+                    let mut frag_coords = Vec::new();
+                    search(self, x, y, &mut visited, &mut frag_coords);
+                    result.push(make_fragment(self, &frag_coords));
+                }
+            }
+        }
+        result
+    }
+}
+
+impl SplittablePosition<CPosMove> for CompoundPosition {
+    fn split(self: &CompoundPosition) -> Vec<SimplePosition> {
+        let mut new_parts = Vec::with_capacity(self.parts.len());
+        for part in &self.parts {
+            let mut split = part.split();
+            new_parts.append(&mut split);
+        }
+        new_parts
+    }
 }
 
 // Depth-first search to find all coordinates which are part of the fragment including (x, y)
@@ -43,8 +74,8 @@ fn search(pos: &SimplePosition, x: usize, y: usize,
     }
 }
 
-// Build a PositionFragment from a list of coordinates
-fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> PositionFragment {
+// Build the sub-position from a list of coordinates
+fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> SimplePosition {
     let (x_left, x_right, y_top, y_bottom) = coords.iter().fold(
         (coords[0].0, coords[0].0, coords[0].1, coords[0].1),
         |(xl, xr, yt, yb), &(x, y)| (cmp::min(xl, x), cmp::max(xr, x), cmp::min(yt, y), cmp::max(yb, y))
@@ -61,28 +92,7 @@ fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> Position
             }
         }
     }
-    PositionFragment{pos: frag_pos, x_offset: x_left, y_offset: y_top}
-}
-
-// Split a position into its independent fragments.
-// If the position is fully connected, the result will consist of a single element
-// representing the whole position.
-pub fn split(pos: &SimplePosition) -> Vec<PositionFragment> {
-    let mut visited: Vec<Vec<bool>> = Vec::with_capacity(pos.width());
-    for _ in 0..pos.width() {
-        visited.push(iter::repeat(false).take(pos.height()).collect());
-    }
-    let mut result = Vec::new();
-    for x in 0..pos.width() {
-        for y in 0..pos.height() {
-            if !visited[x][y] && pos.valency(x, y) > 0 {
-                let mut frag_coords = Vec::new();
-                search(pos, x, y, &mut visited, &mut frag_coords);
-                result.push(make_fragment(pos, &frag_coords));
-            }
-        }
-    }
-    result
+    frag_pos
 }
 
 #[cfg(test)]
@@ -93,30 +103,37 @@ mod tests {
     #[test]
     fn split_p50() {
         let pos = p50();
-        let parts = split(&pos);
+        let parts = pos.split();
         assert_eq!(3, parts.len());
 
-        let top_parts: Vec<&PositionFragment> = parts.iter().filter(|f| f.x_offset == 0 && f.y_offset == 0).collect();
+        let top_parts: Vec<&SimplePosition> = parts.iter().filter(|&p| p.eq(&p50_top())).collect();
         assert_eq!(1, top_parts.len());
-        assert_eq!(true, top_parts[0].pos.eq(&p50_top()));
 
-        let bl_parts: Vec<&PositionFragment> = parts.iter().filter(|f| f.x_offset == 0 && f.y_offset == 2).collect();
+        let bl_parts: Vec<&SimplePosition> = parts.iter().filter(|&p| p.eq(&p50_bottomleft())).collect();
         assert_eq!(1, bl_parts.len());
-        assert_eq!(true, bl_parts[0].pos.eq(&p50_bottomleft()));
 
-        let br_parts: Vec<&PositionFragment> = parts.iter().filter(|f| f.x_offset == 3 && f.y_offset == 2).collect();
+        let br_parts: Vec<&SimplePosition> = parts.iter().filter(|&p| p.eq(&p50_bottomright())).collect();
         assert_eq!(1, br_parts.len());
-        assert_eq!(true, br_parts[0].pos.eq(&p50_bottomright()));
     }
 
     #[test]
     fn split_unsplittable() {
         let pos = SimplePosition::new_game(3, 3);
-        let parts = split(&pos);
+        let parts = pos.split();
         assert_eq!(1, parts.len());
-        let frag = &parts[0];
-        assert_eq!(0, frag.x_offset);
-        assert_eq!(0, frag.y_offset);
-        assert_eq!(true, frag.pos.eq(&pos));
+        let part = &parts[0];
+        assert_eq!(true, part.eq(&pos));
+    }
+
+    #[test]
+    fn split_compound() {
+        let pos = CompoundPosition::new_game(vec!(
+            multi_chains(5, 2),
+            multi_chains(5, 2)
+        ));
+        let split = pos.split();
+        assert_eq!(4, split.len());
+        let chains: Vec<&SimplePosition> = split.iter().filter(|&p| p.eq(&make_chain(5))).collect();
+        assert_eq!(4, chains.len());
     }
 }
