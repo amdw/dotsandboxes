@@ -103,12 +103,22 @@ impl fmt::Display for Move {
 }
 
 pub trait Position<M> {
+    // Indicate whether a given move is legal in the current position.
     fn is_legal_move(&self, m: M) -> bool;
+    // Indicate how many coins a given move would capture (either 0, 1 or 2)
     fn would_capture(&self, m: M) -> usize;
+    // Make a given move on the board, and indicate the outcome.
     fn make_move(&mut self, m: M) -> MoveOutcome;
+    // Undo a given move by putting the line back on the board.
+    // Behaviour if the move was never made in the first place is undefined.
     fn undo_move(&mut self, m: M);
+    // Indicate whether the game is over (i.e. whether all strings have been cut).
     fn is_end_of_game(&self) -> bool;
+    // Compute all possible legal moves in the position.
     fn legal_moves(&self) -> Vec<M>;
+    // Current Zobrist hash value for position.
+    // This hash should be consistent across positions,
+    // i.e. equal positions should have equal hashes.
     fn zhash(&self) -> usize;
 }
 
@@ -217,7 +227,6 @@ impl SimplePosition {
 }
 
 impl Position<Move> for SimplePosition {
-    // Indicate whether a given move is legal in the current position.
     fn is_legal_move(self: &SimplePosition, m: Move) -> bool {
         if m.x >= self.down_strings.len() {
             return false;
@@ -235,7 +244,6 @@ impl Position<Move> for SimplePosition {
         }
     }
 
-    // Indicate how many coins a given move would capture (either 0, 1 or 2)
     fn would_capture(self: &SimplePosition, m: Move) -> usize {
         let mut result = 0;
         if self.valency(m.x, m.y) == 1 {
@@ -249,7 +257,6 @@ impl Position<Move> for SimplePosition {
         result
     }
 
-    // Make a given move on the board, and indicate the outcome.
     fn make_move(self: &mut SimplePosition, m: Move) -> MoveOutcome {
         if !self.is_legal_move(m) {
             panic!(format!("Illegal move {}, pos:\n{}", m, self));
@@ -292,8 +299,6 @@ impl Position<Move> for SimplePosition {
         }
     }
 
-    // Undo a given move by putting the line back on the board.
-    // Behaviour if the move was never made in the first place is undefined.
     fn undo_move(self: &mut SimplePosition, m: Move) {
         match (m.x, m.y, m.side) {
             (0, y, Side::Left) => self.left_strings[y] = true,
@@ -306,7 +311,6 @@ impl Position<Move> for SimplePosition {
         self.zhash.toggle_element(m);
     }
 
-    // Indicate whether the game is over (i.e. whether all strings have been cut).
     fn is_end_of_game(self: &SimplePosition) -> bool {
         for &b in self.left_strings.iter() {
             if b {
@@ -335,7 +339,6 @@ impl Position<Move> for SimplePosition {
         true
     }
 
-    // Compute all possible legal moves in the position.
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
         let mut result: Vec<Move> = Vec::new();
         for (x, &b) in self.top_strings.iter().enumerate() {
@@ -361,9 +364,6 @@ impl Position<Move> for SimplePosition {
         result
     }
 
-    // Current Zobrist hash value for position.
-    // This hash should be consistent across positions,
-    // i.e. equal positions should have equal hashes.
     fn zhash(self: &SimplePosition) -> usize {
         self.zhash.current_value()
     }
@@ -481,8 +481,6 @@ impl ZHash {
         }
     }
 }
-
-// TODO: Extract trait from the simple and compound positions to ensure consistent interface
 
 // Representation of a position composed of multiple rectangular dots-and-boxes
 // positions. This allows some additional strings-and-coins positions to be
