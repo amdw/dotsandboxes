@@ -248,7 +248,7 @@ fn parse_position<R: BufRead>(reader: R) -> Result<CompoundPosition, String> {
     for pair in size_spec_parts.chunks(2) {
         parts.push(SimplePosition::new_game(pair[0], pair[1]));
     }
-    let mut pos = CompoundPosition::new(parts.clone());
+    let mut pos = CompoundPosition::new(parts);
     for line in lines {
         let line = line.map_err(|e| format!("Could not read line: {}", e))?;
         if line.trim().len() == 0 || line.starts_with("#") {
