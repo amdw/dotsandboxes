@@ -110,10 +110,19 @@ impl CLIPosition<Move> for SimplePosition {
 
 impl CLIPosition<CPosMove> for CompoundPosition {
     fn parse_move(self: &CompoundPosition, input: &str) -> Result<CPosMove, String> {
+        // If there's only one part, let the user use the SimplePosition format for short
+        if self.parts.len() == 1 {
+            if let Ok(m) = self.parts[0].parse_move(&input) {
+                return Ok(CPosMove{part: 0, m: m});
+            }
+        }
         let move_re = Regex::new(r"^(\d+) (.*)$").unwrap();
         if let Some(caps) = move_re.captures(&input) {
             let p = caps[1].parse::<usize>().unwrap();
             let rest = &caps[2];
+            if p >= self.parts.len() {
+                return Err(format!("Part {} out of bounds (count={})", p, self.parts.len()));
+            }
             if let Ok(m) = self.parts[p].parse_move(rest) {
                 Ok(CPosMove{part: p, m: m})
             } else {
@@ -125,7 +134,7 @@ impl CLIPosition<CPosMove> for CompoundPosition {
     }
 
     fn move_cmd_help(self: &CompoundPosition, verb: &str) -> String {
-        format!("p x y t/l/b/r - {} move (x,y) top/left/bottom/right in part p", verb)
+        format!("[p] x y t/l/b/r - {} move (x,y) top/left/bottom/right in part p", verb)
     }
 
     fn sort_moves(self: &CompoundPosition, moves: &mut Vec<&CPosMove>) {
@@ -220,38 +229,51 @@ where M: Copy + Display + Eq + Hash, P: CLIPosition<M> {
     }
 }
 
-fn parse_position<R: BufRead>(reader: R) -> SimplePosition {
+fn parse_position<R: BufRead>(reader: R) -> Result<CompoundPosition, String> {
     let mut lines = reader.lines();
-    let size_spec = lines.next().expect("Empty file").expect("Could not read board size from first line");
-    let size_re = Regex::new(r"^(\d+) (\d+)$").unwrap();
-    let size_caps = size_re.captures(&size_spec).expect(&format!("Could not read board size from [{}]", size_spec));
-    let width = size_caps[1].parse::<usize>().unwrap();
-    let height = size_caps[2].parse::<usize>().unwrap();
-    let mut pos = SimplePosition::new_game(width, height);
+    let size_spec = lines.next().map_or(
+        Err("No lines found".to_string()),
+        |l| l.map_err(|e| format!("Could not read first line: {}", e)))?;
+    let mut size_spec_parts: Vec<usize> = Vec::with_capacity(2);
+    for part in size_spec.split(" ") {
+        let dim = part.parse::<usize>().map_err(
+            |e| format!("Could not parse int from [{}]: {}", part, e))?;
+        size_spec_parts.push(dim);
+    }
+    if size_spec_parts.len() < 2 || size_spec_parts.len() % 2 != 0 {
+        return Err(format!(
+            "Expected an even number of dimensions and at least 2, found: {:?}", size_spec_parts));
+    }
+    let mut parts: Vec<SimplePosition> = Vec::with_capacity(size_spec_parts.len() / 2);
+    for pair in size_spec_parts.chunks(2) {
+        parts.push(SimplePosition::new_game(pair[0], pair[1]));
+    }
+    let mut pos = CompoundPosition::new_game(parts.clone());
     for line in lines {
-        let line = line.expect("Could not read line from file");
-        if line.trim().len() == 0 {
+        let line = line.map_err(|e| format!("Could not read line: {}", e))?;
+        if line.trim().len() == 0 || line.starts_with("#") {
             continue;
         }
-        match parse_command(&line, &pos) {
-            Ok(command) => command.execute(&mut pos),
-            Err(error) => panic!("Cannot execute [{}]: {}", line, error),
-        }
+        let command = parse_command(&line, &pos)?;
+        command.execute(&mut pos);
     }
-    pos
+    Ok(pos)
 }
 
 // Enter the main loop of the CLI from the start of the game
 pub fn main_loop_start(width: usize, height: usize) {
-    main_loop_from(&mut SimplePosition::new_game(width, height));
+    let mut pos = SimplePosition::new_game(width, height);
+    main_loop_from(&mut pos);
 }
 
 // Execute a given file of commands (which must have the dimensions of the position on the first line)
 // and then enter the CLI main loop.
 pub fn main_loop_file(filename: &str) {
-    let f = File::open(filename).expect(&format!("Could not open file [{}]", filename));
+    let f = File::open(filename).expect(
+        format!("Could not open file [{}]", filename).as_str());
     let reader = io::BufReader::new(f);
-    let mut pos = parse_position(reader);
+    let mut pos = parse_position(reader).expect(
+        format!("Could not read position from [{}]", filename).as_str());
     main_loop_from(&mut pos);
 }
 
@@ -268,9 +290,21 @@ mod tests {
         assert_eq!(Command::MakeMove(Move::new(3, 5, Side::Bottom)), parse_command("3 5 b", &pos).unwrap());
         assert_eq!(Command::MakeMove(Move::new(3, 5, Side::Bottom)), parse_command("3 5 Bottom", &pos).unwrap());
 
+        let pos = CompoundPosition::from_single(SimplePosition::new_game(6, 6));
+        assert_eq!(Command::MakeMove(CPosMove::new(0, 3, 5, Side::Top)), parse_command("3 5 t", &pos).unwrap());
+        assert_eq!(Command::MakeMove(CPosMove::new(0, 3, 5, Side::Top)), parse_command("3 5 Top", &pos).unwrap());
+
         let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
         assert_eq!(Command::MakeMove(CPosMove::new(1, 0, 1, Side::Left)), parse_command("1 0 1 l", &pos).unwrap());
         assert_eq!(Command::MakeMove(CPosMove::new(1, 0, 1, Side::Left)), parse_command("1 0 1 Left", &pos).unwrap());
+    }
+
+    #[test]
+    fn parse_make_move_oob() {
+        let pos = CompoundPosition::new_game(vec![make_chain(5), make_chain(5)]);
+        let parsed = parse_command("2 0 0 l", &pos);
+        assert!(parsed.is_err());
+        assert!(parsed.err().unwrap().contains("Part 2 out of bounds"));
     }
 
     #[test]
@@ -278,6 +312,10 @@ mod tests {
         let pos = SimplePosition::new_game(9, 9);
         assert_eq!(Command::UndoMove(Move::new(8, 6, Side::Left)), parse_command("u 8 6 l", &pos).unwrap());
         assert_eq!(Command::UndoMove(Move::new(8, 6, Side::Left)), parse_command("u 8 6 Left", &pos).unwrap());
+
+        let pos = CompoundPosition::from_single(SimplePosition::new_game(9, 9));
+        assert_eq!(Command::UndoMove(CPosMove::new(0, 8, 6, Side::Left)), parse_command("u 8 6 l", &pos).unwrap());
+        assert_eq!(Command::UndoMove(CPosMove::new(0, 8, 6, Side::Left)), parse_command("u 8 6 Left", &pos).unwrap());
 
         let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
         assert_eq!(Command::UndoMove(CPosMove::new(1, 3, 2, Side::Top)), parse_command("u 1 3 2 t", &pos).unwrap());
@@ -314,8 +352,42 @@ mod tests {
         let input_str = vec!(
             "3 1", "0 0 t", "0 0 b", "1 0 t", "1 0 b", "2 0 t", "2 0 b"
         ).join("\n");
-        let expected = make_chain(3);
-        let actual = parse_position(Cursor::new(input_str));
-        assert_eq!(true, expected.eq(&actual));
+        let expected = CompoundPosition::from_single(make_chain(3));
+        let actual = parse_position(Cursor::new(input_str)).unwrap();
+        assert_eq!(true, expected.eq(&actual), "{}", actual);
+    }
+
+    #[test]
+    fn parse_compound_position() {
+        let input_str = vec!(
+            "3 1 4 1",
+            "# A comment followed by a blank line", "",
+            "0 0 0 t", "0 0 0 b", "0 1 0 t", "0 1 0 b", "0 2 0 t", "0 2 0 b",
+            "1 0 0 t", "1 0 0 b", "1 1 0 t", "1 1 0 b", "1 2 0 t", "1 2 0 b", "1 3 0 t", "1 3 0 b"
+        ).join("\n");
+        let expected = CompoundPosition::new_game(vec!(make_chain(3), make_chain(4)));
+        let actual = parse_position(Cursor::new(input_str)).unwrap();
+        assert_eq!(true, expected.eq(&actual), "{}", actual);
+    }
+
+    #[test]
+    fn parse_position_errors() {
+        let parsed = parse_position(Cursor::new(""));
+        assert!(parsed.is_err());
+        assert_eq!("No lines found", parsed.err().unwrap());
+
+        let parsed = parse_position(Cursor::new("1"));
+        assert!(parsed.is_err());
+        assert!(parsed.err().unwrap().starts_with(
+            "Expected an even number of dimensions and at least 2"));
+
+        let parsed = parse_position(Cursor::new("1 2 3"));
+        assert!(parsed.is_err());
+        assert!(parsed.err().unwrap().starts_with(
+            "Expected an even number of dimensions and at least 2"));
+
+        let parsed = parse_position(Cursor::new("zxcv"));
+        assert!(parsed.is_err());
+        assert!(parsed.err().unwrap().contains("Could not parse int"));
     }
 }
