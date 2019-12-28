@@ -17,28 +17,31 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use game::{Move, Position, SimplePosition, Side};
+use game::{Move, SimplePosition, Side};
 use nimstring;
-use eval;
+use eval::{self, EvaluablePosition};
 
+use std::fmt::Display;
+use std::hash::Hash;
 use std::io::{self, BufRead};
 use std::fs::File;
-use regex::{Regex, Captures};
+use regex::Regex;
 use time;
 
 #[derive(PartialEq)]
 #[derive(Debug)]
-enum Command {
-    MakeMove(Move),
-    UndoMove(Move),
+enum Command<M> {
+    MakeMove(M),
+    UndoMove(M),
     CalcNimstringValue,
     Evaluate,
     PrintHelp,
     Quit,
 }
 
-impl Command {
-    fn execute(self: &Command, pos: &mut SimplePosition) {
+impl <M: Copy + Display + Eq + Hash> Command<M> {
+    fn execute<P>(self: &Command<M>, pos: &mut P)
+    where P: CLIPosition<M> {
         match self {
             &Command::MakeMove(m) => {
                 if pos.is_legal_move(m) {
@@ -52,8 +55,8 @@ impl Command {
             &Command::CalcNimstringValue => {
                 let (val, per_move) = nimstring::calc_value_with_moves(pos);
                 println!("Position value is {}", val);
-                let mut moves: Vec<&Move> = per_move.keys().collect();
-                moves.sort_by(|a, b| a.y.cmp(&b.y).then(a.x.cmp(&b.x)).then(a.side.cmp(&b.side)));
+                let mut moves: Vec<&M> = per_move.keys().collect();
+                pos.sort_moves(&mut moves);
                 for &m in &moves {
                     println!("{} {}", m, per_move.get(m).unwrap());
                 }
@@ -69,6 +72,33 @@ impl Command {
             &Command::PrintHelp => { print_help(); },
             &Command::Quit => { println!("Bye bye!"); },
         }
+    }
+}
+
+trait CLIPosition<M> : EvaluablePosition<M> + Display + Clone {
+    fn parse_move(&self, input: &str) -> Result<M, String>;
+    // Sort moves into the optimal order for display
+    fn sort_moves(&self, moves: &mut Vec<&M>);
+}
+
+impl CLIPosition<Move> for SimplePosition {
+    fn parse_move(self: &SimplePosition, input: &str) -> Result<Move, String> {
+        let move_re = Regex::new(r"^(\d+) (\d+) ([a-zA-Z]+)$").unwrap();
+        if let Some(caps) = move_re.captures(&input) {
+            let x = caps[1].parse::<usize>().unwrap();
+            let y = caps[2].parse::<usize>().unwrap();
+            let side_s = caps[3].to_string();
+            match parse_side(&side_s) {
+                Some(side) => Ok(Move{x: x, y: y, side: side}),
+                None => Err(format!("Unrecognised side: [{}]", side_s))
+            }
+        } else {
+            Err(format!("Could not extract move from [{}]", input))
+        }
+    }
+
+    fn sort_moves(self: &SimplePosition, moves: &mut Vec<&Move>) {
+        moves.sort_by(|a, b| a.y.cmp(&b.y).then(a.x.cmp(&b.x)).then(a.side.cmp(&b.side)));
     }
 }
 
@@ -90,28 +120,18 @@ fn parse_side(side_s: &str) -> Option<Side> {
     else { None }
 }
 
-fn parse_move(caps: Captures) -> Result<Move, String> {
-    let x = caps[1].parse::<usize>().unwrap();
-    let y = caps[2].parse::<usize>().unwrap();
-    let side_s = caps[3].to_string();
-    match parse_side(&side_s) {
-        Some(side) => Ok(Move{x: x, y: y, side: side}),
-        None => Err(format!("Unrecognised side: [{}]", side_s))
-    }
-}
-
-fn parse_command(input: &str) -> Result<Command, String> {
+fn parse_command<M, P: CLIPosition<M>>(input: &str, pos: &P) -> Result<Command<M>, String> {
     let input = input.to_lowercase();
-    let move_re = Regex::new(r"^(\d+) (\d+) ([a-zA-Z]+)$").unwrap();
+    let move_re = Regex::new(r"^(\d.*)$").unwrap();
+    let undo_move_re = Regex::new(r"^[uU] (\d.*)$").unwrap();
     if let Some(caps) = move_re.captures(&input) {
-        match parse_move(caps) {
+        match pos.parse_move(&caps[1]) {
             Ok(m) => return Ok(Command::MakeMove(m)),
             Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
         }
     }
-    let undo_move_re = Regex::new(r"^[uU] (\d+) (\d+) ([a-zA-Z]+)$").unwrap();
     if let Some(caps) = undo_move_re.captures(&input) {
-        match parse_move(caps) {
+        match pos.parse_move(&caps[1]) {
             Ok(m) => return Ok(Command::UndoMove(m)),
             Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
         }
@@ -131,7 +151,7 @@ fn parse_command(input: &str) -> Result<Command, String> {
     Err("Unsupported command".to_string())
 }
 
-fn get_next_command() -> Command {
+fn get_next_command<M, P: CLIPosition<M>>(pos: &P) -> Command<M> {
     loop {
         let mut input = String::new();
         if let Err(error) = io::stdin().read_line(&mut input) {
@@ -139,7 +159,7 @@ fn get_next_command() -> Command {
             continue;
         }
         let input = input.trim();
-        match parse_command(&input) {
+        match parse_command(&input, pos) {
             Ok(command) => return command,
             Err(error) => {
                 println!("Cannot execute [{}]: {}", input, error);
@@ -149,10 +169,11 @@ fn get_next_command() -> Command {
     }
 }
 
-fn main_loop_from(pos: &mut SimplePosition) {
+fn main_loop_from<M, P>(pos: &mut P)
+where M: Copy + Display + Eq + Hash, P: CLIPosition<M> {
     loop {
         println!("{}", pos);
-        let command = get_next_command();
+        let command = get_next_command(pos);
         let start_time = time::precise_time_s();
         command.execute(pos);
         let end_time = time::precise_time_s();
@@ -180,7 +201,7 @@ fn parse_position<R: BufRead>(reader: R) -> SimplePosition {
         if line.trim().len() == 0 {
             continue;
         }
-        match parse_command(&line) {
+        match parse_command(&line, &pos) {
             Ok(command) => command.execute(&mut pos),
             Err(error) => panic!("Cannot execute [{}]: {}", line, error),
         }
@@ -209,34 +230,40 @@ mod tests {
 
     #[test]
     fn parse_make_move_cmd() {
-        assert_eq!(Command::MakeMove(Move{x: 3, y: 5, side: Side::Bottom}), parse_command("3 5 b").unwrap());
-        assert_eq!(Command::MakeMove(Move{x: 3, y: 5, side: Side::Bottom}), parse_command("3 5 Bottom").unwrap());
+        let pos = SimplePosition::new_game(6, 6);
+        assert_eq!(Command::MakeMove(Move::new(3, 5, Side::Bottom)), parse_command("3 5 b", &pos).unwrap());
+        assert_eq!(Command::MakeMove(Move::new(3, 5, Side::Bottom)), parse_command("3 5 Bottom", &pos).unwrap());
     }
 
     #[test]
     fn parse_undo_move_cmd() {
-        assert_eq!(Command::UndoMove(Move{x: 8, y: 6, side: Side::Left}), parse_command("u 8 6 l").unwrap());
-        assert_eq!(Command::UndoMove(Move{x: 8, y: 6, side: Side::Left}), parse_command("u 8 6 Left").unwrap());
+        let pos = SimplePosition::new_game(9, 9);
+        assert_eq!(Command::UndoMove(Move::new(8, 6, Side::Left)), parse_command("u 8 6 l", &pos).unwrap());
+        assert_eq!(Command::UndoMove(Move::new(8, 6, Side::Left)), parse_command("u 8 6 Left", &pos).unwrap());
     }
 
     #[test]
     fn parse_nimstring_value_cmd() {
-        assert_eq!(Command::CalcNimstringValue, parse_command("nv").unwrap());
+        let pos = SimplePosition::new_game(1, 1);
+        assert_eq!(Command::CalcNimstringValue, parse_command("nv", &pos).unwrap());
     }
 
     #[test]
     fn parse_evaluate_cmd() {
-        assert_eq!(Command::Evaluate, parse_command("eval").unwrap());
+        let pos = SimplePosition::new_game(1, 1);
+        assert_eq!(Command::Evaluate, parse_command("eval", &pos).unwrap());
     }
 
     #[test]
     fn parse_help_cmd() {
-        assert_eq!(Command::PrintHelp, parse_command("help").unwrap());
+        let pos = SimplePosition::new_game(1, 1);
+        assert_eq!(Command::PrintHelp, parse_command("help", &pos).unwrap());
     }
 
     #[test]
     fn parse_exit_cmd() {
-        assert_eq!(Command::Quit, parse_command("quit").unwrap());
-        assert_eq!(Command::Quit, parse_command("exit").unwrap());
+        let pos = SimplePosition::new_game(1, 1);
+        assert_eq!(Command::Quit, parse_command("quit", &pos).unwrap());
+        assert_eq!(Command::Quit, parse_command("exit", &pos).unwrap());
     }
 }
