@@ -167,16 +167,7 @@ fn main_loop_from(pos: &mut SimplePosition) {
     }
 }
 
-// Enter the main loop of the CLI from the start of the game
-pub fn main_loop_start(width: usize, height: usize) {
-    main_loop_from(&mut SimplePosition::new_game(width, height));
-}
-
-// Execute a given file of commands (which must have the dimensions of the position on the first line)
-// and then enter the CLI main loop.
-pub fn main_loop_file(filename: &str) {
-    let f = File::open(filename).expect(&format!("Could not open file [{}]", filename));
-    let reader = io::BufReader::new(f);
+fn parse_position<R: BufRead>(reader: R) -> SimplePosition {
     let mut lines = reader.lines();
     let size_spec = lines.next().expect("Empty file").expect("Could not read board size from first line");
     let size_re = Regex::new(r"^(\d+) (\d+)$").unwrap();
@@ -194,6 +185,20 @@ pub fn main_loop_file(filename: &str) {
             Err(error) => panic!("Cannot execute [{}]: {}", line, error),
         }
     }
+    pos
+}
+
+// Enter the main loop of the CLI from the start of the game
+pub fn main_loop_start(width: usize, height: usize) {
+    main_loop_from(&mut SimplePosition::new_game(width, height));
+}
+
+// Execute a given file of commands (which must have the dimensions of the position on the first line)
+// and then enter the CLI main loop.
+pub fn main_loop_file(filename: &str) {
+    let f = File::open(filename).expect(&format!("Could not open file [{}]", filename));
+    let reader = io::BufReader::new(f);
+    let mut pos = parse_position(reader);
     main_loop_from(&mut pos);
 }
 
