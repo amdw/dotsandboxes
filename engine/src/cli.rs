@@ -17,7 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use game::{Move, SimplePosition, Side};
+use game::{Move, SimplePosition, CompoundPosition, Side, CPosMove};
 use nimstring;
 use eval::{self, EvaluablePosition};
 
@@ -69,7 +69,7 @@ impl <M: Copy + Display + Eq + Hash> Command<M> {
                     println!("V(P) = {}", val);
                 }
             },
-            &Command::PrintHelp => { print_help(); },
+            &Command::PrintHelp => { print_help(pos); },
             &Command::Quit => { println!("Bye bye!"); },
         }
     }
@@ -77,6 +77,8 @@ impl <M: Copy + Display + Eq + Hash> Command<M> {
 
 trait CLIPosition<M> : EvaluablePosition<M> + Display + Clone {
     fn parse_move(&self, input: &str) -> Result<M, String>;
+    // Tell the user how to express a move
+    fn move_cmd_help(&self, verb: &str) -> String;
     // Sort moves into the optimal order for display
     fn sort_moves(&self, moves: &mut Vec<&M>);
 }
@@ -97,15 +99,48 @@ impl CLIPosition<Move> for SimplePosition {
         }
     }
 
+    fn move_cmd_help(self: &SimplePosition, verb: &str) -> String {
+        format!("x y t/l/b/r - {} move (x,y) top/left/bottom/right", verb)
+    }
+
     fn sort_moves(self: &SimplePosition, moves: &mut Vec<&Move>) {
         moves.sort_by(|a, b| a.y.cmp(&b.y).then(a.x.cmp(&b.x)).then(a.side.cmp(&b.side)));
     }
 }
 
-fn print_help() {
+impl CLIPosition<CPosMove> for CompoundPosition {
+    fn parse_move(self: &CompoundPosition, input: &str) -> Result<CPosMove, String> {
+        let move_re = Regex::new(r"^(\d+) (.*)$").unwrap();
+        if let Some(caps) = move_re.captures(&input) {
+            let p = caps[1].parse::<usize>().unwrap();
+            let rest = &caps[2];
+            if let Ok(m) = self.parts[p].parse_move(rest) {
+                Ok(CPosMove{part: p, m: m})
+            } else {
+                Err(format!("Could not parse [{}] as SimplePosition move", rest))
+            }
+        } else {
+            Err(format!("Could not extract move from [{}]", input))
+        }
+    }
+
+    fn move_cmd_help(self: &CompoundPosition, verb: &str) -> String {
+        format!("p x y t/l/b/r - {} move (x,y) top/left/bottom/right in part p", verb)
+    }
+
+    fn sort_moves(self: &CompoundPosition, moves: &mut Vec<&CPosMove>) {
+        moves.sort_by(|a, b| a.part.cmp(&b.part).then(
+            a.m.x.cmp(&b.m.x)).then(
+                a.m.y.cmp(&b.m.y)).then(
+                    a.m.side.cmp(&b.m.side)));
+    }
+}
+
+fn print_help<M, P>(pos: &P)
+where P: CLIPosition<M> {
     println!("Available commands:");
-    println!("x y t/l/b/r - make move (x,y) top/left/bottom/right");
-    println!("u x y t/l/b/r - undo move (x,y) top/left/bottom/right");
+    println!("{}", pos.move_cmd_help("make"));
+    println!("u {}", pos.move_cmd_help("undo"));
     println!("nv - calculate Nimstring value of current position");
     println!("eval - evaluate the current position");
     println!("help - print this help message");
@@ -122,20 +157,6 @@ fn parse_side(side_s: &str) -> Option<Side> {
 
 fn parse_command<M, P: CLIPosition<M>>(input: &str, pos: &P) -> Result<Command<M>, String> {
     let input = input.to_lowercase();
-    let move_re = Regex::new(r"^(\d.*)$").unwrap();
-    let undo_move_re = Regex::new(r"^[uU] (\d.*)$").unwrap();
-    if let Some(caps) = move_re.captures(&input) {
-        match pos.parse_move(&caps[1]) {
-            Ok(m) => return Ok(Command::MakeMove(m)),
-            Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
-        }
-    }
-    if let Some(caps) = undo_move_re.captures(&input) {
-        match pos.parse_move(&caps[1]) {
-            Ok(m) => return Ok(Command::UndoMove(m)),
-            Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
-        }
-    }
     if "nv" == input {
         return Ok(Command::CalcNimstringValue);
     }
@@ -148,10 +169,21 @@ fn parse_command<M, P: CLIPosition<M>>(input: &str, pos: &P) -> Result<Command<M
     if "exit" == input || "quit" == input {
         return Ok(Command::Quit);
     }
-    Err("Unsupported command".to_string())
+    let undo_move_re = Regex::new(r"^[uU] (.*)$").unwrap();
+    if let Some(caps) = undo_move_re.captures(&input) {
+        match pos.parse_move(&caps[1]) {
+            Ok(m) => return Ok(Command::UndoMove(m)),
+            Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
+        }
+    }
+    match pos.parse_move(&input) {
+        Ok(m) => return Ok(Command::MakeMove(m)),
+        Err(e) => return Err(format!("Cannot extract move from [{}]: {}", input, e))
+    }
 }
 
-fn get_next_command<M, P: CLIPosition<M>>(pos: &P) -> Command<M> {
+fn get_next_command<M, P>(pos: &P) -> Command<M>
+where P: CLIPosition<M> {
     loop {
         let mut input = String::new();
         if let Err(error) = io::stdin().read_line(&mut input) {
@@ -225,6 +257,7 @@ pub fn main_loop_file(filename: &str) {
 
 #[cfg(test)]
 mod tests {
+    use examples::*;
     use game::*;
     use cli::*;
 
@@ -233,6 +266,10 @@ mod tests {
         let pos = SimplePosition::new_game(6, 6);
         assert_eq!(Command::MakeMove(Move::new(3, 5, Side::Bottom)), parse_command("3 5 b", &pos).unwrap());
         assert_eq!(Command::MakeMove(Move::new(3, 5, Side::Bottom)), parse_command("3 5 Bottom", &pos).unwrap());
+
+        let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        assert_eq!(Command::MakeMove(CPosMove::new(1, 0, 1, Side::Left)), parse_command("1 0 1 l", &pos).unwrap());
+        assert_eq!(Command::MakeMove(CPosMove::new(1, 0, 1, Side::Left)), parse_command("1 0 1 Left", &pos).unwrap());
     }
 
     #[test]
@@ -240,6 +277,10 @@ mod tests {
         let pos = SimplePosition::new_game(9, 9);
         assert_eq!(Command::UndoMove(Move::new(8, 6, Side::Left)), parse_command("u 8 6 l", &pos).unwrap());
         assert_eq!(Command::UndoMove(Move::new(8, 6, Side::Left)), parse_command("u 8 6 Left", &pos).unwrap());
+
+        let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        assert_eq!(Command::UndoMove(CPosMove::new(1, 3, 2, Side::Top)), parse_command("u 1 3 2 t", &pos).unwrap());
+        assert_eq!(Command::UndoMove(CPosMove::new(1, 3, 2, Side::Top)), parse_command("u 1 3 2 Top", &pos).unwrap());
     }
 
     #[test]
