@@ -223,7 +223,7 @@ pub fn one_long_multi_three(three_chain_count: usize, long_chain_size: usize) ->
     let mut parts: Vec<SimplePosition> = Vec::with_capacity(three_chain_count + 1);
     parts.push(make_chain(long_chain_size));
     parts.extend(iter::repeat(make_chain(3)).take(three_chain_count));
-    CompoundPosition::new_game(parts)
+    CompoundPosition::new(parts)
 }
 
 #[cfg(test)]

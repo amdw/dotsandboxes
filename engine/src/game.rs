@@ -516,7 +516,7 @@ impl fmt::Display for CPosMove {
 }
 
 impl CompoundPosition {
-    pub fn new_game(mut parts: Vec<SimplePosition>) -> CompoundPosition {
+    pub fn new(mut parts: Vec<SimplePosition>) -> CompoundPosition {
         // We need different components to have different zhashes even if identical
         for idx in 0..parts.len() {
             parts[idx].zhash = ZHash::new_seeded(parts[idx].width(), parts[idx].height(), idx);
@@ -863,7 +863,7 @@ mod tests {
 
     #[test]
     fn compound_move_equivalences() {
-        let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        let pos = CompoundPosition::new(vec!(make_chain(5), make_chain(5)));
         assert_eq!(true, pos.moves_equivalent(CPosMove::new(0, 0, 0, Side::Left),
                                               CPosMove::new(0, 0, 0, Side::Left)));
         assert_eq!(true, pos.moves_equivalent(CPosMove::new(0, 0, 0, Side::Right),
@@ -1074,7 +1074,7 @@ mod tests {
 
         // We don't want the zhash to be zero just because the two sub-positions
         // have equal and cancelling hashes
-        let mut pos = CompoundPosition::new_game(
+        let mut pos = CompoundPosition::new(
             vec!(SimplePosition::new_game(3, 1), SimplePosition::new_game(3, 1)));
         let mut hashes = HashSet::new();
         hashes.insert(pos.zhash());

@@ -248,7 +248,7 @@ fn parse_position<R: BufRead>(reader: R) -> Result<CompoundPosition, String> {
     for pair in size_spec_parts.chunks(2) {
         parts.push(SimplePosition::new_game(pair[0], pair[1]));
     }
-    let mut pos = CompoundPosition::new_game(parts.clone());
+    let mut pos = CompoundPosition::new(parts.clone());
     for line in lines {
         let line = line.map_err(|e| format!("Could not read line: {}", e))?;
         if line.trim().len() == 0 || line.starts_with("#") {
@@ -294,14 +294,14 @@ mod tests {
         assert_eq!(Command::MakeMove(CPosMove::new(0, 3, 5, Side::Top)), parse_command("3 5 t", &pos).unwrap());
         assert_eq!(Command::MakeMove(CPosMove::new(0, 3, 5, Side::Top)), parse_command("3 5 Top", &pos).unwrap());
 
-        let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        let pos = CompoundPosition::new(vec!(make_chain(5), make_chain(5)));
         assert_eq!(Command::MakeMove(CPosMove::new(1, 0, 1, Side::Left)), parse_command("1 0 1 l", &pos).unwrap());
         assert_eq!(Command::MakeMove(CPosMove::new(1, 0, 1, Side::Left)), parse_command("1 0 1 Left", &pos).unwrap());
     }
 
     #[test]
     fn parse_make_move_oob() {
-        let pos = CompoundPosition::new_game(vec![make_chain(5), make_chain(5)]);
+        let pos = CompoundPosition::new(vec![make_chain(5), make_chain(5)]);
         let parsed = parse_command("2 0 0 l", &pos);
         assert!(parsed.is_err());
         assert!(parsed.err().unwrap().contains("Part 2 out of bounds"));
@@ -317,7 +317,7 @@ mod tests {
         assert_eq!(Command::UndoMove(CPosMove::new(0, 8, 6, Side::Left)), parse_command("u 8 6 l", &pos).unwrap());
         assert_eq!(Command::UndoMove(CPosMove::new(0, 8, 6, Side::Left)), parse_command("u 8 6 Left", &pos).unwrap());
 
-        let pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        let pos = CompoundPosition::new(vec!(make_chain(5), make_chain(5)));
         assert_eq!(Command::UndoMove(CPosMove::new(1, 3, 2, Side::Top)), parse_command("u 1 3 2 t", &pos).unwrap());
         assert_eq!(Command::UndoMove(CPosMove::new(1, 3, 2, Side::Top)), parse_command("u 1 3 2 Top", &pos).unwrap());
     }
@@ -365,7 +365,7 @@ mod tests {
             "0 0 0 t", "0 0 0 b", "0 1 0 t", "0 1 0 b", "0 2 0 t", "0 2 0 b",
             "1 0 0 t", "1 0 0 b", "1 1 0 t", "1 1 0 b", "1 2 0 t", "1 2 0 b", "1 3 0 t", "1 3 0 b"
         ).join("\n");
-        let expected = CompoundPosition::new_game(vec!(make_chain(3), make_chain(4)));
+        let expected = CompoundPosition::new(vec!(make_chain(3), make_chain(4)));
         let actual = parse_position(Cursor::new(input_str)).unwrap();
         assert_eq!(true, expected.eq(&actual), "{}", actual);
     }

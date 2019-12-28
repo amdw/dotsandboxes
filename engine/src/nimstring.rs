@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn compound_values() {
-        let mut pos = CompoundPosition::new_game(vec!(make_chain(5), make_chain(5)));
+        let mut pos = CompoundPosition::new(vec!(make_chain(5), make_chain(5)));
         assert_eq!(false, pos.is_loony());
         let (val, _per_move) = calc_value_with_moves(&pos);
         assert_eq!(Value::Nimber(0), val);

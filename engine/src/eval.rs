@@ -316,7 +316,7 @@ mod test {
 
     #[test]
     fn multiple_loony_parts() {
-        let mut pos = CompoundPosition::new_game(vec!(make_chain(2), make_chain(2)));
+        let mut pos = CompoundPosition::new(vec!(make_chain(2), make_chain(2)));
         pos.make_move(CPosMove::new(0, 0, 0, Side::Left));
         pos.make_move(CPosMove::new(1, 0, 0, Side::Left));
         assert_eq!(1, moves_to_consider(&mut pos).len());

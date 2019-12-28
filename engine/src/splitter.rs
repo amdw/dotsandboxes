@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn split_compound() {
-        let pos = CompoundPosition::new_game(vec!(
+        let pos = CompoundPosition::new(vec!(
             multi_chains(5, 2),
             multi_chains(5, 2)
         ));
