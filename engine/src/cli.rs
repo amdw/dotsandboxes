@@ -260,6 +260,7 @@ mod tests {
     use examples::*;
     use game::*;
     use cli::*;
+    use std::io::Cursor;
 
     #[test]
     fn parse_make_move_cmd() {
@@ -306,5 +307,15 @@ mod tests {
         let pos = SimplePosition::new_game(1, 1);
         assert_eq!(Command::Quit, parse_command("quit", &pos).unwrap());
         assert_eq!(Command::Quit, parse_command("exit", &pos).unwrap());
+    }
+
+    #[test]
+    fn parse_simple_position() {
+        let input_str = vec!(
+            "3 1", "0 0 t", "0 0 b", "1 0 t", "1 0 b", "2 0 t", "2 0 b"
+        ).join("\n");
+        let expected = make_chain(3);
+        let actual = parse_position(Cursor::new(input_str));
+        assert_eq!(true, expected.eq(&actual));
     }
 }
