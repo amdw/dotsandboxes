@@ -249,27 +249,77 @@ mod test {
         assert_eq!(-expected_val, val);
     }
 
+    #[derive(Debug)]
+    struct OLMTCase {
+        i: usize,
+        k: usize,
+        exp_val: isize,
+        taking_optimal: bool,
+        ddeal_optimal: bool,
+    }
+
+    impl OLMTCase {
+        fn new(i: usize, k: usize, exp_val: isize,
+            taking_optimal: bool, ddeal_optimal: bool) -> OLMTCase {
+            OLMTCase{i: i, k: k, exp_val: exp_val,
+                taking_optimal: taking_optimal, ddeal_optimal: ddeal_optimal}
+        }
+    }
+
     #[test]
-    fn eval_one_three_one_four() {
-        // Evaluate P_{1,4} from the paper
-        let mut pos = one_long_multi_three(1, 4);
-        let (val, _) = eval(&pos);
-        assert_eq!(-3, val);
+    fn eval_one_long_multi_three() {
+        // Check the P_{i,4} table from the paper
+        let cases = vec!(
+            OLMTCase::new(0, 4, -4, true, false),
+            OLMTCase::new(1, 4, -3, false, true),
+            OLMTCase::new(2, 4, -2, false, true),
+            OLMTCase::new(3, 4, -1, true, true),
+            OLMTCase::new(4, 4, -2, true, false),
+            OLMTCase::new(5, 4, -1, true, true),
+            OLMTCase::new(6, 4, -2, true, false),
+            OLMTCase::new(7, 4, -1, true, true),
+            OLMTCase::new(8, 4, -2, true, false),
+        );
 
-        // Open the 3-chain
+        for case in cases.iter() {
+            let mut pos = one_long_multi_three(case.i, case.k);
+            let (val, _) = eval(&pos);
+            assert_eq!(case.exp_val, val, "{:?}", case);
+
+            let part = if case.i == 0 { 0 } else { 1 };
+            let open = CPosMove::new(part, 0, 0, Side::Left);
+            pos.make_move(open);
+            // Once the first chain is opened, capturing the first coin
+            // is the only move to consider
+            assert_eq!(1, moves_to_consider(&mut pos).len());
+            let (val, best_move) = eval(&pos);
+            assert_eq!(-case.exp_val, val, "{:?}", case);
+            assert_eq!(1, pos.make_move(best_move.unwrap()).coins_captured);
+
+            let (val, best_move) = eval(&pos);
+            if case.i > 0 {
+                assert_eq!(2, moves_to_consider(&mut pos).len());
+            }
+            assert_eq!(-case.exp_val-1, val, "{:?}", case);
+
+            let mut ok_moves: Vec<CPosMove> = Vec::with_capacity(2);
+            if case.taking_optimal {
+                ok_moves.push(CPosMove::new(part, 1, 0, Side::Right));
+            }
+            if case.ddeal_optimal {
+                ok_moves.push(CPosMove::new(part, 2, 0, Side::Right));
+            }
+            assert!(ok_moves.iter().any(|&m| pos.moves_equivalent(m, best_move.unwrap())),
+                "{:?} {:?} {}", case, ok_moves, best_move.unwrap());
+        }
+    }
+
+    #[test]
+    fn multiple_loony_parts() {
+        let mut pos = CompoundPosition::new_game(vec!(make_chain(2), make_chain(2)));
+        pos.make_move(CPosMove::new(0, 0, 0, Side::Left));
         pos.make_move(CPosMove::new(1, 0, 0, Side::Left));
-        let (val, best_move) = eval(&pos);
-        assert_eq!(3, val);
-        assert!(best_move.is_some());
-        // Best move is to take the first coin
-        assert!(pos.moves_equivalent(best_move.unwrap(), CPosMove::new(1, 0, 0, Side::Right)));
-
-        pos.make_move(best_move.unwrap());
-        let (val, best_move) = eval(&pos);
-        assert_eq!(2, val);
-        assert!(best_move.is_some());
-        // Best after that is to double-deal
-        assert!(pos.moves_equivalent(best_move.unwrap(), CPosMove::new(1, 2, 0, Side::Right)));
+        assert_eq!(1, moves_to_consider(&mut pos).len());
     }
 
     // For use in generative tests
