@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -324,8 +324,8 @@ mod test {
 
     // For use in generative tests
     fn make_random_pos(r: &mut StdRng) -> SimplePosition {
-        let width: usize = r.gen_range(1, 4);
-        let height: usize = r.gen_range(1, 4);
+        let width: usize = r.gen_range(1..4);
+        let height: usize = r.gen_range(1..4);
         let mut pos = SimplePosition::new_game(width, height);
         let mut moves = pos.legal_moves();
         moves.as_mut_slice().shuffle(r);
@@ -335,7 +335,7 @@ mod test {
         } else {
             0
         };
-        let move_count = r.gen_range(min_move_count, moves.len() + 1);
+        let move_count = r.gen_range(min_move_count..moves.len() + 1);
         for i in 0..move_count {
             let m = moves[i];
             pos.make_move(m);
