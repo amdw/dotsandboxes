@@ -8,6 +8,7 @@ edition = "2018"
 rand = "0.8"
 regex = "1"
 time = "0.2"
+bitvec = "0.20"
 
 [dev-dependencies]
 criterion = "0.3"
