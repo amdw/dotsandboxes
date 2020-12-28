@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Move, CPosMove, Position, CompoundPosition, SimplePosition, Side};
+use crate::game::{Move, CPosMove, Position, CompoundPosition, SimplePosition, Side};
 use std::cmp;
 use std::iter;
 
@@ -97,8 +97,8 @@ fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> SimplePo
 
 #[cfg(test)]
 mod tests {
-    use splitter::*;
-    use examples::*;
+    use crate::splitter::*;
+    use crate::examples::*;
 
     #[test]
     fn split_p50() {

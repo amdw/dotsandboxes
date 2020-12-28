@@ -17,9 +17,9 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use game::{Move, SimplePosition, CompoundPosition, Side, CPosMove};
-use nimstring;
-use eval::{self, EvaluablePosition};
+use crate::game::{Move, SimplePosition, CompoundPosition, Side, CPosMove};
+use crate::nimstring;
+use crate::eval::{self, EvaluablePosition};
 
 use std::fmt::Display;
 use std::hash::Hash;
@@ -279,9 +279,9 @@ pub fn main_loop_file(filename: &str) {
 
 #[cfg(test)]
 mod tests {
-    use examples::*;
-    use game::*;
-    use cli::*;
+    use crate::examples::*;
+    use crate::game::*;
+    use crate::cli::*;
     use std::io::Cursor;
 
     #[test]

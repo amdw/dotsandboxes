@@ -16,8 +16,8 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
-use nimstring::{self, NimstringPosition};
+use crate::game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
+use crate::nimstring::{self, NimstringPosition};
 use std::collections::HashMap;
 use std::isize;
 
@@ -132,8 +132,8 @@ where M: Copy, P: EvaluablePosition<M> + Clone {
 
 #[cfg(test)]
 mod test {
-    use eval::*;
-    use examples::*;
+    use crate::eval::*;
+    use crate::examples::*;
 
     use rand::{Rng, SeedableRng};
     use rand::rngs::StdRng;

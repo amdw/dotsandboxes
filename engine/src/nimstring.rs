@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,8 +16,8 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use game::{Position, SimplePosition, CompoundPosition, Side, Move, CPosMove};
-use splitter::SplittablePosition;
+use crate::game::{Position, SimplePosition, CompoundPosition, Side, Move, CPosMove};
+use crate::splitter::SplittablePosition;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash::Hash;
@@ -199,9 +199,9 @@ where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
 
 #[cfg(test)]
 mod tests {
-    use nimstring::*;
-    use game::*;
-    use examples::*;
+    use crate::nimstring::*;
+    use crate::game::*;
+    use crate::examples::*;
 
     #[test]
     fn value_display() {

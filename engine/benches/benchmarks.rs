@@ -16,8 +16,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-extern crate criterion;
-extern crate dabengine;
 use criterion::{criterion_group, criterion_main, Criterion};
 use dabengine::{game, eval};
 

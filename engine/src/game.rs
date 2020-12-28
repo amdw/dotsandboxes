@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -611,8 +611,8 @@ impl fmt::Display for CompoundPosition {
 
 #[cfg(test)]
 mod tests {
-    use game::*;
-    use examples::*;
+    use crate::game::*;
+    use crate::examples::*;
     use std::collections::HashSet;
 
     #[test]

@@ -1,5 +1,5 @@
 /*
-    Copyright 2017 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017, 2020 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,7 +16,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-extern crate dabengine;
 use dabengine::cli;
 use std::env;
 use std::process;
