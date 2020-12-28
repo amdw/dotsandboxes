@@ -10,4 +10,3 @@ _*
 vc.tex
 engine/target/
 **/*.rs.bk
-engine/Cargo.lock
