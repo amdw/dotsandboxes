@@ -7,3 +7,10 @@ authors = ["Andrew Medworth <github@medworth.org.uk>"]
 rand = "0.8"
 regex = "1"
 time = "0.2"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "benchmarks"
+harness = false
