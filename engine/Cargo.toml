@@ -6,4 +6,4 @@ authors = ["Andrew Medworth <github@medworth.org.uk>"]
 [dependencies]
 rand = "0.8"
 regex = "1"
-time = "0.1"
+time = "0.2"

@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2019 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -26,7 +26,7 @@ use std::hash::Hash;
 use std::io::{self, BufRead};
 use std::fs::File;
 use regex::Regex;
-use time;
+use time::Instant;
 
 #[derive(PartialEq)]
 #[derive(Debug)]
@@ -215,15 +215,15 @@ where M: Copy + Display + Eq + Hash, P: CLIPosition<M> {
     loop {
         println!("{}", pos);
         let command = get_next_command(pos);
-        let start_time = time::precise_time_s();
+        let start_time = Instant::now();
         command.execute(pos);
-        let end_time = time::precise_time_s();
+        let elapsed = start_time.elapsed();
         if command == Command::Quit {
             break;
         }
-        let elapsed = end_time - start_time;
-        if elapsed >= 0.1 {
-            println!("({:.1} seconds)", end_time - start_time);
+        let elapsed_sec = elapsed.as_seconds_f64();
+        if elapsed_sec >= 0.1 {
+            println!("({:.1} seconds)", elapsed_sec);
         }
         println!();
     }

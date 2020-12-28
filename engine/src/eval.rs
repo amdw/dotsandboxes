@@ -139,7 +139,7 @@ mod test {
     use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
     use std::cmp;
-    use time;
+    use time::Instant;
 
     #[test]
     fn eval_chain() {
@@ -371,7 +371,7 @@ mod test {
         seed[0] = 123;
         let mut r: StdRng = SeedableRng::from_seed(seed);
         let mut i = 0;
-        let start_time = time::precise_time_s();
+        let start_time = Instant::now();
         loop {
             let mut pos = make_random_pos(&mut r);
             let expected_val = naive_minimax(&mut pos);
@@ -391,8 +391,8 @@ mod test {
                 assert_eq!(expected_next_val, next_val);
             }
 
-            let elapsed = time::precise_time_s() - start_time;
-            if elapsed >= test_time_s {
+            let elapsed = start_time.elapsed();
+            if elapsed.as_seconds_f64() >= test_time_s {
                 break;
             }
             i += 1;
