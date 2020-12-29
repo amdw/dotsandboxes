@@ -182,21 +182,12 @@ impl SimplePosition {
 
     // Indicate whether a given square has been captured.
     pub fn is_captured(self: &SimplePosition, x: usize, y: usize) -> bool {
-        !self.is_legal_move(Move{x: x, y: y, side: Side::Left}) &&
-            !self.is_legal_move(Move{x: x, y: y, side: Side::Right}) &&
-            !self.is_legal_move(Move{x: x, y: y, side: Side::Top}) &&
-            !self.is_legal_move(Move{x: x, y: y, side: Side::Bottom})
+        Side::all().iter().all(|&s| !self.is_legal_move(Move{x: x, y: y, side: s}))
     }
 
     // Valency or degree of coin at a given position
     pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
-        let mut result = 0;
-        for s in Side::all() {
-            if self.is_legal_move(Move{x: x, y: y, side: s}) {
-                result += 1
-            }
-        }
-        result
+        Side::all().iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).count()
     }
 
     // Move from the square indicated in the direction indicated by the side,
