@@ -275,7 +275,7 @@ impl Position<Move> for SimplePosition {
                 captures += 1
             }
         }
-        if m.side == Side::Right && m.x < self.top_strings.len()-1 {
+        if m.side == Side::Right && m.x < self.width()-1 {
             if self.is_captured(m.x+1, m.y) {
                 captures += 1
             }
@@ -285,7 +285,7 @@ impl Position<Move> for SimplePosition {
                 captures += 1
             }
         }
-        if m.side == Side::Bottom && m.y < self.left_strings.len()-1 {
+        if m.side == Side::Bottom && m.y < self.height()-1 {
             if self.is_captured(m.x, m.y+1) {
                 captures += 1
             }
@@ -332,8 +332,8 @@ impl Position<Move> for SimplePosition {
                 result.push(Move{ x: 0, y: y, side: Side::Left });
             }
         }
-        for x in 0..self.top_strings.len() {
-            for y in 0..self.left_strings.len() {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
                 if self.down_strings[x][y] {
                     result.push(Move{ x: x, y: y, side: Side::Bottom });
                 }
@@ -395,13 +395,13 @@ impl fmt::Display for SimplePosition {
             write!(f, "+{}", if b { " " } else { "-" })?;
         }
         write!(f, "+\n")?;
-        for j in 0..self.left_strings.len() {
+        for j in 0..self.height() {
             write!(f, "{} {}", j % 10, if self.left_strings[j] { " " } else { "|" })?;
-            for i in 0..self.top_strings.len() {
+            for i in 0..self.width() {
                 write!(f, " {}", if self.right_strings[i][j] { " " } else { "|" })?;
             }
             write!(f, "\n  ")?;
-            for i in 0..self.top_strings.len() {
+            for i in 0..self.width() {
                 write!(f, "+{}", if self.down_strings[i][j] { " " } else { "-" })?;
             }
             write!(f, "+\n")?;
