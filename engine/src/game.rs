@@ -305,29 +305,17 @@ impl Position<Move> for SimplePosition {
     }
 
     fn is_end_of_game(self: &SimplePosition) -> bool {
-        for &b in self.left_strings.iter() {
-            if b {
-                return false;
-            }
+        if self.left_strings.iter().any(|&b| b) {
+            return false;
         }
-        for &b in self.top_strings.iter() {
-            if b {
-                return false;
-            }
+        if self.top_strings.iter().any(|&b| b) {
+            return false;
         }
-        for row in self.down_strings.iter() {
-            for &b in row {
-                if b {
-                    return false;
-                }
-            }
+        if self.down_strings.iter().any(|col| col.iter().any(|&b| b)) {
+            return false;
         }
-        for col in self.right_strings.iter() {
-            for &b in col {
-                if b {
-                    return false;
-                }
-            }
+        if self.right_strings.iter().any(|col| col.iter().any(|&b| b)) {
+            return false;
         }
         true
     }
