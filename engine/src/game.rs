@@ -217,10 +217,10 @@ impl SimplePosition {
 
 impl Position<Move> for SimplePosition {
     fn is_legal_move(self: &SimplePosition, m: Move) -> bool {
-        if m.x >= self.down_strings.len() {
+        if m.x >= self.width() {
             return false;
         }
-        if m.y >= self.left_strings.len() {
+        if m.y >= self.height() {
             return false;
         }
         match (m.x, m.y, m.side) {
