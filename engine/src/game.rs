@@ -534,18 +534,14 @@ impl Position<CPosMove> for CompoundPosition {
     }
 
     fn is_end_of_game(self: &CompoundPosition) -> bool {
-        for part in self.parts.iter() {
-            if !part.is_end_of_game() {
-                return false;
-            }
-        }
-        true
+        self.parts.iter().all(|p| p.is_end_of_game())
     }
 
     fn legal_moves(self: &CompoundPosition) -> Vec<CPosMove> {
-        let mut result: Vec<CPosMove> = Vec::new();
-        for (i, part) in self.parts.iter().enumerate() {
-            for &m in part.legal_moves().iter() {
+        let sub_moves: Vec<Vec<Move>> = self.parts.iter().map(|p| p.legal_moves()).collect();
+        let mut result: Vec<CPosMove> = Vec::with_capacity(sub_moves.iter().map(|ms| ms.len()).sum());
+        for (i, moves) in sub_moves.iter().enumerate() {
+            for &m in moves.iter() {
                 result.push(CPosMove{ part: i, m: m });
             }
         }
