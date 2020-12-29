@@ -224,6 +224,13 @@ impl SimplePosition {
             (x, y, Side::Right) => self.right_strings[x][y] = val,
         }
     }
+
+    fn legal_move_count(self: &SimplePosition) -> usize {
+        self.left_strings.iter().filter(|&&b| b).count() +
+        self.top_strings.iter().filter(|&&b| b).count() +
+        self.down_strings.iter().flat_map(|r| r.iter().filter(|&&b| b)).count() +
+        self.right_strings.iter().flat_map(|r| r.iter().filter(|&&b| b)).count()
+    }
 }
 
 impl Position<Move> for SimplePosition {
@@ -326,7 +333,7 @@ impl Position<Move> for SimplePosition {
     }
 
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
-        let mut result: Vec<Move> = Vec::new();
+        let mut result: Vec<Move> = Vec::with_capacity(self.legal_move_count());
         for (x, &b) in self.top_strings.iter().enumerate() {
             if b {
                 result.push(Move{ x: x, y: 0, side: Side::Top });
@@ -787,6 +794,7 @@ mod tests {
         let mut pos = SimplePosition::new_game(2, 2);
         let moves = pos.legal_moves();
         assert_eq!(12, moves.len());
+        assert_eq!(12, pos.legal_move_count());
         // Edge moves, for which there is only one representation
         for i in 0..2 {
             assert!(moves.contains(&Move{ x: i, y: 0, side: Side::Top }));
