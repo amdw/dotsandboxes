@@ -213,6 +213,17 @@ impl SimplePosition {
             (x, y, Side::Bottom) => Some((x, y+1)),
         }
     }
+
+    fn set_string_value(self: &mut SimplePosition, m: Move, val: bool) {
+        match (m.x, m.y, m.side) {
+            (0, y, Side::Left) => self.left_strings[y] = val,
+            (x, 0, Side::Top) => self.top_strings[x] = val,
+            (x, y, Side::Top) => self.down_strings[x][y-1] = val,
+            (x, y, Side::Bottom) => self.down_strings[x][y] = val,
+            (x, y, Side::Left) => self.right_strings[x-1][y] = val,
+            (x, y, Side::Right) => self.right_strings[x][y] = val,
+        }
+    }
 }
 
 impl Position<Move> for SimplePosition {
@@ -250,14 +261,7 @@ impl Position<Move> for SimplePosition {
         if !self.is_legal_move(m) {
             panic!(format!("Illegal move {}, pos:\n{}", m, self));
         }
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y] = false,
-            (x, 0, Side::Top) => self.top_strings[x] = false,
-            (x, y, Side::Top) => self.down_strings[x][y-1] = false,
-            (x, y, Side::Bottom) => self.down_strings[x][y] = false,
-            (x, y, Side::Left) => self.right_strings[x-1][y] = false,
-            (x, y, Side::Right) => self.right_strings[x][y] = false,
-        }
+        self.set_string_value(m, false);
         let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
         if m.side == Side::Left && m.x > 0 {
             if self.is_captured(m.x-1, m.y) {
@@ -289,14 +293,7 @@ impl Position<Move> for SimplePosition {
     }
 
     fn undo_move(self: &mut SimplePosition, m: Move) {
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y] = true,
-            (x, 0, Side::Top) => self.top_strings[x] = true,
-            (x, y, Side::Top) => self.down_strings[x][y-1] = true,
-            (x, y, Side::Bottom) => self.down_strings[x][y] = true,
-            (x, y, Side::Left) => self.right_strings[x-1][y] = true,
-            (x, y, Side::Right) => self.right_strings[x][y] = true,
-        }
+        self.set_string_value(m, true);
         self.zhash.toggle_element(m);
     }
 
