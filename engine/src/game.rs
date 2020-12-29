@@ -19,7 +19,7 @@
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
 use std::fmt;
-use std::iter;
+use bitvec::{bitvec, vec::BitVec};
 
 #[derive(Clone)]
 #[derive(Copy)]
@@ -136,10 +136,10 @@ pub trait Position<M> {
 // so x=1,y=2 is the second square in the third row.
 #[derive(Clone)]
 pub struct SimplePosition {
-    top_strings: Vec<bool>,
-    left_strings: Vec<bool>,
-    down_strings: Vec<Vec<bool>>,
-    right_strings: Vec<Vec<bool>>,
+    top_strings: BitVec,
+    left_strings: BitVec,
+    down_strings: Vec<BitVec>,
+    right_strings: Vec<BitVec>,
     zhash: ZHash,
 }
 
@@ -155,17 +155,15 @@ impl SimplePosition {
     }
 
     fn make_position(width: usize, height: usize, init_string: bool) -> SimplePosition {
-        let top_strings = iter::repeat(init_string).take(width).collect();
-        let left_strings = iter::repeat(init_string).take(height).collect();
         let mut right_strings = Vec::with_capacity(width);
         let mut down_strings = Vec::with_capacity(width);
         for _ in 0..width {
-            right_strings.push(iter::repeat(init_string).take(height).collect());
-            down_strings.push(iter::repeat(init_string).take(height).collect());
+            right_strings.push(bitvec![init_string as usize; height]);
+            down_strings.push(bitvec![init_string as usize; height]);
         }
         SimplePosition {
-            top_strings: top_strings,
-            left_strings: left_strings,
+            top_strings: bitvec![init_string as usize; width],
+            left_strings: bitvec![init_string as usize; height],
             down_strings: down_strings,
             right_strings: right_strings,
             zhash: ZHash::new(width, height),
@@ -207,20 +205,19 @@ impl SimplePosition {
 
     fn set_string_value(self: &mut SimplePosition, m: Move, val: bool) {
         match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y] = val,
-            (x, 0, Side::Top) => self.top_strings[x] = val,
-            (x, y, Side::Top) => self.down_strings[x][y-1] = val,
-            (x, y, Side::Bottom) => self.down_strings[x][y] = val,
-            (x, y, Side::Left) => self.right_strings[x-1][y] = val,
-            (x, y, Side::Right) => self.right_strings[x][y] = val,
+            (0, y, Side::Left) => self.left_strings.set(y, val),
+            (x, 0, Side::Top) => self.top_strings.set(x, val),
+            (x, y, Side::Top) => self.down_strings[x].set(y-1, val),
+            (x, y, Side::Bottom) => self.down_strings[x].set(y, val),
+            (x, y, Side::Left) => self.right_strings[x-1].set(y, val),
+            (x, y, Side::Right) => self.right_strings[x].set(y, val),
         }
     }
 
     fn legal_move_count(self: &SimplePosition) -> usize {
-        self.left_strings.iter().filter(|&&b| b).count() +
-        self.top_strings.iter().filter(|&&b| b).count() +
-        self.down_strings.iter().flat_map(|r| r.iter().filter(|&&b| b)).count() +
-        self.right_strings.iter().flat_map(|r| r.iter().filter(|&&b| b)).count()
+        let downs: usize = self.down_strings.iter().map(|c| c.count_ones()).sum();
+        let rights: usize = self.right_strings.iter().map(|c| c.count_ones()).sum();
+        downs + rights + self.left_strings.count_ones() + self.top_strings.count_ones()
     }
 }
 
@@ -296,16 +293,13 @@ impl Position<Move> for SimplePosition {
     }
 
     fn is_end_of_game(self: &SimplePosition) -> bool {
-        if self.left_strings.iter().any(|&b| b) {
+        if self.left_strings.any() || self.top_strings.any() {
             return false;
         }
-        if self.top_strings.iter().any(|&b| b) {
+        if self.down_strings.iter().any(|col| col.any()) {
             return false;
         }
-        if self.down_strings.iter().any(|col| col.iter().any(|&b| b)) {
-            return false;
-        }
-        if self.right_strings.iter().any(|col| col.iter().any(|&b| b)) {
+        if self.right_strings.iter().any(|col| col.any()) {
             return false;
         }
         true
@@ -313,15 +307,11 @@ impl Position<Move> for SimplePosition {
 
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
         let mut result: Vec<Move> = Vec::with_capacity(self.legal_move_count());
-        for (x, &b) in self.top_strings.iter().enumerate() {
-            if b {
-                result.push(Move{ x: x, y: 0, side: Side::Top });
-            }
+        for x in self.top_strings.iter_ones() {
+            result.push(Move{ x: x, y: 0, side: Side::Top });
         }
-        for (y, &b) in self.left_strings.iter().enumerate() {
-            if b {
-                result.push(Move{ x: 0, y: y, side: Side::Left });
-            }
+        for y in self.left_strings.iter_ones() {
+            result.push(Move{ x: 0, y: y, side: Side::Left });
         }
         for x in 0..self.width() {
             for y in 0..self.height() {
@@ -382,7 +372,7 @@ impl fmt::Display for SimplePosition {
             write!(f, " {}", i % 10)?;
         }
         write!(f, "\n  ")?;
-        for &b in self.top_strings.iter() {
+        for &b in self.top_strings.iter().by_ref() {
             write!(f, "+{}", if b { " " } else { "-" })?;
         }
         write!(f, "+\n")?;
