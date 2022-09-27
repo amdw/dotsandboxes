@@ -2,7 +2,7 @@
 name = "dabengine"
 version = "0.1.0"
 authors = ["Andrew Medworth <github@medworth.org.uk>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 rand = "0.8"
