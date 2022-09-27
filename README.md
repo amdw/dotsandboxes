@@ -103,7 +103,7 @@ the first line. For example ```cargo run p50bl.pos``` to start from
 the 3-by-2 corner discussed in the paper.
 
 Other actions are standard to Cargo. For example ```cargo test``` runs
-the unit tests.
+the unit tests, and ```cargo bench``` runs the benchmarks.
 
 # Licensing
 
