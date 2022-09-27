@@ -257,7 +257,7 @@ impl Position<Move> for SimplePosition {
 
     fn make_move(self: &mut SimplePosition, m: Move) -> MoveOutcome {
         if !self.is_legal_move(m) {
-            panic!(format!("Illegal move {}, pos:\n{}", m, self));
+            panic!("Illegal move {}, pos:\n{}", m, self);
         }
         self.set_string_value(m, false);
         let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
@@ -761,7 +761,7 @@ mod tests {
         let actual = format!("{}", pos);
         let lines: Vec<&str> = actual.split("\n").collect();
         assert_eq!("   0 1 2 3 4 5 6 7 8 9 0 1", lines[0]);
-        assert!(lines[24].starts_with("1 "), lines[24].to_string());
+        assert!(lines[24].starts_with("1 "), "{}", lines[24].to_string());
     }
 
     #[test]
