@@ -17,14 +17,16 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use criterion::{criterion_group, criterion_main, Criterion};
-use dabengine::{game, eval, examples};
+use dabengine::{game, eval, examples, nimstring};
 use std::time::Duration;
 
 pub fn eval_benchmark(c: &mut Criterion) {
     let mut fast_group = c.benchmark_group("fast-evaluations");
-    fast_group.measurement_time(Duration::from_secs(60));
+    fast_group.measurement_time(Duration::from_secs(70));
     fast_group.bench_function("Eval simple 2x2", |b| b.iter(|| eval::eval(&game::SimplePosition::new_game(2, 2))));
     fast_group.bench_function("Eval composite OLMT", |b| b.iter(|| eval::eval(&examples::one_long_multi_three(5, 4))));
+    fast_group.bench_function("Eval nimber simple 2x2", |b| b.iter(|| nimstring::calc_value_with_moves(&game::SimplePosition::new_game(2, 2))));
+    fast_group.bench_function("Eval nimber composite OLMT", |b| b.iter(|| nimstring::calc_value_with_moves(&examples::one_long_multi_three(5, 4))));
     fast_group.finish();
 
     let mut slow_group = c.benchmark_group("slow-evaluations");
