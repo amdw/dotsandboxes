@@ -10,7 +10,7 @@ regex = "1"
 time = "0.2"
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 
 [[bench]]
 name = "benchmarks"
