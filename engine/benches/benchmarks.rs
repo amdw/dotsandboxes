@@ -1,5 +1,5 @@
 /*
-    Copyright 2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2020-2022 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
