@@ -1,0 +1,32 @@
+name: Engine
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'engine/**'
+  pull_request:
+    paths:
+      - 'engine/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('engine/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: Build
+        run: cargo build
+      - name: Test
+        run: cargo test

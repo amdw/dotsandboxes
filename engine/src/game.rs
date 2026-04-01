@@ -124,7 +124,7 @@ pub trait Position<M> {
     // Current Zobrist hash value for position.
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
-    fn zhash(&self) -> usize;
+    fn zhash(&self) -> u64;
 }
 
 // An m*n dots-and-boxes position is represented as:
@@ -348,7 +348,7 @@ impl Position<Move> for SimplePosition {
         }
     }
 
-    fn zhash(self: &SimplePosition) -> usize {
+    fn zhash(self: &SimplePosition) -> u64 {
         self.zhash.current_value()
     }
 }
@@ -405,11 +405,11 @@ impl fmt::Display for SimplePosition {
 // It has an internal structure mirroring the position, one integer per element
 #[derive(Clone)]
 struct ZHash {
-    current_val: usize,
-    top_strings: Vec<usize>,
-    left_strings: Vec<usize>,
-    right_strings: Vec<Vec<usize>>,
-    down_strings: Vec<Vec<usize>>,
+    current_val: u64,
+    top_strings: Vec<u64>,
+    left_strings: Vec<u64>,
+    right_strings: Vec<Vec<u64>>,
+    down_strings: Vec<Vec<u64>>,
 }
 
 impl ZHash {
@@ -423,26 +423,26 @@ impl ZHash {
         seed[1] = height as u8;
         seed[2] = extra_seed as u8;
         let mut r: StdRng = SeedableRng::from_seed(seed);
-        let mut top_strings: Vec<usize> = Vec::with_capacity(width);
-        let mut left_strings: Vec<usize> = Vec::with_capacity(height);
-        let mut right_strings: Vec<Vec<usize>> = Vec::with_capacity(width);
-        let mut down_strings: Vec<Vec<usize>> = Vec::with_capacity(width);
+        let mut top_strings: Vec<u64> = Vec::with_capacity(width);
+        let mut left_strings: Vec<u64> = Vec::with_capacity(height);
+        let mut right_strings: Vec<Vec<u64>> = Vec::with_capacity(width);
+        let mut down_strings: Vec<Vec<u64>> = Vec::with_capacity(width);
 
         for i in 0..width {
-            top_strings.push(r.gen());
+            top_strings.push(r.random());
             right_strings.push(Vec::with_capacity(height));
             down_strings.push(Vec::with_capacity(height));
             for _ in 0..height {
-                right_strings[i].push(r.gen());
-                down_strings[i].push(r.gen());
+                right_strings[i].push(r.random());
+                down_strings[i].push(r.random());
             }
         }
         for _ in 0..height {
-            left_strings.push(r.gen());
+            left_strings.push(r.random());
         }
 
         ZHash{
-            current_val: r.gen(),
+            current_val: r.random(),
             top_strings: top_strings,
             left_strings: left_strings,
             right_strings: right_strings,
@@ -450,7 +450,7 @@ impl ZHash {
         }
     }
 
-    fn current_value(self: &ZHash) -> usize {
+    fn current_value(self: &ZHash) -> u64 {
         self.current_val
     }
 
@@ -552,8 +552,8 @@ impl Position<CPosMove> for CompoundPosition {
         move1.part == move2.part && self.parts[move1.part].moves_equivalent(move1.m, move2.m)
     }
 
-    fn zhash(self: &CompoundPosition) -> usize {
-        let mut result = 0;
+    fn zhash(self: &CompoundPosition) -> u64 {
+        let mut result = 0u64;
         for part in self.parts.iter() {
             result ^= part.zhash();
         }
@@ -869,7 +869,7 @@ mod tests {
     #[test]
     fn zhashes() {
         let mut pos = SimplePosition::new_game(3, 3);
-        let mut hashes: Vec<usize> = Vec::new();
+        let mut hashes: Vec<u64> = Vec::new();
         let mut moves: Vec<Move> = Vec::new();
         while !pos.is_end_of_game() {
             hashes.push(pos.zhash());
@@ -880,7 +880,7 @@ mod tests {
         hashes.push(pos.zhash());
 
         // Hashes should all be unique
-        let unique_hashes: HashSet<usize> = hashes.iter().cloned().collect();
+        let unique_hashes: HashSet<u64> = hashes.iter().cloned().collect();
         assert_eq!(hashes.len(), unique_hashes.len());
 
         // Undoing moves all the way back should give the same sequence of hashes in reverse
@@ -911,7 +911,7 @@ mod tests {
                    SimplePosition::new_end_game(width, height).zhash());
     }
 
-    fn all_hashes(pos: &mut SimplePosition) -> HashSet<usize> {
+    fn all_hashes(pos: &mut SimplePosition) -> HashSet<u64> {
         let mut hashes = HashSet::new();
         loop {
             hashes.insert(pos.zhash());
@@ -933,7 +933,7 @@ mod tests {
         let mut pos2 = SimplePosition::new_game(height, width);
         let hashes1 = all_hashes(&mut pos1);
         let hashes2 = all_hashes(&mut pos2);
-        let intersect: HashSet<usize> = hashes1.intersection(&hashes2).cloned().collect();
+        let intersect: HashSet<u64> = hashes1.intersection(&hashes2).cloned().collect();
         assert!(intersect.is_empty());
     }
 
