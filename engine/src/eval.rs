@@ -60,7 +60,7 @@ impl EvaluablePosition<CPosMove> for CompoundPosition {
 
 // Evaluate a position given a set of moves to consider
 fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>,
-              cache: &mut HashMap<usize, (isize, M)>) -> (isize, Option<M>)
+              cache: &mut HashMap<u64, (isize, M)>) -> (isize, Option<M>)
 where M: Copy, P: EvaluablePosition<M> {
     if moves.is_empty() {
         return (0, None);
@@ -112,7 +112,7 @@ where M: Copy, P: EvaluablePosition<M> {
     }
 }
 
-fn eval_cache<M, P>(pos: &mut P, cache: &mut HashMap<usize, (isize, M)>) -> (isize, Option<M>)
+fn eval_cache<M, P>(pos: &mut P, cache: &mut HashMap<u64, (isize, M)>) -> (isize, Option<M>)
 where M: Copy, P: EvaluablePosition<M> {
     if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
         return (val, Some(best_move));
@@ -324,8 +324,8 @@ mod test {
 
     // For use in generative tests
     fn make_random_pos(r: &mut StdRng) -> SimplePosition {
-        let width: usize = r.gen_range(1..4);
-        let height: usize = r.gen_range(1..4);
+        let width: usize = r.random_range(1..4);
+        let height: usize = r.random_range(1..4);
         let mut pos = SimplePosition::new_game(width, height);
         let mut moves = pos.legal_moves();
         moves.as_mut_slice().shuffle(r);
@@ -335,7 +335,7 @@ mod test {
         } else {
             0
         };
-        let move_count = r.gen_range(min_move_count..moves.len() + 1);
+        let move_count = r.random_range(min_move_count..moves.len() + 1);
         for i in 0..move_count {
             let m = moves[i];
             pos.make_move(m);

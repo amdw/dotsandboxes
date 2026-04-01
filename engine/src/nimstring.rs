@@ -134,7 +134,7 @@ fn mex(s: HashSet<usize>) -> usize {
     }
 }
 
-fn calc_value<M, P>(pos: &mut P, cache: &mut HashMap<usize, Value>) -> Value
+fn calc_value<M, P>(pos: &mut P, cache: &mut HashMap<u64, Value>) -> Value
 where M: Copy, P: NimstringPosition<M> {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
     if let Some(&v) = cache.get(&pos.zhash()) {
