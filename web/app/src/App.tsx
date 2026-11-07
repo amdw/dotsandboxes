@@ -76,10 +76,9 @@ export function App() {
   const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
   const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number } | null>(null);
   const [now, setNow] = useState(0);
-  // Off by default, since analysing larger positions takes a long time
+  // Values are only calculated when chosen, since analysing larger positions takes a long
+  // time, so this is off unless the chosen values are available for the position shown
   const [boardValues, setBoardValues] = useState<BoardValues>("off");
-  // Analyses which failed (as "positionKey kind"), so they aren't retried automatically
-  const [failed, setFailed] = useState<Set<string>>(new Set());
   const [countScore, setCountScore] = useState(loadCountScore);
   const [hoveredComponent, setHoveredComponent] = useState<number | null>(null);
 
@@ -92,20 +91,22 @@ export function App() {
 
   useEffect(() => () => analyser.current?.cancel(), []);
 
-  // Analyse the position shown whenever the values selected for the board aren't cached for
-  // it, cancelling any analysis which is no longer wanted
+  // When the position shown changes, stop analysing the previous one, and switch the board
+  // values off unless they're already available for the new position
   const shownPosition = game ? current(game).position : null;
   const shownKey = shownPosition ? positionKey(shownPosition) : null;
   const wanted: AnalysisKind | null = boardValues === "evaluation" ? "evaluate" : boardValues === "nimstring" ? "nimstring" : null;
   useEffect(() => {
-    if (running && (running.key !== shownKey || running.kind !== wanted)) {
+    if (running && running.key !== shownKey) {
       analyser.current?.cancel();
       setRunning(null);
-      return;
     }
-    if (running || !wanted || !shownPosition || !shownKey) return;
-    if (results.get(shownKey)?.[wanted] || failed.has(`${shownKey} ${wanted}`)) return;
-    const [position, key, kind] = [shownPosition, shownKey, wanted];
+    if (wanted && shownKey && !results.get(shownKey)?.[wanted] && !(running?.key === shownKey && running.kind === wanted)) {
+      setBoardValues("off");
+    }
+  }, [shownKey]);
+
+  const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
     const a = (analyser.current ??= new Analyser());
     const start = performance.now();
     setRunning({ kind, key, start });
@@ -119,12 +120,12 @@ export function App() {
       })
       .catch((e: unknown) => {
         if (!(e instanceof CancelledError)) {
-          setFailed((prev) => new Set(prev).add(`${key} ${kind}`));
           setError(errorMessage(e));
           setRunning(null);
+          setBoardValues("off");
         }
       });
-  }, [shownKey, wanted, running, results, failed]);
+  };
 
   useEffect(() => {
     loadEngine()
@@ -176,14 +177,22 @@ export function App() {
   }
   const component = boardValues === "nimstring" && hoveredComponent !== null ? here.nimstring?.result.components[hoveredComponent] : undefined;
 
+  // Choosing values for the board calculates them if they aren't already available,
+  // cancelling any other analysis in progress
   const chooseBoardValues = (values: BoardValues) => {
     setBoardValues(values);
-    // Allow failed analyses to be retried by choosing them again
-    setFailed(new Set());
     setError(null);
+    const kind: AnalysisKind | null = values === "evaluation" ? "evaluate" : values === "nimstring" ? "nimstring" : null;
+    if (running && running.kind !== kind) {
+      analyser.current?.cancel();
+      setRunning(null);
+    }
+    if (kind && !here[kind] && !(running?.key === key && running.kind === kind)) {
+      analyse(kind, snap.position, key);
+    }
   };
 
-  // Stop the analysis in progress; the board values are switched off so it doesn't restart
+  // Stop the analysis in progress, switching off the values it was calculating
   const cancelAnalysis = () => {
     analyser.current?.cancel();
     setRunning(null);
