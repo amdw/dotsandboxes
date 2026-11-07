@@ -687,20 +687,18 @@ button.example {
 }
 
 .running {
+  margin: 0;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-.results {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
+.result .hint {
+  text-align: left;
+  margin-top: 6px;
 }
 
 .result {
-  flex: 1 1 260px;
+  width: 100%;
   padding: 10px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -710,27 +708,6 @@ button.example {
 .result h2 {
   margin: 0 0 6px;
   font-size: 1rem;
-}
-
-.result dl {
-  margin: 0;
-}
-
-.result dt {
-  color: var(--muted);
-  font-size: 0.8rem;
-  margin-top: 6px;
-}
-
-.result dd {
-  margin: 0;
-}
-
-.result .timing {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  text-align: right;
 }
 
 .components {

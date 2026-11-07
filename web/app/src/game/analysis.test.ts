@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { evaluationLabels, formatNimstring, lineKeyOf, nimstringLabels, positionKey, signed, summariseEvaluation, uncapturedCoins } from "./analysis";
+import { evaluationLabels, formatNimstring, lineKeyOf, nimstringLabels, positionKey, signed } from "./analysis";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -14,18 +14,6 @@ describe("analysis", () => {
     expect(signed(0)).toBe("0");
     expect(formatNimstring({ Nimber: 4 })).toBe("*4");
     expect(formatNimstring("Loony")).toBe("\u263D\uFE0E");
-  });
-
-  it("summarises an evaluation as engine value, margin and final scores", () => {
-    // Two 5-chains: the player to move loses 2-8 (paper figure)
-    const position = example("double-deal").position;
-    const evaluation = engine.evaluate(position);
-    expect(uncapturedCoins(position)).toBe(10);
-    const fresh = summariseEvaluation(evaluation, position, "A", { A: 0, B: 0 });
-    expect(fresh).toEqual({ mover: "A", value: -6, scoreDiff: 0, margin: -6, finalScores: { A: 2, B: 8 } });
-    // With B to move and A already 3 ahead (from coins elsewhere), B still nets 6 more
-    const ahead = summariseEvaluation(evaluation, position, "B", { A: 3, B: 0 });
-    expect(ahead).toEqual({ mover: "B", value: -6, scoreDiff: -3, margin: -9, finalScores: { A: 11, B: 2 } });
   });
 
   it("labels moves with engine values or final margins, marking the best", () => {

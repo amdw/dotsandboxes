@@ -5,7 +5,7 @@ import type { CPosMove, Evaluation, NimstringAnalysis, PositionData } from "./en
 import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
-import { evaluationLabels, nimstringLabels, positionKey, summariseEvaluation, type AnalysisKind, type MoveLabels } from "./game/analysis";
+import { evaluationLabels, nimstringLabels, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
 import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
 
@@ -76,7 +76,10 @@ export function App() {
   const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
   const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number } | null>(null);
   const [now, setNow] = useState(0);
-  const [boardValues, setBoardValues] = useState<BoardValues>("evaluation");
+  // Off by default, since analysing larger positions takes a long time
+  const [boardValues, setBoardValues] = useState<BoardValues>("off");
+  // Analyses which failed (as "positionKey kind"), so they aren't retried automatically
+  const [failed, setFailed] = useState<Set<string>>(new Set());
   const [countScore, setCountScore] = useState(loadCountScore);
   const [hoveredComponent, setHoveredComponent] = useState<number | null>(null);
 
@@ -88,6 +91,40 @@ export function App() {
   }, [running]);
 
   useEffect(() => () => analyser.current?.cancel(), []);
+
+  // Analyse the position shown whenever the values selected for the board aren't cached for
+  // it, cancelling any analysis which is no longer wanted
+  const shownPosition = game ? current(game).position : null;
+  const shownKey = shownPosition ? positionKey(shownPosition) : null;
+  const wanted: AnalysisKind | null = boardValues === "evaluation" ? "evaluate" : boardValues === "nimstring" ? "nimstring" : null;
+  useEffect(() => {
+    if (running && (running.key !== shownKey || running.kind !== wanted)) {
+      analyser.current?.cancel();
+      setRunning(null);
+      return;
+    }
+    if (running || !wanted || !shownPosition || !shownKey) return;
+    if (results.get(shownKey)?.[wanted] || failed.has(`${shownKey} ${wanted}`)) return;
+    const [position, key, kind] = [shownPosition, shownKey, wanted];
+    const a = (analyser.current ??= new Analyser());
+    const start = performance.now();
+    setRunning({ kind, key, start });
+    setNow(start);
+    const promise: Promise<Evaluation | NimstringAnalysis> = kind === "evaluate" ? a.evaluate(position) : a.nimstringAnalysis(position);
+    promise
+      .then((result) => {
+        const timed = { result, seconds: (performance.now() - start) / 1000 };
+        setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
+        setRunning(null);
+      })
+      .catch((e: unknown) => {
+        if (!(e instanceof CancelledError)) {
+          setFailed((prev) => new Set(prev).add(`${key} ${kind}`));
+          setError(errorMessage(e));
+          setRunning(null);
+        }
+      });
+  }, [shownKey, wanted, running, results, failed]);
 
   useEffect(() => {
     loadEngine()
@@ -130,40 +167,27 @@ export function App() {
   const maxWidth = Math.max(...snap.position.parts.map((p, i) => naturalWidth(p, margins[i])));
   const key = positionKey(snap.position);
   const here = results.get(key) ?? {};
-  const summary = here.evaluate ? summariseEvaluation(here.evaluate.result, snap.position, snap.toMove, snap.scores) : undefined;
   let labels: MoveLabels | undefined;
-  if (boardValues === "evaluation" && here.evaluate && summary) {
-    labels = evaluationLabels(here.evaluate.result, summary.scoreDiff, countScore ? "margin" : "engine");
+  if (boardValues === "evaluation" && here.evaluate) {
+    const scoreDiff = snap.scores[snap.toMove] - snap.scores[other(snap.toMove)];
+    labels = evaluationLabels(here.evaluate.result, scoreDiff, countScore ? "margin" : "engine");
   } else if (boardValues === "nimstring" && here.nimstring) {
     labels = nimstringLabels(here.nimstring.result.moves);
   }
-  const component = hoveredComponent !== null ? here.nimstring?.result.components[hoveredComponent] : undefined;
+  const component = boardValues === "nimstring" && hoveredComponent !== null ? here.nimstring?.result.components[hoveredComponent] : undefined;
 
-  const runAnalysis = (kind: AnalysisKind) => {
-    const a = (analyser.current ??= new Analyser());
-    const start = performance.now();
-    setRunning({ kind, key, start });
-    setNow(start);
+  const chooseBoardValues = (values: BoardValues) => {
+    setBoardValues(values);
+    // Allow failed analyses to be retried by choosing them again
+    setFailed(new Set());
     setError(null);
-    const promise: Promise<Evaluation | NimstringAnalysis> = kind === "evaluate" ? a.evaluate(snap.position) : a.nimstringAnalysis(snap.position);
-    promise
-      .then((result) => {
-        const timed = { result, seconds: (performance.now() - start) / 1000 };
-        setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
-        setBoardValues(kind === "nimstring" ? "nimstring" : "evaluation");
-        setRunning(null);
-      })
-      .catch((e: unknown) => {
-        if (!(e instanceof CancelledError)) {
-          setError(errorMessage(e));
-          setRunning(null);
-        }
-      });
   };
 
+  // Stop the analysis in progress; the board values are switched off so it doesn't restart
   const cancelAnalysis = () => {
     analyser.current?.cancel();
     setRunning(null);
+    setBoardValues("off");
   };
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y))));
@@ -333,19 +357,15 @@ export function App() {
 
       <AnalysisPanel
         running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
-        runningElsewhere={!!running && running.key !== key}
-        evaluation={here.evaluate}
-        summary={summary}
-        nimstring={here.nimstring}
+        nimstring={boardValues === "nimstring" ? here.nimstring : undefined}
         multiPart={multiPart}
         boardValues={boardValues}
-        onBoardValues={setBoardValues}
+        onBoardValues={chooseBoardValues}
         countScore={countScore}
         onCountScore={(count) => {
           setCountScore(count);
           saveCountScore(count);
         }}
-        onRun={runAnalysis}
         onCancel={cancelAnalysis}
         onHoverComponent={setHoveredComponent}
       />
