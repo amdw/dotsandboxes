@@ -383,15 +383,9 @@ input:focus-visible,
   pointer-events: none;
 }
 
-.board.view-snc .move .preview {
-  stroke-dasharray: 6 4;
-}
-
-.board .arrow,
-.board.view-snc .move .preview.arrow {
+.board .arrow {
   fill: none;
   stroke-linejoin: round;
-  stroke-dasharray: none;
 }
 
 .board .move:focus-visible .preview {
@@ -401,6 +395,11 @@ input:focus-visible,
 @media (hover: hover) {
   .board .move:hover .preview {
     opacity: 0.85;
+  }
+
+  /* Fully opaque, so the string underneath doesn't show through */
+  .board.view-snc .move:hover .preview {
+    opacity: 1;
   }
 }
 
