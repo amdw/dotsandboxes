@@ -96,4 +96,16 @@ describe("game state", () => {
     expect(changed.snapshots[2].scores).toEqual({ A: 3, B: 0 });
     expect(changed.snapshots[2].owners[0][0]).toEqual(["A", "A", "A"]);
   });
+
+  it("keeps a compound game going until every part is finished", () => {
+    // Two parts, each a single coin with one string to the ground
+    const coin = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[0];
+    let game = newGameState({ parts: [coin, coin] });
+    game = playMove(game, mv(0, 0, "Left", 0), engine.makeMove);
+    expect(current(game).gameOver).toBe(false);
+    expect(current(game).toMove).toBe("A");
+    game = playMove(game, mv(0, 0, "Left", 1), engine.makeMove);
+    expect(current(game).gameOver).toBe(true);
+    expect(current(game).scores).toEqual({ A: 2, B: 0 });
+  });
 });
