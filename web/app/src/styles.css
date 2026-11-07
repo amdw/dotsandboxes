@@ -402,6 +402,11 @@ button.example {
   color: var(--muted);
 }
 
+.message .lead {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .error {
   background: var(--error-bg);
   border-radius: 6px;

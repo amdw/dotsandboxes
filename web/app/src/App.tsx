@@ -238,8 +238,9 @@ export function App() {
   const status = snap.gameOver
     ? A === B
       ? `Game over: draw ${A}–${B}`
-      : `Game over: ${A > B ? "A" : "B"} wins ${Math.max(A, B)}–${Math.min(A, B)}`
+      : `Game over: ${A > B ? "A" : "B"} wins ${Math.max(A, B)}–${Math.min(A, B)}, by ${Math.abs(A - B)}`
     : `${snap.toMove} to move`;
+  const lead = A === B ? "Scores level" : `${A > B ? "A" : "B"} leads by ${Math.abs(A - B)}`;
 
   return (
     <main>
@@ -295,6 +296,7 @@ export function App() {
               Switch
             </button>
           )}
+          {!snap.gameOver && <div class="lead">{lead}</div>}
         </div>
         <div class={`score player-B${!snap.gameOver && snap.toMove === "B" ? " active" : ""}`}>
           <span class="name">B</span> <span class="points">{B}</span>
