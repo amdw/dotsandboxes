@@ -59,16 +59,14 @@ function Segment({ ends, class: cls }: { ends: [Point, Point]; class: string }) 
   return <line class={cls} x1={x1} y1={y1} x2={x2} y2={y2} />;
 }
 
-// Short bar across the far end of a ground string
-function GroundMark({ ends, class: cls }: { ends: [Point, Point]; class: string }) {
-  const [[, y1], [x2, y2]] = ends;
-  const horizontal = y1 === y2;
-  const h = CELL * 0.12;
-  return horizontal ? (
-    <line class={cls} x1={x2} y1={y2 - h} x2={x2} y2={y2 + h} />
-  ) : (
-    <line class={cls} x1={x2 - h} y1={y2} x2={x2 + h} y2={y2} />
-  );
+// Open arrowhead at the far end of a ground string, as in the paper's figures
+function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string }) {
+  const [[x1, y1], [x2, y2]] = ends;
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const [dx, dy] = [(x2 - x1) / len, (y2 - y1) / len];
+  const f = CELL * 0.18; // Length of the arrowhead along the string
+  const back = (side: number): string => `${x2 - f * dx - side * 0.5 * f * dy},${y2 - f * dy + side * 0.5 * f * dx}`;
+  return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
 export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay }: BoardProps) {
@@ -119,6 +117,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             >
               <Segment ends={ends(line)} class="hit" />
               <Segment ends={ends(line)} class="preview" />
+              {view === "snc" && sncEnds(data, line).ground && <GroundArrow ends={ends(line)} class="preview arrow" />}
             </g>
           );
         })
@@ -166,7 +165,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
           return (
             <g key={`s${line.orientation}${line.x},${line.y}`}>
               <Segment ends={ends} class="string" />
-              {ground && <GroundMark ends={ends} class="string" />}
+              {ground && <GroundArrow ends={ends} class="string arrow" />}
             </g>
           );
         }),

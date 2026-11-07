@@ -387,6 +387,13 @@ input:focus-visible,
   stroke-dasharray: 6 4;
 }
 
+.board .arrow,
+.board.view-snc .move .preview.arrow {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-dasharray: none;
+}
+
 .board .move:focus-visible .preview {
   opacity: 1;
 }
