@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
 import type { CPosMove } from "../engine/types";
-import { current, goTo, newGameState, playMove } from "./state";
+import { current, goTo, newGameState, nextOwner, playMove, startFrom, withStart } from "./state";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -56,5 +56,44 @@ describe("game state", () => {
     const game = newGameState(engine.newGame([[1, 1]]));
     const after = playMove(game, mv(0, 0, "Top"), engine.makeMove);
     expect(() => playMove(after, mv(0, 0, "Top"), engine.makeMove)).toThrow(/Not a legal move/);
+  });
+
+  it("starts a new game from the current position, keeping owners and the player to move", () => {
+    const chain = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[5]; // 3-chain
+    let game = newGameState({ parts: [chain] });
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove); // A opens
+    game = playMove(game, mv(0, 0, "Right"), engine.makeMove); // B takes one, moves again
+    const fresh = startFrom(current(game));
+    expect(fresh.snapshots).toHaveLength(1);
+    expect(current(fresh).toMove).toBe("B");
+    expect(current(fresh).scores).toEqual({ A: 0, B: 1 });
+    expect(current(fresh).owners[0][0]).toEqual(["B", null, null]);
+    expect(current(fresh).lastMove).toBeNull();
+  });
+
+  it("cycles owners through A, B and nobody", () => {
+    expect(nextOwner(null)).toBe("A");
+    expect(nextOwner("A")).toBe("B");
+    expect(nextOwner("B")).toBeNull();
+  });
+
+  it("replays later moves when the starting position is changed", () => {
+    // Start with coin 0 of a 3-chain already captured by nobody, then play two moves
+    const chain = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[5];
+    let game = newGameState({ parts: [chain] });
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove);
+    game = startFrom(playMove(game, mv(0, 0, "Right"), engine.makeMove).snapshots.at(-1)!);
+    game = playMove(game, mv(1, 0, "Right"), engine.makeMove); // B takes another
+    game = playMove(game, mv(2, 0, "Right"), engine.makeMove); // and the last
+    game = goTo(game, 1);
+
+    const owners = [[["A", null, null] as ("A" | "B" | null)[]]];
+    const changed = withStart(game, { owners, toMove: "A" }, engine.makeMove);
+    expect(changed.cursor).toBe(1);
+    expect(changed.snapshots).toHaveLength(3);
+    expect(changed.snapshots[0].scores).toEqual({ A: 1, B: 0 });
+    // Now A makes the later captures, on top of the edited start
+    expect(changed.snapshots[2].scores).toEqual({ A: 3, B: 0 });
+    expect(changed.snapshots[2].owners[0][0]).toEqual(["A", "A", "A"]);
   });
 });

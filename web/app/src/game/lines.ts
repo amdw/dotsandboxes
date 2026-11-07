@@ -1,5 +1,5 @@
 // Mapping between engine moves and the lines/strings of a part, as indexed in PartData
-import type { CPosMove, PartData, PositionData } from "../engine/types";
+import type { CPosMove, PartData } from "../engine/types";
 
 // A horizontal line at row y (0..=height), column x (0..width), or
 // a vertical line at row y (0..height), column x (0..=width)
@@ -81,13 +81,3 @@ export function coinsCapturedBy(data: PartData, line: Line): [number, number][] 
   return isStringPresent(data, line) ? adjacent.filter(([cx, cy]) => stringCount(data, cx, cy) === 1) : [];
 }
 
-// Add or remove a single string, for setting up positions (not a move: no captures are scored)
-export function toggleString(position: PositionData, line: Line): PositionData {
-  const parts = position.parts.map((p, i) => {
-    if (i !== line.part) return p;
-    const flip = (rows: boolean[][], orientation: Line["orientation"]) =>
-      line.orientation === orientation ? rows.map((row, y) => (y === line.y ? row.map((s, x) => (x === line.x ? !s : s)) : row)) : rows;
-    return { ...p, h_strings: flip(p.h_strings, "h"), v_strings: flip(p.v_strings, "v") };
-  });
-  return { parts };
-}

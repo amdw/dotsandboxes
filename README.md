@@ -113,8 +113,8 @@ It is still in early development: currently it lets you play through
 games in either a dots-and-boxes or a strings-and-coins view, and move
 backwards and forwards through them. Games can start from an empty
 board of any size (or several boards, for a compound position), from
-any position set up by hand, from a ```.pos``` file, or from the named
-examples from Berlekamp's book and the paper.
+a ```.pos``` file, from the named examples from Berlekamp's book and
+the paper, or from any position reached in another game.
 
 As well as the Rust toolchain, you will need
 [Node.js](https://nodejs.org/), the WebAssembly target for Rust, and

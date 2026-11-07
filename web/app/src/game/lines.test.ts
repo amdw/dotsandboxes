@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { allLines, coinsCapturedBy, isCoinCaptured, toggleString, isEndOfGame, isStringPresent, lineToMove, moveToLine } from "./lines";
+import { allLines, coinsCapturedBy, isCoinCaptured, isEndOfGame, isStringPresent, lineToMove, moveToLine } from "./lines";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -57,17 +57,5 @@ describe("lines", () => {
     expect(coinsCapturedBy(after, middle)).toEqual([[0, 0], [1, 0]]);
     // A line which has already been drawn completes nothing
     expect(coinsCapturedBy(after, right)).toEqual([]);
-  });
-
-  it("toggle single strings without affecting others or the original", () => {
-    const position = engine.newGame([[2, 2], [1, 1]]);
-    const line = { part: 1, orientation: "v" as const, x: 1, y: 0 };
-    const edited = toggleString(position, line);
-    expect(isStringPresent(edited.parts[1], line)).toBe(false);
-    expect(isStringPresent(position.parts[1], line)).toBe(true);
-    expect(edited.parts[0]).toBe(position.parts[0]);
-    // The engine accepts the result, and agrees the string is gone
-    expect(engine.legalMoves(edited)).toHaveLength(engine.legalMoves(position).length - 1);
-    expect(toggleString(edited, line)).toEqual(position);
   });
 });

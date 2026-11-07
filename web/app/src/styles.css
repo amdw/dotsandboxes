@@ -143,9 +143,11 @@ button.quiet {
   background: transparent;
 }
 
-.editbar {
-  flex-direction: column;
-  gap: 8px;
+button.small {
+  min-height: 0;
+  padding: 1px 8px;
+  margin-left: 8px;
+  font-size: 0.8rem;
 }
 
 .hint {
@@ -166,6 +168,22 @@ button.quiet {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.panel h2 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.boards + .hint {
+  margin-top: 12px;
 }
 
 .part-size {
@@ -517,22 +535,28 @@ button.example {
   pointer-events: none;
 }
 
-/* Edit mode: faint guides for the lines/strings which can be added back, and
-   previews in neutral (adding) or accent (removing) colours */
-.board .ghost {
-  stroke: var(--muted);
-  stroke-width: 1.5;
-  stroke-dasharray: 2 4;
-  stroke-linecap: round;
-  opacity: 0.6;
+/* Captured squares/coins whose owner can be changed */
+.board .editable {
+  cursor: pointer;
+  outline: none;
 }
 
-.board.mode-edit .move.add .preview {
-  stroke: var(--fg);
+.board .editable rect,
+.board .editable circle {
+  pointer-events: all;
 }
 
-.board.mode-edit .move.remove .preview {
-  stroke: var(--accent);
+.board .editable:focus-visible rect,
+.board .editable:focus-visible circle {
+  stroke: var(--player-A);
+  stroke-width: 2;
+}
+
+@media (hover: hover) {
+  .board .editable:hover rect,
+  .board .editable:hover circle {
+    filter: brightness(0.95);
+  }
 }
 
 .board .arrow {

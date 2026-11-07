@@ -1,6 +1,6 @@
 // SVG rendering of one part of a position, in either the dots-and-boxes or the
-// strings-and-coins view, with clickable lines/strings for the legal moves, or in
-// edit mode, for adding and removing any line/string to set up a position.
+// strings-and-coins view, with clickable lines/strings for the legal moves, and
+// optionally clickable captured squares/coins (to change their owner).
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { PartData } from "../engine/types";
@@ -8,18 +8,18 @@ import { allLines, coinsCapturedBy, isCoinCaptured, isStringPresent, sameLine, t
 import type { Player } from "../game/state";
 
 export type View = "dab" | "snc";
-export type Mode = "play" | "edit";
 
 interface BoardProps {
   data: PartData;
   part: number;
   owners: (Player | null)[][];
   view: View;
-  mode: Mode;
   toMove: Player;
   lastMove: Line | null;
   interactive: boolean;
   onPlay: (line: Line) => void;
+  // If given, captured squares/coins can be clicked to change their owner
+  onCycleOwner?: (x: number, y: number) => void;
 }
 
 const CELL = 56;
@@ -51,12 +51,28 @@ function sncEnds(data: PartData, line: Line): { ends: [Point, Point]; ground: bo
   return { ends: [centre(x - 1, y), centre(x, y)], ground: false };
 }
 
-function lineLabel(line: Line, view: View, mode: Mode, present: boolean): string {
+function lineLabel(line: Line, view: View): string {
   const what = view === "dab" ? "line" : "string";
   const dir = line.orientation === "h" ? "horizontal" : "vertical";
-  // A present string is an undrawn line, and vice versa
-  const verb = mode === "play" ? "Play" : view === "dab" ? (present ? "Draw" : "Erase") : present ? "Cut" : "Restore";
-  return `${verb} ${dir} ${what} at row ${line.y}, column ${line.x}`;
+  return `Play ${dir} ${what} at row ${line.y}, column ${line.x}`;
+}
+
+// Props making a captured square/coin a button which changes its owner
+function ownerButton(x: number, y: number, owner: Player | null, view: View, onCycleOwner?: (x: number, y: number) => void) {
+  if (!onCycleOwner) return {};
+  const cycle = () => onCycleOwner(x, y);
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": `Change owner of ${view === "dab" ? "square" : "coin"} at row ${y}, column ${x} (currently ${owner ?? "nobody"})`,
+    onClick: cycle,
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        cycle();
+      }
+    },
+  };
 }
 
 function Segment({ ends, class: cls }: { ends: [Point, Point]; class: string }) {
@@ -74,7 +90,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, mode, toMove, lastMove, interactive, onPlay }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner }: BoardProps) {
   const width = 2 * PAD + data.width * CELL;
   const height = 2 * PAD + data.height * CELL;
   const lines = allLines(data, part);
@@ -92,14 +108,13 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
   // view, so the preview doesn't cover them), so this is tracked in state rather than CSS.
   const [hovered, setHovered] = useState<Line | null>(null);
   const unhover = (line: Line) => setHovered((h) => (sameLine(h, line) ? null : h));
-  const previewCoins = interactive && mode === "play" && hovered && isStringPresent(data, hovered) ? coinsCapturedBy(data, hovered) : [];
+  const previewCoins = interactive && hovered && isStringPresent(data, hovered) ? coinsCapturedBy(data, hovered) : [];
   const willCapture = (x: number, y: number) => previewCoins.some(([px, py]) => px === x && py === y);
 
   const moveTargets = interactive
     ? lines
-        .filter((line) => mode === "edit" || isStringPresent(data, line))
+        .filter((line) => isStringPresent(data, line))
         .map((line) => {
-          const present = isStringPresent(data, line);
           const play = () => onPlay(line);
           const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -110,10 +125,10 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
           return (
             <g
               key={`m${line.orientation}${line.x},${line.y}`}
-              class={mode === "play" ? "move" : present ? "move add" : "move remove"}
+              class="move"
               role="button"
               tabIndex={0}
-              aria-label={lineLabel(line, view, mode, present)}
+              aria-label={lineLabel(line, view)}
               onClick={play}
               onKeyDown={onKeyDown}
               onPointerEnter={() => setHovered(line)}
@@ -139,7 +154,7 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
           const [dx, dy] = dot(x, y);
           const [cx, cy] = centre(x, y);
           return (
-            <g key={`b${x},${y}`} class={`box owner-${owner ?? "none"}`}>
+            <g key={`b${x},${y}`} class={`box owner-${owner ?? "none"}${onCycleOwner ? " editable" : ""}`} {...ownerButton(x, y, owner, view, onCycleOwner)}>
               <rect x={dx} y={dy} width={CELL} height={CELL} />
               {owner && (
                 <text x={cx} y={cy}>
@@ -153,9 +168,6 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
         const [dx, dy] = dot(x, y);
         return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
       }),
-      ...(mode === "edit"
-        ? lines.filter((line) => isStringPresent(data, line)).map((line) => <Segment key={`g${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class="ghost" />)
-        : []),
       ...lines
         .filter((line) => !isStringPresent(data, line))
         .map((line) => <Segment key={`l${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class={sameLine(line, lastMove) ? "drawn last" : "drawn"} />),
@@ -167,19 +179,6 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
     ];
   } else {
     content = [
-      ...(mode === "edit"
-        ? lines
-            .filter((line) => !isStringPresent(data, line))
-            .map((line) => {
-              const { ends, ground } = sncEnds(data, line);
-              return (
-                <g key={`g${line.orientation}${line.x},${line.y}`}>
-                  <Segment ends={ends} class="ghost" />
-                  {ground && <GroundArrow ends={ends} class="ghost arrow" />}
-                </g>
-              );
-            })
-        : []),
       ...lines
         .filter((line) => isStringPresent(data, line))
         .map((line) => {
@@ -199,7 +198,7 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
         }
         const owner = owners[y][x];
         return (
-          <g key={`c${x},${y}`} class={`captured owner-${owner ?? "none"}`}>
+          <g key={`c${x},${y}`} class={`captured owner-${owner ?? "none"}${onCycleOwner ? " editable" : ""}`} {...ownerButton(x, y, owner, view, onCycleOwner)}>
             <circle cx={cx} cy={cy} r={COIN_R} />
             {owner && (
               <text x={cx} y={cy}>
@@ -214,7 +213,7 @@ export function Board({ data, part, owners, view, mode, toMove, lastMove, intera
 
   return (
     <svg
-      class={`board view-${view} ${mode === "play" ? `to-move-${toMove}` : "mode-edit"}`}
+      class={`board view-${view} to-move-${toMove}`}
       viewBox={`0 0 ${width} ${height}`}
       // Allow some enlargement, since the natural size is small for small boards
       style={{ maxWidth: `${Math.round(width * 1.4)}px` }}
