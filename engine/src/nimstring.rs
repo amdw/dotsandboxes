@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -17,7 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::game::{Position, SimplePosition, CompoundPosition, Side, Move, CPosMove};
-use crate::splitter::SplittablePosition;
+use crate::splitter::{self, SplittablePosition};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash::Hash;
@@ -27,6 +27,7 @@ use std::ops;
 #[derive(Copy)]
 #[derive(PartialEq)]
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Value {
     Nimber(usize),
     Loony
@@ -195,6 +196,33 @@ where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
         pos.undo_move(m);
     }
     (val, per_move)
+}
+
+// The Nimstring value of one independent component of a position
+#[derive(Clone)]
+#[derive(Debug)]
+#[derive(PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ComponentValue {
+    // Which part of the CompoundPosition the component is in
+    pub part: usize,
+    // Coordinates within that part of the coins making up the component
+    pub coins: Vec<(usize, usize)>,
+    pub value: Value,
+}
+
+// Calculate the Nimstring values of the independent components of a position.
+// The value of the whole position is the sum of these values.
+pub fn component_values(pos: &CompoundPosition) -> Vec<ComponentValue> {
+    let mut cache = HashMap::new();
+    let mut result = Vec::new();
+    for (i, part) in pos.parts().iter().enumerate() {
+        for mut fragment in splitter::fragments(part) {
+            let value = calc_value(&mut fragment.position, &mut cache);
+            result.push(ComponentValue{ part: i, coins: fragment.coins, value: value });
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -375,6 +403,33 @@ mod tests {
         pos.make_move(Move{x: 4, y: 0, side: Side::Right});
         assert_eq!(true, pos.is_end_of_game());
         assert_eq!(false, pos.is_loony());
+    }
+
+    #[test]
+    fn p50_component_values() {
+        let pos = CompoundPosition::from_single(p50());
+        let components = component_values(&pos);
+        let mut values: Vec<Value> = components.iter().map(|c| c.value).collect();
+        values.sort_by_key(|v| match v { Value::Nimber(n) => *n, Value::Loony => usize::MAX });
+        assert_eq!(vec![Value::Nimber(1), Value::Nimber(2), Value::Nimber(4)], values);
+        assert!(components.iter().all(|c| c.part == 0));
+        let total = components.iter().fold(Value::Nimber(0), |acc, c| acc + c.value);
+        assert_eq!(calc_value_with_moves(&pos).0, total);
+    }
+
+    #[test]
+    fn compound_component_values() {
+        let mut pos = CompoundPosition::new(vec!(make_chain(2), double_chain(3)));
+        let components = component_values(&pos);
+        assert_eq!(3, components.len());
+        assert_eq!(ComponentValue{ part: 0, coins: vec![(0, 0), (1, 0)], value: Value::Nimber(1) }, components[0]);
+        assert_eq!(ComponentValue{ part: 1, coins: vec![(0, 0), (1, 0), (2, 0)], value: Value::Nimber(0) }, components[1]);
+        assert_eq!(ComponentValue{ part: 1, coins: vec![(0, 1), (1, 1), (2, 1)], value: Value::Nimber(0) }, components[2]);
+
+        // Opening a chain makes just that component loony
+        pos.make_move(CPosMove::new(1, 0, 1, Side::Left));
+        let values: Vec<Value> = component_values(&pos).iter().map(|c| c.value).collect();
+        assert_eq!(vec![Value::Nimber(1), Value::Nimber(0), Value::Loony], values);
     }
 
     #[test]

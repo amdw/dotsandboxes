@@ -22,3 +22,4 @@ pub mod cli;
 pub mod splitter;
 pub mod examples;
 pub mod eval;
+pub mod posfile;

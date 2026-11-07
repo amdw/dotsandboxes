@@ -211,6 +211,8 @@ dependencies = [
  "criterion",
  "rand",
  "regex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -258,7 +260,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "r-efi",
- "rand_core",
 ]
 
 [[package]]

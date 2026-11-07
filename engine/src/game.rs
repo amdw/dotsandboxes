@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -29,6 +29,7 @@ use std::iter;
 #[derive(PartialOrd)]
 #[derive(Ord)]
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Side {
     Top, Bottom, Left, Right
 }
@@ -72,6 +73,7 @@ impl fmt::Display for Side {
 #[derive(Clone)]
 #[derive(Copy)]
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MoveOutcome {
     pub coins_captured: usize,
     pub end_of_turn: bool,
@@ -84,6 +86,7 @@ pub struct MoveOutcome {
 #[derive(Hash)]
 #[derive(PartialEq)]
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Move {
     pub x: usize,
     pub y: usize,
@@ -125,6 +128,49 @@ pub trait Position<M> {
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
     fn zhash(&self) -> u64;
+}
+
+// Plain-data description of a SimplePosition, for exchange with other programs
+// such as the web interface. Strings are listed in terms of the lines of the
+// equivalent dots-and-boxes position:
+// * h_strings[y][x] is the string crossed by the horizontal line along the top
+//   of square (x, y), for y in 0..=height (y == height is the bottom edge)
+// * v_strings[y][x] is the string crossed by the vertical line along the left
+//   of square (x, y), for x in 0..=width (x == width is the right edge)
+// A value of true means the string is still present, i.e. the line has not yet
+// been drawn.
+#[derive(Clone)]
+#[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SimplePositionData {
+    pub width: usize,
+    pub height: usize,
+    pub h_strings: Vec<Vec<bool>>,
+    pub v_strings: Vec<Vec<bool>>,
+}
+
+// Plain-data description of a CompoundPosition: see SimplePositionData.
+#[derive(Clone)]
+#[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CompoundPositionData {
+    pub parts: Vec<SimplePositionData>,
+}
+
+// The move which cuts the string crossed by the horizontal line at row y, column x
+// (in the SimplePositionData sense), in the form used by legal_moves().
+fn h_line_move(x: usize, y: usize) -> Move {
+    if y == 0 { Move::new(x, 0, Side::Top) } else { Move::new(x, y - 1, Side::Bottom) }
+}
+
+// The move which cuts the string crossed by the vertical line at row y, column x
+// (in the SimplePositionData sense), in the form used by legal_moves().
+fn v_line_move(x: usize, y: usize) -> Move {
+    if x == 0 { Move::new(0, y, Side::Left) } else { Move::new(x - 1, y, Side::Right) }
 }
 
 // An m*n dots-and-boxes position is represented as:
@@ -200,6 +246,73 @@ impl SimplePosition {
 
     pub fn height(self: &SimplePosition) -> usize {
         self.left_strings.len()
+    }
+
+    // Build a position from its plain-data description.
+    pub fn from_data(data: &SimplePositionData) -> Result<SimplePosition, String> {
+        let (width, height) = (data.width, data.height);
+        if width == 0 || height == 0 {
+            return Err(format!("Invalid dimensions {}x{}", width, height));
+        }
+        if data.h_strings.len() != height + 1 || data.h_strings.iter().any(|row| row.len() != width) {
+            return Err(format!("Expected {} rows of {} horizontal strings", height + 1, width));
+        }
+        if data.v_strings.len() != height || data.v_strings.iter().any(|row| row.len() != width + 1) {
+            return Err(format!("Expected {} rows of {} vertical strings", height, width + 1));
+        }
+        // Start from a new game and cut strings, so the Zobrist hash is consistent
+        // with positions reached by play.
+        let mut pos = SimplePosition::new_game(width, height);
+        for (y, row) in data.h_strings.iter().enumerate() {
+            for (x, &present) in row.iter().enumerate() {
+                if !present {
+                    pos.cut_string(h_line_move(x, y));
+                }
+            }
+        }
+        for (y, row) in data.v_strings.iter().enumerate() {
+            for (x, &present) in row.iter().enumerate() {
+                if !present {
+                    pos.cut_string(v_line_move(x, y));
+                }
+            }
+        }
+        Ok(pos)
+    }
+
+    // Describe this position as plain data.
+    pub fn to_data(self: &SimplePosition) -> SimplePositionData {
+        let (width, height) = (self.width(), self.height());
+        SimplePositionData {
+            width: width,
+            height: height,
+            h_strings: (0..=height).map(
+                |y| (0..width).map(|x| self.is_legal_move(h_line_move(x, y))).collect()).collect(),
+            v_strings: (0..height).map(
+                |y| (0..=width).map(|x| self.is_legal_move(v_line_move(x, y))).collect()).collect(),
+        }
+    }
+
+    // Express a move in the canonical form used by legal_moves(), so that
+    // for example (1, 0) Left becomes (0, 0) Right. Returns None if the move's
+    // coordinates are off the board.
+    pub fn normalise_move(self: &SimplePosition, m: Move) -> Option<Move> {
+        if m.x >= self.width() || m.y >= self.height() {
+            return None;
+        }
+        Some(match (m.x, m.y, m.side) {
+            (x, y, Side::Top) if y > 0 => Move::new(x, y - 1, Side::Bottom),
+            (x, y, Side::Left) if x > 0 => Move::new(x - 1, y, Side::Right),
+            _ => m,
+        })
+    }
+
+    // Cut a string without checking for captures (for setting up positions).
+    fn cut_string(self: &mut SimplePosition, m: Move) {
+        if self.is_legal_move(m) {
+            self.set_string_value(m, false);
+            self.zhash.toggle_element(m);
+        }
     }
 
     // Indicate whether a given square has been captured.
@@ -503,6 +616,7 @@ pub struct CompoundPosition {
 #[derive(PartialEq)]
 #[derive(Eq)]
 #[derive(Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CPosMove {
     pub part: usize,
     pub m: Move,
@@ -531,6 +645,32 @@ impl CompoundPosition {
 
     pub fn from_single(pos: SimplePosition) -> CompoundPosition {
         CompoundPosition{ parts: vec!(pos) }
+    }
+
+    pub fn parts(self: &CompoundPosition) -> &[SimplePosition] {
+        &self.parts
+    }
+
+    // Build a position from its plain-data description.
+    pub fn from_data(data: &CompoundPositionData) -> Result<CompoundPosition, String> {
+        if data.parts.is_empty() {
+            return Err("A position must have at least one part".to_string());
+        }
+        let parts = data.parts.iter().enumerate().map(
+            |(i, p)| SimplePosition::from_data(p).map_err(|e| format!("Part {}: {}", i, e))
+        ).collect::<Result<Vec<SimplePosition>, String>>()?;
+        Ok(CompoundPosition::new(parts))
+    }
+
+    // Describe this position as plain data.
+    pub fn to_data(self: &CompoundPosition) -> CompoundPositionData {
+        CompoundPositionData{ parts: self.parts.iter().map(|p| p.to_data()).collect() }
+    }
+
+    // Express a move in the canonical form used by legal_moves():
+    // see SimplePosition::normalise_move.
+    pub fn normalise_move(self: &CompoundPosition, m: CPosMove) -> Option<CPosMove> {
+        self.parts.get(m.part).and_then(|p| p.normalise_move(m.m)).map(|nm| CPosMove{ part: m.part, m: nm })
     }
 }
 
@@ -1088,6 +1228,101 @@ mod tests {
         }
         assert_eq!(legals.len() * 2 + 1, hashes.len());
         assert_eq!(false, hashes.contains(&0));
+    }
+
+    #[test]
+    fn data_round_trip() {
+        for pos in [SimplePosition::new_game(3, 2), SimplePosition::new_end_game(2, 3),
+                    p50(), ex3p12(), make_chain(4), double_loop(3)] {
+            let data = pos.to_data();
+            let rebuilt = SimplePosition::from_data(&data).unwrap();
+            assert!(pos.eq(&rebuilt), "{} vs {}", pos, rebuilt);
+            assert_eq!(data, rebuilt.to_data());
+        }
+    }
+
+    #[test]
+    fn data_layout() {
+        let mut pos = SimplePosition::new_game(2, 1);
+        pos.make_move(Move::new(1, 0, Side::Bottom));
+        pos.make_move(Move::new(1, 0, Side::Left));
+        let data = pos.to_data();
+        assert_eq!(2, data.width);
+        assert_eq!(1, data.height);
+        assert_eq!(vec![vec![true, true], vec![true, false]], data.h_strings);
+        assert_eq!(vec![vec![true, false, true]], data.v_strings);
+    }
+
+    #[test]
+    fn data_zhash_consistent() {
+        // A position built from data must hash the same as one reached by play,
+        // or evaluation caches would treat equal positions as different
+        let pos = p50();
+        let rebuilt = SimplePosition::from_data(&pos.to_data()).unwrap();
+        assert_eq!(pos.zhash(), rebuilt.zhash());
+    }
+
+    #[test]
+    fn data_errors() {
+        let good = SimplePosition::new_game(2, 2).to_data();
+        let mut bad = good.clone();
+        bad.width = 0;
+        assert!(SimplePosition::from_data(&bad).is_err());
+        let mut bad = good.clone();
+        bad.h_strings.pop();
+        assert!(SimplePosition::from_data(&bad).is_err());
+        let mut bad = good.clone();
+        bad.v_strings[1].push(true);
+        assert!(SimplePosition::from_data(&bad).is_err());
+        assert!(CompoundPosition::from_data(&CompoundPositionData{ parts: vec![] }).is_err());
+        let err = CompoundPosition::from_data(&CompoundPositionData{ parts: vec![good.clone(), bad] }).err().unwrap();
+        assert!(err.starts_with("Part 1:"), "{}", err);
+    }
+
+    #[test]
+    fn compound_data_round_trip() {
+        let pos = one_long_multi_three(3, 4);
+        let rebuilt = CompoundPosition::from_data(&pos.to_data()).unwrap();
+        assert!(pos.eq(&rebuilt));
+        assert_eq!(pos.zhash(), rebuilt.zhash());
+    }
+
+    #[test]
+    fn normalise_moves() {
+        let pos = SimplePosition::new_game(3, 2);
+        assert_eq!(Some(Move::new(0, 0, Side::Bottom)), pos.normalise_move(Move::new(0, 1, Side::Top)));
+        assert_eq!(Some(Move::new(1, 1, Side::Right)), pos.normalise_move(Move::new(2, 1, Side::Left)));
+        for m in [Move::new(1, 0, Side::Top), Move::new(0, 1, Side::Left),
+                  Move::new(2, 1, Side::Bottom), Move::new(2, 1, Side::Right)] {
+            assert_eq!(Some(m), pos.normalise_move(m));
+        }
+        assert_eq!(None, pos.normalise_move(Move::new(3, 0, Side::Top)));
+        assert_eq!(None, pos.normalise_move(Move::new(0, 2, Side::Top)));
+        // Every legal move is already in normal form
+        for m in pos.legal_moves() {
+            assert_eq!(Some(m), pos.normalise_move(m));
+        }
+
+        let cpos = CompoundPosition::new(vec![make_chain(2), make_chain(3)]);
+        assert_eq!(Some(CPosMove::new(1, 1, 0, Side::Right)), cpos.normalise_move(CPosMove::new(1, 2, 0, Side::Left)));
+        assert_eq!(None, cpos.normalise_move(CPosMove::new(2, 0, 0, Side::Left)));
+        assert_eq!(None, cpos.normalise_move(CPosMove::new(0, 2, 0, Side::Left)));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_formats() {
+        let m = CPosMove::new(1, 2, 3, Side::Left);
+        let json = serde_json::to_string(&m).unwrap();
+        assert_eq!(r#"{"part":1,"m":{"x":2,"y":3,"side":"Left"}}"#, json);
+        assert_eq!(m, serde_json::from_str(&json).unwrap());
+
+        let data = CompoundPosition::new(vec![make_chain(2)]).to_data();
+        let json = serde_json::to_string(&data).unwrap();
+        assert_eq!(
+            r#"{"parts":[{"width":2,"height":1,"h_strings":[[false,false],[false,false]],"v_strings":[[true,true,true]]}]}"#,
+            json);
+        assert_eq!(data, serde_json::from_str(&json).unwrap());
     }
 
     #[test]

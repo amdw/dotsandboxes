@@ -41,3 +41,9 @@ jobs:
         run: cargo build
       - name: Test
         run: cargo test
+      - name: Test with serde
+        run: cargo test --features serde
+      - name: Build for WebAssembly
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo build --lib --features serde --target wasm32-unknown-unknown
