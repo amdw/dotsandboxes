@@ -378,28 +378,26 @@ button.example {
 }
 
 .boards {
-  display: flex;
-  flex-wrap: wrap;
+  --part-number-width: 1.5em;
+  --boards-gap: 12px;
+  display: grid;
   justify-content: center;
-  gap: 16px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 8px var(--boards-gap);
 }
 
-.boards figure {
-  margin: 0;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.boards figcaption {
-  text-align: center;
+.part-number {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.part-board {
+  min-width: 0;
 }
 
 .board {
   display: block;
-  margin: 0 auto;
   width: 100%;
   height: auto;
   touch-action: manipulation;

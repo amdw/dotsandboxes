@@ -1,12 +1,14 @@
 import { useEffect, useState } from "preact/hooks";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, PositionData } from "./engine/types";
-import { Board, type View } from "./components/Board";
+import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
 import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
 
 const VIEW_KEY = "dab-view";
+// Boards may be enlarged up to this much, since their natural size is small for small boards
+const MAX_ENLARGEMENT = 1.4;
 
 type Panel = "new" | "import" | "export";
 
@@ -80,6 +82,13 @@ export function App() {
   const atStart = game.cursor === 0;
   const last = snap.lastMove ? moveToLine(snap.lastMove) : null;
   const multiPart = snap.position.parts.length > 1;
+  // Margins depend on the game's starting position, so boards don't change size during it.
+  // Left and right margins are shared by all parts, so their squares/coins line up in columns.
+  const partMargins = game.snapshots[0].position.parts.map((p) => boardMargins(p, view));
+  const left = Math.max(...partMargins.map((m) => m.left));
+  const right = Math.max(...partMargins.map((m) => m.right));
+  const margins = partMargins.map((m) => ({ ...m, left, right }));
+  const maxWidth = Math.max(...snap.position.parts.map((p, i) => naturalWidth(p, margins[i])));
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y))));
 
   const attempt = (f: () => void) => {
@@ -184,9 +193,24 @@ export function App() {
 
       {error && <p class="error">{error}</p>}
 
-      <section class="boards">
-        {snap.position.parts.map((data, i) => (
-          <figure key={i}>
+      {/* All parts are drawn at the same scale: the board column fits the widest part (up
+          to the maximum enlargement, or the available width), and each board's width is its
+          natural width relative to the widest part's. */}
+      <section
+        class={multiPart ? "boards multi" : "boards"}
+        style={{
+          gridTemplateColumns: multiPart
+            ? `var(--part-number-width) min(${MAX_ENLARGEMENT * maxWidth}px, calc(100% - var(--part-number-width) - var(--boards-gap)))`
+            : `min(${MAX_ENLARGEMENT * maxWidth}px, 100%)`,
+        }}
+      >
+        {snap.position.parts.map((data, i) => [
+          multiPart && (
+            <div key={`n${i}`} class="part-number" aria-hidden="true">
+              {i}
+            </div>
+          ),
+          <div key={`b${i}`} class="part-board">
             <Board
               data={data}
               part={i}
@@ -197,10 +221,11 @@ export function App() {
               interactive={!snap.gameOver}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
+              margins={margins[i]}
+              width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
             />
-            {multiPart && <figcaption>Part {i}</figcaption>}
-          </figure>
-        ))}
+          </div>,
+        ])}
       </section>
 
       {atStart && anyCaptured && (
