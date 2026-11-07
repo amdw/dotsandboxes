@@ -688,7 +688,15 @@ impl Position<CPosMove> for CompoundPosition {
     }
 
     fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
-        self.parts[m.part].make_move(m.m)
+        let outcome = self.parts[m.part].make_move(m.m);
+        // Finishing one part doesn't end the game (or the turn, after a capture)
+        // unless every other part is finished too
+        let end_of_game = outcome.end_of_game && self.is_end_of_game();
+        MoveOutcome {
+            coins_captured: outcome.coins_captured,
+            end_of_turn: outcome.coins_captured == 0 || end_of_game,
+            end_of_game: end_of_game,
+        }
     }
 
     fn undo_move(self: &mut CompoundPosition, m: CPosMove) {
@@ -1348,5 +1356,22 @@ mod tests {
         }
         assert!(prebuilt.eq(&played));
         assert_eq!(prebuilt.zhash(), played.zhash());
+    }
+
+    #[test]
+    fn compound_end_of_game() {
+        // Two 1-chains: taking the first coin finishes one part but not the game
+        let mut pos = CompoundPosition::new(vec!(make_chain(1), make_chain(1)));
+        pos.make_move(CPosMove::new(0, 0, 0, Side::Left));
+        let outcome = pos.make_move(CPosMove::new(0, 0, 0, Side::Right));
+        assert_eq!(1, outcome.coins_captured);
+        assert_eq!(false, outcome.end_of_game);
+        assert_eq!(false, outcome.end_of_turn);
+
+        pos.make_move(CPosMove::new(1, 0, 0, Side::Left));
+        let outcome = pos.make_move(CPosMove::new(1, 0, 0, Side::Right));
+        assert_eq!(1, outcome.coins_captured);
+        assert_eq!(true, outcome.end_of_game);
+        assert_eq!(true, outcome.end_of_turn);
     }
 }
