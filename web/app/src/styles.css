@@ -84,7 +84,8 @@ h1 {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -116,33 +117,184 @@ input:focus-visible,
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px 24px;
-  align-items: end;
+  align-items: center;
   margin-bottom: 16px;
 }
 
-.new-game {
+.toolbar .buttons,
+.panel-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  align-items: end;
 }
 
-.new-game label {
+button[aria-expanded="true"] {
+  border-color: var(--fg);
+}
+
+button.primary {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+button.quiet {
+  background: transparent;
+}
+
+button.small {
+  min-height: 0;
+  padding: 1px 8px;
+  margin-left: 8px;
+  font-size: 0.8rem;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Setup panels, opened from the toolbar */
+.panel {
+  max-width: 640px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel h2 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.boards + .hint {
+  margin-top: 12px;
+}
+
+.part-size {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: end;
+  gap: 8px;
+}
+
+.part-label {
+  align-self: center;
+  min-width: 4em;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.panel label {
   display: flex;
   flex-direction: column;
   font-size: 0.85rem;
   color: var(--muted);
 }
 
-.new-game input {
+.panel input[type="number"] {
   color: var(--fg);
   width: 4.5em;
   padding: 6px 8px;
   min-height: 36px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--surface);
+  background: var(--bg);
+}
+
+.panel textarea {
+  width: 100%;
+  font: 0.9rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.panel code {
+  font-size: 0.85em;
+}
+
+/* A button-styled label wrapping a hidden file input */
+.panel label.file {
+  flex-direction: row;
+  align-items: center;
+  font-size: 1rem;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.panel label.file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.panel label.file:focus-within {
+  outline: 2px solid var(--player-A);
+  outline-offset: 2px;
+}
+
+.examples {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+button.example {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--bg);
+}
+
+.example-title {
+  font-weight: 600;
+}
+
+.example-description {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tag {
+  margin-left: 8px;
+  font-weight: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
 }
 
 .segmented {
@@ -226,28 +378,26 @@ input:focus-visible,
 }
 
 .boards {
-  display: flex;
-  flex-wrap: wrap;
+  --part-number-width: 1.5em;
+  --boards-gap: 12px;
+  display: grid;
   justify-content: center;
-  gap: 16px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 8px var(--boards-gap);
 }
 
-.boards figure {
-  margin: 0;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.boards figcaption {
-  text-align: center;
+.part-number {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.part-board {
+  min-width: 0;
 }
 
 .board {
   display: block;
-  margin: 0 auto;
   width: 100%;
   height: auto;
   touch-action: manipulation;
@@ -381,6 +531,30 @@ input:focus-visible,
 
 .board .preview-box {
   pointer-events: none;
+}
+
+/* Captured squares/coins whose owner can be changed */
+.board .editable {
+  cursor: pointer;
+  outline: none;
+}
+
+.board .editable rect,
+.board .editable circle {
+  pointer-events: all;
+}
+
+.board .editable:focus-visible rect,
+.board .editable:focus-visible circle {
+  stroke: var(--player-A);
+  stroke-width: 2;
+}
+
+@media (hover: hover) {
+  .board .editable:hover rect,
+  .board .editable:hover circle {
+    filter: brightness(0.95);
+  }
 }
 
 .board .arrow {

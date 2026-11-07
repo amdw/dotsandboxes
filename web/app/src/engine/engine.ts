@@ -30,3 +30,8 @@ export const engine = {
 };
 
 export type Engine = typeof engine;
+
+// The message of an error thrown by the engine (or anything else), without an "Error: " prefix
+export function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}

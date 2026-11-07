@@ -74,3 +74,39 @@ export function other(player: Player): Player {
 export function goTo(game: GameState, cursor: number): GameState {
   return { ...game, cursor: Math.max(0, Math.min(game.snapshots.length - 1, cursor)) };
 }
+
+export function scoresOf(owners: (Player | null)[][][]): Record<Player, number> {
+  const scores = { A: 0, B: 0 };
+  for (const owner of owners.flat(2)) {
+    if (owner) scores[owner]++;
+  }
+  return scores;
+}
+
+// The owner a captured coin gets when clicked while setting up a starting position
+export function nextOwner(owner: Player | null): Player | null {
+  return owner === "A" ? "B" : owner === "B" ? null : "A";
+}
+
+// A new game starting from a snapshot (e.g. the current position of another game),
+// keeping its coin owners, scores and player to move
+export function startFrom(snapshot: Snapshot): GameState {
+  return {
+    snapshots: [{ ...snapshot, scores: scoresOf(snapshot.owners), lastMove: null, lastCaptured: [] }],
+    cursor: 0,
+  };
+}
+
+// Change the coin owners and/or player to move of the starting position, replaying
+// any later moves so their scores and turns stay consistent with it
+export function withStart(
+  game: GameState,
+  start: { owners?: (Player | null)[][][]; toMove?: Player },
+  makeMove: MakeMove,
+): GameState {
+  let result = startFrom({ ...game.snapshots[0], ...start });
+  for (const snapshot of game.snapshots.slice(1)) {
+    result = playMove(result, snapshot.lastMove!, makeMove);
+  }
+  return goTo(result, game.cursor);
+}

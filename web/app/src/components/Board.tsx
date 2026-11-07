@@ -1,5 +1,6 @@
 // SVG rendering of one part of a position, in either the dots-and-boxes or the
-// strings-and-coins view, with clickable lines/strings for the legal moves.
+// strings-and-coins view, with clickable lines/strings for the legal moves, and
+// optionally clickable captured squares/coins (to change their owner).
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { PartData } from "../engine/types";
@@ -17,41 +18,99 @@ interface BoardProps {
   lastMove: Line | null;
   interactive: boolean;
   onPlay: (line: Line) => void;
+  // If given, captured squares/coins can be clicked to change their owner
+  onCycleOwner?: (x: number, y: number) => void;
+  // Margins around the board (see boardMargins)
+  margins: Margins;
+  // CSS width of the board (its height follows from its aspect ratio)
+  width: string;
 }
 
 const CELL = 56;
-const PAD = CELL * 0.65;
+const PAD = CELL * 0.65; // Margin with room for ground strings
+// Margins on sides without ground strings: just enough room for the dots in the dots-and-boxes
+// view; none in the strings-and-coins view, where coins are already half a square in
+const DAB_SLIM_PAD = CELL * 0.25;
 const GROUND = CELL * 0.4; // How far ground strings extend beyond the edge of the board
 const COIN_R = CELL * 0.2;
 
 type Point = [number, number];
 
-const dot = (x: number, y: number): Point => [PAD + x * CELL, PAD + y * CELL];
-const centre = (x: number, y: number): Point => [PAD + (x + 0.5) * CELL, PAD + (y + 0.5) * CELL];
-
-// End points of a line in the dots-and-boxes view
-function dabEnds(line: Line): [Point, Point] {
-  const { x, y } = line;
-  return line.orientation === "h" ? [dot(x, y), dot(x + 1, y)] : [dot(x, y), dot(x, y + 1)];
+// Margins around a part's board, in SVG units
+export interface Margins {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 }
 
-// End points of a string in the strings-and-coins view, and whether it goes to the ground
-function sncEnds(data: PartData, line: Line): { ends: [Point, Point]; ground: boolean } {
-  const { x, y } = line;
-  if (line.orientation === "h") {
-    if (y === 0) return { ends: [centre(x, 0), [centre(x, 0)[0], PAD - GROUND]], ground: true };
-    if (y === data.height) return { ends: [centre(x, y - 1), [centre(x, y - 1)[0], PAD + y * CELL + GROUND]], ground: true };
-    return { ends: [centre(x, y - 1), centre(x, y)], ground: false };
-  }
-  if (x === 0) return { ends: [centre(0, y), [PAD - GROUND, centre(0, y)[1]]], ground: true };
-  if (x === data.width) return { ends: [centre(x - 1, y), [PAD + x * CELL + GROUND, centre(x - 1, y)[1]]], ground: true };
-  return { ends: [centre(x - 1, y), centre(x, y)], ground: false };
+// Margins for drawing a part, based on the game's starting position: a full margin only
+// on sides where the strings-and-coins view has ground strings to draw. (Strings are only
+// ever removed during a game, so a side never needs more room than at the start.)
+export function boardMargins(start: PartData, view: View): Margins {
+  if (view === "dab") return { top: DAB_SLIM_PAD, right: DAB_SLIM_PAD, bottom: DAB_SLIM_PAD, left: DAB_SLIM_PAD };
+  const pad = (ground: boolean) => (ground ? PAD : 0);
+  return {
+    top: pad(start.h_strings[0].some((s) => s)),
+    bottom: pad(start.h_strings[start.height].some((s) => s)),
+    left: pad(start.v_strings.some((row) => row[0])),
+    right: pad(start.v_strings.some((row) => row[start.width])),
+  };
+}
+
+// Width of a part's board in SVG units, which all parts share, so boards drawn at widths
+// proportional to this have the same size of squares and coins
+export const naturalWidth = (data: PartData, m: Margins): number => m.left + m.right + data.width * CELL;
+
+// Positions of the elements of a part's board
+function geometry(data: PartData, m: Margins) {
+  const dot = (x: number, y: number): Point => [m.left + x * CELL, m.top + y * CELL];
+  const centre = (x: number, y: number): Point => [m.left + (x + 0.5) * CELL, m.top + (y + 0.5) * CELL];
+
+  // End points of a line in the dots-and-boxes view
+  const dabEnds = (line: Line): [Point, Point] => {
+    const { x, y } = line;
+    return line.orientation === "h" ? [dot(x, y), dot(x + 1, y)] : [dot(x, y), dot(x, y + 1)];
+  };
+
+  // End points of a string in the strings-and-coins view, and whether it goes to the ground
+  const sncEnds = (line: Line): { ends: [Point, Point]; ground: boolean } => {
+    const { x, y } = line;
+    if (line.orientation === "h") {
+      if (y === 0) return { ends: [centre(x, 0), [centre(x, 0)[0], m.top - GROUND]], ground: true };
+      if (y === data.height) return { ends: [centre(x, y - 1), [centre(x, y - 1)[0], m.top + y * CELL + GROUND]], ground: true };
+      return { ends: [centre(x, y - 1), centre(x, y)], ground: false };
+    }
+    if (x === 0) return { ends: [centre(0, y), [m.left - GROUND, centre(0, y)[1]]], ground: true };
+    if (x === data.width) return { ends: [centre(x - 1, y), [m.left + x * CELL + GROUND, centre(x - 1, y)[1]]], ground: true };
+    return { ends: [centre(x - 1, y), centre(x, y)], ground: false };
+  };
+
+  return { dot, centre, dabEnds, sncEnds };
 }
 
 function lineLabel(line: Line, view: View): string {
   const what = view === "dab" ? "line" : "string";
   const dir = line.orientation === "h" ? "horizontal" : "vertical";
   return `Play ${dir} ${what} at row ${line.y}, column ${line.x}`;
+}
+
+// Props making a captured square/coin a button which changes its owner
+function ownerButton(x: number, y: number, owner: Player | null, view: View, onCycleOwner?: (x: number, y: number) => void) {
+  if (!onCycleOwner) return {};
+  const cycle = () => onCycleOwner(x, y);
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": `Change owner of ${view === "dab" ? "square" : "coin"} at row ${y}, column ${x} (currently ${owner ?? "nobody"})`,
+    onClick: cycle,
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        cycle();
+      }
+    },
+  };
 }
 
 function Segment({ ends, class: cls }: { ends: [Point, Point]; class: string }) {
@@ -69,9 +128,10 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay }: BoardProps) {
-  const width = 2 * PAD + data.width * CELL;
-  const height = 2 * PAD + data.height * CELL;
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth }: BoardProps) {
+  const { dot, centre, dabEnds, sncEnds } = geometry(data, margins);
+  const width = naturalWidth(data, margins);
+  const height = margins.top + margins.bottom + data.height * CELL;
   const lines = allLines(data, part);
   const coins: Point[] = [];
   for (let y = 0; y < data.height; y++) {
@@ -80,7 +140,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
     }
   }
 
-  const ends = (line: Line) => (view === "dab" ? dabEnds(line) : sncEnds(data, line).ends);
+  const ends = (line: Line) => (view === "dab" ? dabEnds(line) : sncEnds(line).ends);
 
   // The move under the pointer (or with keyboard focus), and the coins it would capture.
   // These are previewed in separate layers (under the drawn lines in the dots-and-boxes
@@ -117,7 +177,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             >
               <Segment ends={ends(line)} class="hit" />
               <Segment ends={ends(line)} class="preview" />
-              {view === "snc" && sncEnds(data, line).ground && <GroundArrow ends={ends(line)} class="preview arrow" />}
+              {view === "snc" && sncEnds(line).ground && <GroundArrow ends={ends(line)} class="preview arrow" />}
             </g>
           );
         })
@@ -133,7 +193,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
           const [dx, dy] = dot(x, y);
           const [cx, cy] = centre(x, y);
           return (
-            <g key={`b${x},${y}`} class={`box owner-${owner ?? "none"}`}>
+            <g key={`b${x},${y}`} class={`box owner-${owner ?? "none"}${onCycleOwner ? " editable" : ""}`} {...ownerButton(x, y, owner, view, onCycleOwner)}>
               <rect x={dx} y={dy} width={CELL} height={CELL} />
               {owner && (
                 <text x={cx} y={cy}>
@@ -161,7 +221,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       ...lines
         .filter((line) => isStringPresent(data, line))
         .map((line) => {
-          const { ends, ground } = sncEnds(data, line);
+          const { ends, ground } = sncEnds(line);
           return (
             <g key={`s${line.orientation}${line.x},${line.y}`}>
               <Segment ends={ends} class="string" />
@@ -177,7 +237,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         }
         const owner = owners[y][x];
         return (
-          <g key={`c${x},${y}`} class={`captured owner-${owner ?? "none"}`}>
+          <g key={`c${x},${y}`} class={`captured owner-${owner ?? "none"}${onCycleOwner ? " editable" : ""}`} {...ownerButton(x, y, owner, view, onCycleOwner)}>
             <circle cx={cx} cy={cy} r={COIN_R} />
             {owner && (
               <text x={cx} y={cy}>
@@ -194,8 +254,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
     <svg
       class={`board view-${view} to-move-${toMove}`}
       viewBox={`0 0 ${width} ${height}`}
-      // Allow some enlargement, since the natural size is small for small boards
-      style={{ maxWidth: `${Math.round(width * 1.4)}px` }}
+      style={{ width: cssWidth }}
       role="group"
       aria-label={`Part ${part}`}
     >

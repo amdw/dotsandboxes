@@ -80,3 +80,4 @@ export function coinsCapturedBy(data: PartData, line: Line): [number, number][] 
       : [[x - 1, y], [x, y]].filter(([cx]) => cx >= 0 && cx < data.width) as [number, number][];
   return isStringPresent(data, line) ? adjacent.filter(([cx, cy]) => stringCount(data, cx, cy) === 1) : [];
 }
+
