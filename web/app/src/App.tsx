@@ -10,6 +10,7 @@ import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines"
 import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
 
 const VIEW_KEY = "dab-view";
+const COUNT_SCORE_KEY = "dab-count-score";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
 const MAX_ENLARGEMENT = 1.4;
 
@@ -20,6 +21,23 @@ function loadView(): View {
     return localStorage.getItem(VIEW_KEY) === "snc" ? "snc" : "dab";
   } catch {
     return "dab";
+  }
+}
+
+// Whether evaluation values include the score so far (the default), as remembered
+function loadCountScore(): boolean {
+  try {
+    return localStorage.getItem(COUNT_SCORE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function saveCountScore(count: boolean) {
+  try {
+    localStorage.setItem(COUNT_SCORE_KEY, String(count));
+  } catch {
+    // Not important if the preference can't be saved
   }
 }
 
@@ -58,7 +76,8 @@ export function App() {
   const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
   const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number } | null>(null);
   const [now, setNow] = useState(0);
-  const [boardValues, setBoardValues] = useState<BoardValues>("engine");
+  const [boardValues, setBoardValues] = useState<BoardValues>("evaluation");
+  const [countScore, setCountScore] = useState(loadCountScore);
   const [hoveredComponent, setHoveredComponent] = useState<number | null>(null);
 
   // Tick while an analysis runs, to show the time taken so far
@@ -113,8 +132,8 @@ export function App() {
   const here = results.get(key) ?? {};
   const summary = here.evaluate ? summariseEvaluation(here.evaluate.result, snap.position, snap.toMove, snap.scores) : undefined;
   let labels: MoveLabels | undefined;
-  if ((boardValues === "engine" || boardValues === "margin") && here.evaluate && summary) {
-    labels = evaluationLabels(here.evaluate.result, summary.scoreDiff, boardValues);
+  if (boardValues === "evaluation" && here.evaluate && summary) {
+    labels = evaluationLabels(here.evaluate.result, summary.scoreDiff, countScore ? "margin" : "engine");
   } else if (boardValues === "nimstring" && here.nimstring) {
     labels = nimstringLabels(here.nimstring.result.moves);
   }
@@ -131,7 +150,7 @@ export function App() {
       .then((result) => {
         const timed = { result, seconds: (performance.now() - start) / 1000 };
         setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
-        setBoardValues((bv) => (kind === "nimstring" ? "nimstring" : bv === "margin" ? "margin" : "engine"));
+        setBoardValues(kind === "nimstring" ? "nimstring" : "evaluation");
         setRunning(null);
       })
       .catch((e: unknown) => {
@@ -321,6 +340,11 @@ export function App() {
         multiPart={multiPart}
         boardValues={boardValues}
         onBoardValues={setBoardValues}
+        countScore={countScore}
+        onCountScore={(count) => {
+          setCountScore(count);
+          saveCountScore(count);
+        }}
         onRun={runAnalysis}
         onCancel={cancelAnalysis}
         onHoverComponent={setHoveredComponent}

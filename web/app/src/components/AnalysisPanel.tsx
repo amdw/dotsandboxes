@@ -3,7 +3,7 @@ import type { Evaluation, NimstringAnalysis } from "../engine/types";
 import { formatNimstring, LOONY, signed, type AnalysisKind, type EvaluationSummary } from "../game/analysis";
 
 // What the board shows on the legal moves
-export type BoardValues = "engine" | "margin" | "nimstring" | "off";
+export type BoardValues = "evaluation" | "nimstring" | "off";
 
 export interface Timed<T> {
   result: T;
@@ -20,6 +20,10 @@ interface AnalysisPanelProps {
   multiPart: boolean;
   boardValues: BoardValues;
   onBoardValues: (v: BoardValues) => void;
+  // Whether evaluation values include the score so far (the final margin), or only
+  // the rest of the game (the engine's own value, which ignores coins already taken)
+  countScore: boolean;
+  onCountScore: (count: boolean) => void;
   onRun: (kind: AnalysisKind) => void;
   onCancel: () => void;
   onHoverComponent: (index: number | null) => void;
@@ -27,14 +31,27 @@ interface AnalysisPanelProps {
 
 const seconds = (s: number) => `${s.toFixed(1)} s`;
 
+function Segmented<T extends string | boolean>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div class="selector">
+      <span>{label}</span>
+      <div class="segmented" role="radiogroup" aria-label={label}>
+        {options.map(([v, text]) => (
+          <button key={String(v)} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}>
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AnalysisPanel(props: AnalysisPanelProps) {
   const { running, evaluation, summary, nimstring } = props;
-  const boardOptions: [BoardValues, string, boolean][] = [
-    ["engine", "Engine value", !!evaluation],
-    ["margin", "Final margin", !!evaluation],
-    ["nimstring", "Nimber", !!nimstring],
-    ["off", "Off", true],
-  ];
+  const boardOptions: [BoardValues, string][] = [];
+  if (evaluation) boardOptions.push(["evaluation", "Evaluation"]);
+  if (nimstring) boardOptions.push(["nimstring", "Nimber"]);
+  boardOptions.push(["off", "Off"]);
 
   return (
     <section class="analysis" aria-label="Analysis">
@@ -62,13 +79,12 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
             <div class="result">
               <h2>Evaluation</h2>
               <dl>
-                <dt>Engine value</dt>
+                <dt>Value for {summary.mover}</dt>
                 <dd>
-                  <strong>{signed(summary.value)}</strong> for {summary.mover}, from the rest of the game
+                  <strong>{signed(props.countScore ? summary.margin : summary.value)}</strong>
                 </dd>
-                <dt>Final margin</dt>
+                <dt>Best play ends</dt>
                 <dd>
-                  <strong>{signed(summary.margin)}</strong> for {summary.mover}, counting coins already taken: best play ends{" "}
                   <strong>
                     A {summary.finalScores.A}–{summary.finalScores.B} B
                   </strong>
@@ -114,28 +130,22 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
       )}
 
       {(evaluation || nimstring) && (
-        <div class="board-values">
-          <span id="board-values-label">Values on board</span>
-          <div class="segmented" role="radiogroup" aria-labelledby="board-values-label">
-            {boardOptions
-              .filter(([, , available]) => available)
-              .map(([value, label]) => (
-                <button key={value} type="button" role="radio" aria-checked={props.boardValues === value} onClick={() => props.onBoardValues(value)}>
-                  {label}
-                </button>
-              ))}
-          </div>
+        <div class="selectors">
+          <Segmented label="Values on board" options={boardOptions} value={props.boardValues} onChange={props.onBoardValues} />
+          {evaluation && (
+            <Segmented
+              label="Evaluation values"
+              options={[
+                [true, "Including score so far"],
+                [false, "Excluding score so far"],
+              ]}
+              value={props.countScore}
+              onChange={props.onCountScore}
+            />
+          )}
         </div>
       )}
-      {summary && (props.boardValues === "engine" || props.boardValues === "margin") && (
-        <p class="hint">
-          {props.boardValues === "engine"
-            ? `Each move's value is the net coins ${summary.mover} gains from the rest of the game by making it.`
-            : `Each move's value is ${summary.mover}'s final winning margin (negative if losing) after making it, counting the ${signed(summary.scoreDiff)} lead so far.`}{" "}
-          Best moves are highlighted.
-        </p>
-      )}
-      {props.boardValues === "nimstring" && nimstring && <p class="hint">Each move's value is the Nimstring value of the position after it ({LOONY} means loony).</p>}
+      {props.boardValues === "nimstring" && nimstring && <p class="hint">{LOONY} means loony.</p>}
     </section>
   );
 }
