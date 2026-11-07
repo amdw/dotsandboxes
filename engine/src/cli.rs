@@ -26,7 +26,7 @@ use std::hash::Hash;
 use std::io::{self, BufRead};
 use std::fs::File;
 use regex::Regex;
-use time::Instant;
+use std::time::Instant;
 
 #[derive(PartialEq)]
 #[derive(Debug)]
@@ -221,7 +221,7 @@ where M: Copy + Display + Eq + Hash, P: CLIPosition<M> {
         if command == Command::Quit {
             break;
         }
-        let elapsed_sec = elapsed.as_seconds_f64();
+        let elapsed_sec = elapsed.as_secs_f64();
         if elapsed_sec >= 0.1 {
             println!("({:.1} seconds)", elapsed_sec);
         }

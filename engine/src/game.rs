@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand::rngs::StdRng;
 use std::fmt;
 use std::iter;
