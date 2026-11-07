@@ -360,22 +360,27 @@ input:focus-visible,
   stroke: var(--player-B);
 }
 
-/* Squares the previewed line would complete */
-.board .move .preview-box {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.board.to-move-A .move .preview-box {
+/* Squares the previewed line would complete, and coins the previewed cut would capture */
+.board.to-move-A .preview-box,
+.board.to-move-A .coin.capture-preview {
   fill: var(--player-A-soft);
 }
 
-.board.to-move-B .move .preview-box {
+.board.to-move-B .preview-box,
+.board.to-move-B .coin.capture-preview {
   fill: var(--player-B-soft);
 }
 
-.board .move:focus-visible .preview-box {
-  opacity: 1;
+.board.to-move-A .coin.capture-preview {
+  stroke: var(--player-A);
+}
+
+.board.to-move-B .coin.capture-preview {
+  stroke: var(--player-B);
+}
+
+.board .preview-box {
+  pointer-events: none;
 }
 
 .board.view-snc .move .preview {
@@ -389,10 +394,6 @@ input:focus-visible,
 @media (hover: hover) {
   .board .move:hover .preview {
     opacity: 0.85;
-  }
-
-  .board .move:hover .preview-box {
-    opacity: 1;
   }
 }
 

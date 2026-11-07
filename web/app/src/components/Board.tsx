@@ -1,6 +1,7 @@
 // SVG rendering of one part of a position, in either the dots-and-boxes or the
 // strings-and-coins view, with clickable lines/strings for the legal moves.
 import type { JSX } from "preact";
+import { useState } from "preact/hooks";
 import type { PartData } from "../engine/types";
 import { allLines, coinsCapturedBy, isCoinCaptured, isStringPresent, sameLine, type Line } from "../game/lines";
 import type { Player } from "../game/state";
@@ -83,6 +84,14 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
 
   const ends = (line: Line) => (view === "dab" ? dabEnds(line) : sncEnds(data, line).ends);
 
+  // The move under the pointer (or with keyboard focus), and the coins it would capture.
+  // These are previewed in separate layers (under the drawn lines in the dots-and-boxes
+  // view, so the preview doesn't cover them), so this is tracked in state rather than CSS.
+  const [hovered, setHovered] = useState<Line | null>(null);
+  const unhover = (line: Line) => setHovered((h) => (sameLine(h, line) ? null : h));
+  const previewCoins = interactive && hovered && isStringPresent(data, hovered) ? coinsCapturedBy(data, hovered) : [];
+  const willCapture = (x: number, y: number) => previewCoins.some(([px, py]) => px === x && py === y);
+
   const moveTargets = interactive
     ? lines
         .filter((line) => isStringPresent(data, line))
@@ -103,12 +112,11 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
               aria-label={lineLabel(line, view)}
               onClick={play}
               onKeyDown={onKeyDown}
+              onPointerEnter={() => setHovered(line)}
+              onPointerLeave={() => unhover(line)}
+              onFocus={() => setHovered(line)}
+              onBlur={() => unhover(line)}
             >
-              {view === "dab" &&
-                coinsCapturedBy(data, line).map(([x, y]) => {
-                  const [dx, dy] = dot(x, y);
-                  return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
-                })}
               <Segment ends={ends(line)} class="hit" />
               <Segment ends={ends(line)} class="preview" />
             </g>
@@ -136,6 +144,10 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
+      ...previewCoins.map(([x, y]) => {
+        const [dx, dy] = dot(x, y);
+        return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
+      }),
       ...lines
         .filter((line) => !isStringPresent(data, line))
         .map((line) => <Segment key={`l${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class={sameLine(line, lastMove) ? "drawn last" : "drawn"} />),
@@ -162,7 +174,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       ...coins.map(([x, y]) => {
         const [cx, cy] = centre(x, y);
         if (!isCoinCaptured(data, x, y)) {
-          return <circle key={`c${x},${y}`} class="coin" cx={cx} cy={cy} r={COIN_R} />;
+          return <circle key={`c${x},${y}`} class={willCapture(x, y) ? "coin capture-preview" : "coin"} cx={cx} cy={cy} r={COIN_R} />;
         }
         const owner = owners[y][x];
         return (
