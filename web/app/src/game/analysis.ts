@@ -1,6 +1,6 @@
 // Turning engine analysis results into what the interface shows: per-move labels
 // for the board
-import type { CPosMove, Evaluation, NimstringValue, PositionData } from "../engine/types";
+import type { ComponentValue, CPosMove, Evaluation, NimstringValue, PositionData } from "../engine/types";
 import { lineKey, moveToLine } from "./lines";
 
 export type AnalysisKind = "evaluate" | "nimstring";
@@ -46,4 +46,19 @@ export function evaluationLabels(evaluation: Evaluation, scoreDiff: number, mode
 
 export function nimstringLabels(moves: { move: CPosMove; value: NimstringValue }[]): MoveLabels {
   return new Map(moves.map((m) => [lineKeyOf(m.move), { text: formatNimstring(m.value), best: false }]));
+}
+
+// Nimstring sum: values add as nimbers, and a sum with any loony term is loony
+export function nimAdd(a: NimstringValue, b: NimstringValue): NimstringValue {
+  return a === "Loony" || b === "Loony" ? "Loony" : { Nimber: a.Nimber ^ b.Nimber };
+}
+
+// The Nimstring value of each part of a position, from the values of its components
+// (a part with no strings left has value *0)
+export function partValues(components: ComponentValue[], partCount: number): NimstringValue[] {
+  const values: NimstringValue[] = Array.from({ length: partCount }, () => ({ Nimber: 0 }));
+  for (const c of components) {
+    values[c.part] = nimAdd(values[c.part], c.value);
+  }
+  return values;
 }

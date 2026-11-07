@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { evaluationLabels, formatNimstring, lineKeyOf, nimstringLabels, positionKey, signed } from "./analysis";
+import { evaluationLabels, formatNimstring, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -45,4 +45,33 @@ describe("analysis", () => {
     expect(positionKey(engine.newGame([[2, 2]]))).toBe(positionKey(engine.newGame([[2, 2]])));
     expect(positionKey(engine.newGame([[2, 2]]))).not.toBe(positionKey(engine.newGame([[2, 3]])));
   });
+
+  it("adds Nimstring values", () => {
+    expect(nimAdd({ Nimber: 5 }, { Nimber: 3 })).toEqual({ Nimber: 6 });
+    expect(nimAdd({ Nimber: 2 }, "Loony")).toBe("Loony");
+  });
+
+  it("gives the value of each part from its components, adding up to the whole", () => {
+    // The page 50 example as one part with three components, plus two more parts
+    const p50 = example("berlekamp-p50").position.parts[0];
+    const nim = example("nimstring-examples").position.parts;
+    const position = { parts: [p50, nim[4], nim[5]] };
+    const analysis = engine.nimstringAnalysis(position);
+    const values = partValues(analysis.components, 3);
+    expect(values).toEqual([{ Nimber: 7 }, { Nimber: 1 }, { Nimber: 0 }]);
+    expect(values.reduce(nimAdd)).toEqual(analysis.value);
+    // A loony part makes the whole position loony
+    const loony = engine.nimstringAnalysis({ parts: [nim[2], nim[4]] });
+    expect(partValues(loony.components, 2)).toEqual(["Loony", { Nimber: 1 }]);
+    expect(loony.value).toBe("Loony");
+  });
+
+  it("values finished parts as *0", () => {
+    const finished = engine.newGame([[1, 1]]);
+    let position = finished;
+    for (const m of engine.legalMoves(finished)) position = engine.makeMove(position, m).position;
+    const analysis = engine.nimstringAnalysis({ parts: [position.parts[0], example("nimstring-examples").position.parts[4]] });
+    expect(partValues(analysis.components, 2)).toEqual([{ Nimber: 0 }, { Nimber: 1 }]);
+  });
 });
+

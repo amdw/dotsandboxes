@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
-import type { CPosMove, Evaluation, NimstringAnalysis, PositionData } from "./engine/types";
+import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
 import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
-import { evaluationLabels, nimstringLabels, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
+import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
 import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
 
@@ -63,6 +63,11 @@ function sizesOf(position: PositionData): [number, number][] {
   return position.parts.map((p) => [p.width, p.height]);
 }
 
+function NimstringValueText({ value }: { value: NimstringValue }) {
+  const text = formatNimstring(value);
+  return <span class={text === LOONY ? "loony" : undefined}>{text}</span>;
+}
+
 export function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [name, setName] = useState("position");
@@ -80,7 +85,6 @@ export function App() {
   // time, so this is off unless the chosen values are available for the position shown
   const [boardValues, setBoardValues] = useState<BoardValues>("off");
   const [countScore, setCountScore] = useState(loadCountScore);
-  const [hoveredComponent, setHoveredComponent] = useState<number | null>(null);
 
   // Tick while an analysis runs, to show the time taken so far
   useEffect(() => {
@@ -175,7 +179,8 @@ export function App() {
   } else if (boardValues === "nimstring" && here.nimstring) {
     labels = nimstringLabels(here.nimstring.result.moves);
   }
-  const component = boardValues === "nimstring" && hoveredComponent !== null ? here.nimstring?.result.components[hoveredComponent] : undefined;
+  // Nimstring value of each part, shown beside it while Nimstring values are on the board
+  const partNimbers = boardValues === "nimstring" && here.nimstring ? partValues(here.nimstring.result.components, snap.position.parts.length) : null;
 
   // Choosing values for the board calculates them if they aren't already available,
   // cancelling any other analysis in progress
@@ -307,13 +312,18 @@ export function App() {
 
       {/* All parts are drawn at the same scale: the board column fits the widest part (up
           to the maximum enlargement, or the available width), and each board's width is its
-          natural width relative to the widest part's. */}
+          natural width relative to the widest part's. Part numbers go on the left of compound
+          positions, and Nimstring values (when shown) on the right. */}
       <section
-        class={multiPart ? "boards multi" : "boards"}
+        class="boards"
         style={{
-          gridTemplateColumns: multiPart
-            ? `var(--part-number-width) min(${MAX_ENLARGEMENT * maxWidth}px, calc(100% - var(--part-number-width) - var(--boards-gap)))`
-            : `min(${MAX_ENLARGEMENT * maxWidth}px, 100%)`,
+          gridTemplateColumns: [
+            multiPart && "var(--part-number-width)",
+            `min(${MAX_ENLARGEMENT * maxWidth}px, calc(100%${multiPart ? " - var(--part-number-width) - var(--boards-gap)" : ""}${partNimbers ? " - var(--part-value-width) - var(--boards-gap)" : ""}))`,
+            partNimbers && "var(--part-value-width)",
+          ]
+            .filter(Boolean)
+            .join(" "),
         }}
       >
         {snap.position.parts.map((data, i) => [
@@ -336,10 +346,23 @@ export function App() {
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}
-              highlightCoins={component && component.part === i ? component.coins : undefined}
             />
           </div>,
+          partNimbers && (
+            <div key={`v${i}`} class="part-value" title={multiPart ? `Nimstring value of part ${i}` : "Nimstring value"}>
+              <NimstringValueText value={partNimbers[i]} />
+            </div>
+          ),
         ])}
+        {partNimbers && multiPart && here.nimstring && [
+          <div key="tn" />,
+          <div key="tl" class="total-label">
+            Total
+          </div>,
+          <div key="tv" class="part-value total" title="Nimstring value of the whole position">
+            <NimstringValueText value={here.nimstring.result.value} />
+          </div>,
+        ]}
       </section>
 
       {atStart && anyCaptured && (
@@ -368,8 +391,6 @@ export function App() {
 
       <AnalysisPanel
         running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
-        nimstring={boardValues === "nimstring" ? here.nimstring : undefined}
-        multiPart={multiPart}
         boardValues={boardValues}
         onBoardValues={chooseBoardValues}
         countScore={countScore}
@@ -378,7 +399,6 @@ export function App() {
           saveCountScore(count);
         }}
         onCancel={cancelAnalysis}
-        onHoverComponent={setHoveredComponent}
       />
     </main>
   );

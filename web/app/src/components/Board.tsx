@@ -27,8 +27,6 @@ interface BoardProps {
   width: string;
   // Analysis results to show on the legal moves, keyed by lineKey
   labels?: MoveLabels;
-  // Coins to highlight (e.g. a component of the position)
-  highlightCoins?: [number, number][];
 }
 
 const CELL = 56;
@@ -133,7 +131,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, highlightCoins = [] }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels }: BoardProps) {
   const { dot, centre, dabEnds, sncEnds } = geometry(data, margins);
   const width = naturalWidth(data, margins);
   const height = margins.top + margins.bottom + data.height * CELL;
@@ -188,8 +186,6 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         })
     : [];
 
-  const highlighted = (x: number, y: number) => highlightCoins.some(([hx, hy]) => hx === x && hy === y);
-
   // Analysis values, at the middle of each legal move's line/string
   const valueLabels = labels
     ? lines
@@ -230,10 +226,6 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
-      ...highlightCoins.map(([x, y]) => {
-        const [dx, dy] = dot(x, y);
-        return <rect key={`h${x},${y}`} class="component-highlight" x={dx} y={dy} width={CELL} height={CELL} />;
-      }),
       ...previewCoins.map(([x, y]) => {
         const [dx, dy] = dot(x, y);
         return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
@@ -264,8 +256,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       ...coins.map(([x, y]) => {
         const [cx, cy] = centre(x, y);
         if (!isCoinCaptured(data, x, y)) {
-          const cls = ["coin", willCapture(x, y) ? "capture-preview" : "", highlighted(x, y) ? "highlighted" : ""].filter(Boolean).join(" ");
-          return <circle key={`c${x},${y}`} class={cls} cx={cx} cy={cy} r={COIN_R} />;
+          return <circle key={`c${x},${y}`} class={willCapture(x, y) ? "coin capture-preview" : "coin"} cx={cx} cy={cy} r={COIN_R} />;
         }
         const owner = owners[y][x];
         return (

@@ -1,7 +1,6 @@
-// Choice of engine analysis values to show on the board, with the Nimstring
-// component values, and progress (with cancellation) while they're calculated
-import type { NimstringAnalysis } from "../engine/types";
-import { formatNimstring, LOONY, type AnalysisKind } from "../game/analysis";
+// Choice of engine analysis values to show on the board, and progress (with
+// cancellation) while they're calculated
+import type { AnalysisKind } from "../game/analysis";
 
 // What the board shows on the legal moves
 export type BoardValues = "evaluation" | "nimstring" | "off";
@@ -13,9 +12,6 @@ export interface Timed<T> {
 
 interface AnalysisPanelProps {
   running: { kind: AnalysisKind; seconds: number } | null;
-  // Nimstring results for the position shown, when Nimstring values are selected
-  nimstring?: Timed<NimstringAnalysis>;
-  multiPart: boolean;
   boardValues: BoardValues;
   onBoardValues: (v: BoardValues) => void;
   // Whether evaluation values include the score so far (the final margin), or only
@@ -23,7 +19,6 @@ interface AnalysisPanelProps {
   countScore: boolean;
   onCountScore: (count: boolean) => void;
   onCancel: () => void;
-  onHoverComponent: (index: number | null) => void;
 }
 
 function Segmented<T extends string | boolean>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange: (v: T) => void }) {
@@ -42,7 +37,7 @@ function Segmented<T extends string | boolean>({ label, options, value, onChange
 }
 
 export function AnalysisPanel(props: AnalysisPanelProps) {
-  const { running, nimstring } = props;
+  const { running } = props;
 
   return (
     <section class="analysis" aria-label="Analysis">
@@ -77,29 +72,6 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
             Cancel
           </button>
         </p>
-      )}
-
-      {nimstring && (
-        <div class="result">
-          <h2>Nimstring value: {formatNimstring(nimstring.result.value)}</h2>
-          {nimstring.result.components.length > 1 && (
-            <ul class="components" aria-label="Components" onMouseLeave={() => props.onHoverComponent(null)}>
-              {nimstring.result.components.map((c, i) => (
-                <li
-                  key={i}
-                  tabIndex={0}
-                  onMouseEnter={() => props.onHoverComponent(i)}
-                  onFocus={() => props.onHoverComponent(i)}
-                  onBlur={() => props.onHoverComponent(null)}
-                >
-                  {props.multiPart && `Part ${c.part}, `}
-                  {c.coins.length} {c.coins.length === 1 ? "coin" : "coins"}: <strong>{formatNimstring(c.value)}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p class="hint">{LOONY} means loony.</p>
-        </div>
       )}
     </section>
   );
