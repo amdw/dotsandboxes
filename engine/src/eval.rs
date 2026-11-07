@@ -19,7 +19,6 @@
 use crate::game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
 use crate::nimstring::{self, NimstringPosition};
 use std::collections::HashMap;
-use std::isize;
 
 pub trait EvaluablePosition<M> : NimstringPosition<M> {
     // Given a loony position and the capture, find the corresponding double-dealing move.
@@ -135,11 +134,11 @@ mod test {
     use crate::eval::*;
     use crate::examples::*;
 
-    use rand::{Rng, SeedableRng};
+    use rand::{RngExt, SeedableRng};
     use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
     use std::cmp;
-    use time::Instant;
+    use std::time::Instant;
 
     #[test]
     fn eval_chain() {
@@ -392,7 +391,7 @@ mod test {
             }
 
             let elapsed = start_time.elapsed();
-            if elapsed.as_seconds_f64() >= test_time_s {
+            if elapsed.as_secs_f64() >= test_time_s {
                 break;
             }
             i += 1;

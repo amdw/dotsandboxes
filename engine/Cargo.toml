@@ -5,12 +5,11 @@ authors = ["Andrew Medworth <github@medworth.org.uk>"]
 edition = "2024"
 
 [dependencies]
-rand = "0.9"
+rand = "0.10"
 regex = "1"
-time = "0.3"
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 
 [[bench]]
 name = "benchmarks"
