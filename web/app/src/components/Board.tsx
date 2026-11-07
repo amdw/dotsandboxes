@@ -4,7 +4,8 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { PartData } from "../engine/types";
-import { allLines, coinsCapturedBy, isCoinCaptured, isStringPresent, sameLine, type Line } from "../game/lines";
+import type { MoveLabels } from "../game/analysis";
+import { allLines, coinsCapturedBy, isCoinCaptured, isStringPresent, lineKey, sameLine, type Line } from "../game/lines";
 import type { Player } from "../game/state";
 
 export type View = "dab" | "snc";
@@ -24,6 +25,10 @@ interface BoardProps {
   margins: Margins;
   // CSS width of the board (its height follows from its aspect ratio)
   width: string;
+  // Analysis results to show on the legal moves, keyed by lineKey
+  labels?: MoveLabels;
+  // Coins to highlight (e.g. a component of the position)
+  highlightCoins?: [number, number][];
 }
 
 const CELL = 56;
@@ -128,7 +133,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, highlightCoins = [] }: BoardProps) {
   const { dot, centre, dabEnds, sncEnds } = geometry(data, margins);
   const width = naturalWidth(data, margins);
   const height = margins.top + margins.bottom + data.height * CELL;
@@ -183,6 +188,28 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         })
     : [];
 
+  const highlighted = (x: number, y: number) => highlightCoins.some(([hx, hy]) => hx === x && hy === y);
+
+  // Analysis values, at the middle of each legal move's line/string
+  const valueLabels = labels
+    ? lines
+        .filter((line) => isStringPresent(data, line) && labels.has(lineKey(line)))
+        .map((line) => {
+          const label = labels.get(lineKey(line))!;
+          const [[x1, y1], [x2, y2]] = ends(line);
+          const [cx, cy] = [(x1 + x2) / 2, (y1 + y2) / 2];
+          const w = label.text.length * 7.5 + 8;
+          return (
+            <g key={`v${line.orientation}${line.x},${line.y}`} class={label.best ? "value-label best" : "value-label"}>
+              <rect x={cx - w / 2} y={cy - 9} width={w} height={18} rx={9} />
+              <text x={cx} y={cy}>
+                {label.text}
+              </text>
+            </g>
+          );
+        })
+    : [];
+
   let content: JSX.Element[];
   if (view === "dab") {
     content = [
@@ -203,6 +230,10 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
+      ...highlightCoins.map(([x, y]) => {
+        const [dx, dy] = dot(x, y);
+        return <rect key={`h${x},${y}`} class="component-highlight" x={dx} y={dy} width={CELL} height={CELL} />;
+      }),
       ...previewCoins.map(([x, y]) => {
         const [dx, dy] = dot(x, y);
         return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
@@ -233,7 +264,8 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       ...coins.map(([x, y]) => {
         const [cx, cy] = centre(x, y);
         if (!isCoinCaptured(data, x, y)) {
-          return <circle key={`c${x},${y}`} class={willCapture(x, y) ? "coin capture-preview" : "coin"} cx={cx} cy={cy} r={COIN_R} />;
+          const cls = ["coin", willCapture(x, y) ? "capture-preview" : "", highlighted(x, y) ? "highlighted" : ""].filter(Boolean).join(" ");
+          return <circle key={`c${x},${y}`} class={cls} cx={cx} cy={cy} r={COIN_R} />;
         }
         const owner = owners[y][x];
         return (
@@ -259,6 +291,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       aria-label={`Part ${part}`}
     >
       {content}
+      {valueLabels}
     </svg>
   );
 }

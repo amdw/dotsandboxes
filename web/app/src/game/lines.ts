@@ -81,3 +81,8 @@ export function coinsCapturedBy(data: PartData, line: Line): [number, number][] 
   return isStringPresent(data, line) ? adjacent.filter(([cx, cy]) => stringCount(data, cx, cy) === 1) : [];
 }
 
+
+// A string identifying a line, e.g. for keying per-move analysis results
+export function lineKey(line: Line): string {
+  return `${line.part} ${line.orientation} ${line.x} ${line.y}`;
+}

@@ -1,8 +1,11 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
-import type { CPosMove, PositionData } from "./engine/types";
+import type { CPosMove, Evaluation, NimstringAnalysis, PositionData } from "./engine/types";
+import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
+import { evaluationLabels, nimstringLabels, positionKey, summariseEvaluation, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
 import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
 
@@ -50,6 +53,23 @@ export function App() {
   const [view, setView] = useState<View>(loadView);
   const [panel, setPanel] = useState<Panel | null>(null);
 
+  // Engine analysis: results are cached per position (keyed by positionKey)
+  const analyser = useRef<Analyser | null>(null);
+  const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
+  const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number } | null>(null);
+  const [now, setNow] = useState(0);
+  const [boardValues, setBoardValues] = useState<BoardValues>("engine");
+  const [hoveredComponent, setHoveredComponent] = useState<number | null>(null);
+
+  // Tick while an analysis runs, to show the time taken so far
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => setNow(performance.now()), 100);
+    return () => clearInterval(timer);
+  }, [running]);
+
+  useEffect(() => () => analyser.current?.cancel(), []);
+
   useEffect(() => {
     loadEngine()
       .then(() => setGame(gameFrom(engine.newGame([[3, 3]]))))
@@ -89,6 +109,44 @@ export function App() {
   const right = Math.max(...partMargins.map((m) => m.right));
   const margins = partMargins.map((m) => ({ ...m, left, right }));
   const maxWidth = Math.max(...snap.position.parts.map((p, i) => naturalWidth(p, margins[i])));
+  const key = positionKey(snap.position);
+  const here = results.get(key) ?? {};
+  const summary = here.evaluate ? summariseEvaluation(here.evaluate.result, snap.position, snap.toMove, snap.scores) : undefined;
+  let labels: MoveLabels | undefined;
+  if ((boardValues === "engine" || boardValues === "margin") && here.evaluate && summary) {
+    labels = evaluationLabels(here.evaluate.result, summary.scoreDiff, boardValues);
+  } else if (boardValues === "nimstring" && here.nimstring) {
+    labels = nimstringLabels(here.nimstring.result.moves);
+  }
+  const component = hoveredComponent !== null ? here.nimstring?.result.components[hoveredComponent] : undefined;
+
+  const runAnalysis = (kind: AnalysisKind) => {
+    const a = (analyser.current ??= new Analyser());
+    const start = performance.now();
+    setRunning({ kind, key, start });
+    setNow(start);
+    setError(null);
+    const promise: Promise<Evaluation | NimstringAnalysis> = kind === "evaluate" ? a.evaluate(snap.position) : a.nimstringAnalysis(snap.position);
+    promise
+      .then((result) => {
+        const timed = { result, seconds: (performance.now() - start) / 1000 };
+        setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
+        setBoardValues((bv) => (kind === "nimstring" ? "nimstring" : bv === "margin" ? "margin" : "engine"));
+        setRunning(null);
+      })
+      .catch((e: unknown) => {
+        if (!(e instanceof CancelledError)) {
+          setError(errorMessage(e));
+          setRunning(null);
+        }
+      });
+  };
+
+  const cancelAnalysis = () => {
+    analyser.current?.cancel();
+    setRunning(null);
+  };
+
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y))));
 
   const attempt = (f: () => void) => {
@@ -223,6 +281,8 @@ export function App() {
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
+              labels={labels}
+              highlightCoins={component && component.part === i ? component.coins : undefined}
             />
           </div>,
         ])}
@@ -251,6 +311,20 @@ export function App() {
           ⏭
         </button>
       </nav>
+
+      <AnalysisPanel
+        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
+        runningElsewhere={!!running && running.key !== key}
+        evaluation={here.evaluate}
+        summary={summary}
+        nimstring={here.nimstring}
+        multiPart={multiPart}
+        boardValues={boardValues}
+        onBoardValues={setBoardValues}
+        onRun={runAnalysis}
+        onCancel={cancelAnalysis}
+        onHoverComponent={setHoveredComponent}
+      />
     </main>
   );
 }
