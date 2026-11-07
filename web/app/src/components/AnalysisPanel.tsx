@@ -1,6 +1,6 @@
 // Controls for running engine analyses of the current position, and their results
 import type { Evaluation, NimstringAnalysis } from "../engine/types";
-import { formatNimstring, signed, type AnalysisKind, type EvaluationSummary } from "../game/analysis";
+import { formatNimstring, LOONY, signed, type AnalysisKind, type EvaluationSummary } from "../game/analysis";
 
 // What the board shows on the legal moves
 export type BoardValues = "engine" | "margin" | "nimstring" | "off";
@@ -135,7 +135,7 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
           Best moves are highlighted.
         </p>
       )}
-      {props.boardValues === "nimstring" && nimstring && <p class="hint">Each move's value is the Nimstring value of the position after it.</p>}
+      {props.boardValues === "nimstring" && nimstring && <p class="hint">Each move's value is the Nimstring value of the position after it ({LOONY} means loony).</p>}
     </section>
   );
 }

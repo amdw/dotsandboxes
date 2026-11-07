@@ -4,7 +4,7 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { PartData } from "../engine/types";
-import type { MoveLabels } from "../game/analysis";
+import { LOONY, type MoveLabels } from "../game/analysis";
 import { allLines, coinsCapturedBy, isCoinCaptured, isStringPresent, lineKey, sameLine, type Line } from "../game/lines";
 import type { Player } from "../game/state";
 
@@ -198,11 +198,11 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
           const label = labels.get(lineKey(line))!;
           const [[x1, y1], [x2, y2]] = ends(line);
           const [cx, cy] = [(x1 + x2) / 2, (y1 + y2) / 2];
-          const w = label.text.length * 7.5 + 8;
+          const w = label.text.replace(/\uFE0E/g, "").length * 7.5 + 8;
           return (
             <g key={`v${line.orientation}${line.x},${line.y}`} class={label.best ? "value-label best" : "value-label"}>
               <rect x={cx - w / 2} y={cy - 9} width={w} height={18} rx={9} />
-              <text x={cx} y={cy}>
+              <text x={cx} y={cy} class={label.text === LOONY ? "loony" : undefined}>
                 {label.text}
               </text>
             </g>

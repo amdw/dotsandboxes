@@ -13,7 +13,7 @@ describe("analysis", () => {
     expect(signed(-2)).toBe("−2");
     expect(signed(0)).toBe("0");
     expect(formatNimstring({ Nimber: 4 })).toBe("*4");
-    expect(formatNimstring("Loony")).toBe("Loony");
+    expect(formatNimstring("Loony")).toBe("\u263D\uFE0E");
   });
 
   it("summarises an evaluation as engine value, margin and final scores", () => {

@@ -30,8 +30,12 @@ export function signed(n: number): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0";
 }
 
+// The symbol for a loony value, as in the paper (LaTeX \rightmoon) and the wider literature,
+// with a variation selector asking for the text rather than the emoji form
+export const LOONY = "\u263D\uFE0E";
+
 export function formatNimstring(value: NimstringValue): string {
-  return value === "Loony" ? "Loony" : `*${value.Nimber}`;
+  return value === "Loony" ? LOONY : `*${value.Nimber}`;
 }
 
 export function uncapturedCoins(position: PositionData): number {
@@ -81,6 +85,5 @@ export function evaluationLabels(evaluation: Evaluation, scoreDiff: number, mode
 }
 
 export function nimstringLabels(moves: { move: CPosMove; value: NimstringValue }[]): MoveLabels {
-  // "L" rather than "Loony", to fit on the board
-  return new Map(moves.map((m) => [lineKeyOf(m.move), { text: m.value === "Loony" ? "L" : formatNimstring(m.value), best: false }]));
+  return new Map(moves.map((m) => [lineKeyOf(m.move), { text: formatNimstring(m.value), best: false }]));
 }

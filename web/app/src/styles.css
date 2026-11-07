@@ -645,6 +645,11 @@ button.example {
   font-variant-numeric: tabular-nums;
 }
 
+/* The loony symbol has no bold form in most fonts, so make it a little larger instead */
+.board .value-label text.loony {
+  font-size: 15px;
+}
+
 .board .value-label.best rect {
   fill: var(--best-soft);
   stroke: var(--best);
