@@ -80,6 +80,7 @@ main {
 h1 {
   font-size: 1.4rem;
   margin: 0 0 12px;
+  text-align: center;
 }
 
 button,
@@ -113,6 +114,7 @@ input:focus-visible,
 .toolbar {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 12px 24px;
   align-items: end;
   margin-bottom: 16px;
@@ -121,6 +123,7 @@ input:focus-visible,
 .new-game {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   align-items: end;
 }
@@ -167,6 +170,8 @@ input:focus-visible,
 
 .status {
   max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -223,6 +228,7 @@ input:focus-visible,
 .boards {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 16px;
   align-items: flex-start;
 }
@@ -241,6 +247,7 @@ input:focus-visible,
 
 .board {
   display: block;
+  margin: 0 auto;
   width: 100%;
   height: auto;
   touch-action: manipulation;
@@ -299,13 +306,6 @@ input:focus-visible,
   stroke-linecap: round;
 }
 
-.board .cut.last {
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-dasharray: 4 5;
-  opacity: 0.8;
-}
-
 .board .coin {
   fill: var(--coin);
   stroke: var(--coin-edge);
@@ -360,6 +360,24 @@ input:focus-visible,
   stroke: var(--player-B);
 }
 
+/* Squares the previewed line would complete */
+.board .move .preview-box {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.board.to-move-A .move .preview-box {
+  fill: var(--player-A-soft);
+}
+
+.board.to-move-B .move .preview-box {
+  fill: var(--player-B-soft);
+}
+
+.board .move:focus-visible .preview-box {
+  opacity: 1;
+}
+
 .board.view-snc .move .preview {
   stroke-dasharray: 6 4;
 }
@@ -371,6 +389,10 @@ input:focus-visible,
 @media (hover: hover) {
   .board .move:hover .preview {
     opacity: 0.85;
+  }
+
+  .board .move:hover .preview-box {
+    opacity: 1;
   }
 }
 

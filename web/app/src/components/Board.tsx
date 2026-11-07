@@ -2,7 +2,7 @@
 // strings-and-coins view, with clickable lines/strings for the legal moves.
 import type { JSX } from "preact";
 import type { PartData } from "../engine/types";
-import { allLines, isCoinCaptured, isStringPresent, sameLine, type Line } from "../game/lines";
+import { allLines, coinsCapturedBy, isCoinCaptured, isStringPresent, sameLine, type Line } from "../game/lines";
 import type { Player } from "../game/state";
 
 export type View = "dab" | "snc";
@@ -104,6 +104,11 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
               onClick={play}
               onKeyDown={onKeyDown}
             >
+              {view === "dab" &&
+                coinsCapturedBy(data, line).map(([x, y]) => {
+                  const [dx, dy] = dot(x, y);
+                  return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
+                })}
               <Segment ends={ends(line)} class="hit" />
               <Segment ends={ends(line)} class="preview" />
             </g>
@@ -153,7 +158,6 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
-      ...(lastMove && lastMove.part === part ? [<Segment key="last" ends={sncEnds(data, lastMove).ends} class="cut last" />] : []),
       ...moveTargets,
       ...coins.map(([x, y]) => {
         const [cx, cy] = centre(x, y);

@@ -64,3 +64,19 @@ export function isCoinCaptured(data: PartData, x: number, y: number): boolean {
 export function isEndOfGame(parts: PartData[]): boolean {
   return parts.every((p) => p.h_strings.every((row) => row.every((s) => !s)) && p.v_strings.every((row) => row.every((s) => !s)));
 }
+
+// Count the strings still attached to a coin
+function stringCount(data: PartData, x: number, y: number): number {
+  return [data.h_strings[y][x], data.h_strings[y + 1][x], data.v_strings[y][x], data.v_strings[y][x + 1]].filter((s) => s).length;
+}
+
+// The squares (coins) which drawing a line (cutting a string) would complete (capture):
+// those next to the line for which it is the only string left
+export function coinsCapturedBy(data: PartData, line: Line): [number, number][] {
+  const { x, y } = line;
+  const adjacent: [number, number][] =
+    line.orientation === "h"
+      ? [[x, y - 1], [x, y]].filter(([, cy]) => cy >= 0 && cy < data.height) as [number, number][]
+      : [[x - 1, y], [x, y]].filter(([cx]) => cx >= 0 && cx < data.width) as [number, number][];
+  return isStringPresent(data, line) ? adjacent.filter(([cx, cy]) => stringCount(data, cx, cy) === 1) : [];
+}

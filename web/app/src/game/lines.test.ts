@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { allLines, isCoinCaptured, isEndOfGame, isStringPresent, lineToMove, moveToLine } from "./lines";
+import { allLines, coinsCapturedBy, isCoinCaptured, isEndOfGame, isStringPresent, lineToMove, moveToLine } from "./lines";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -37,5 +37,25 @@ describe("lines", () => {
     expect(isCoinCaptured(position.parts[0], 0, 0)).toBe(true);
     expect(isCoinCaptured(position.parts[0], 1, 0)).toBe(false);
     expect(isEndOfGame(position.parts)).toBe(false);
+  });
+
+  it("find the squares a line would complete", () => {
+    // 2x1 board with everything drawn except the middle line and the right edge
+    let position = engine.newGame([[2, 1]]);
+    for (const m of engine.legalMoves(position)) {
+      const right = m.m.x === 1 && m.m.side === "Right";
+      const middle = m.m.x === 0 && m.m.side === "Right";
+      if (!right && !middle) position = engine.makeMove(position, m).position;
+    }
+    const part = position.parts[0];
+    const middle = { part: 0, orientation: "v" as const, x: 1, y: 0 };
+    const right = { part: 0, orientation: "v" as const, x: 2, y: 0 };
+    expect(coinsCapturedBy(part, middle)).toEqual([[0, 0]]);
+    expect(coinsCapturedBy(part, right)).toEqual([]);
+    // Once the right edge is drawn, the middle line completes both squares
+    const after = engine.makeMove(position, lineToMove(right)).position.parts[0];
+    expect(coinsCapturedBy(after, middle)).toEqual([[0, 0], [1, 0]]);
+    // A line which has already been drawn completes nothing
+    expect(coinsCapturedBy(after, right)).toEqual([]);
   });
 });
