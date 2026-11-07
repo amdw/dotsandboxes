@@ -163,12 +163,34 @@ impl SimplePosition {
             right_strings.push(iter::repeat(init_string).take(height).collect());
             down_strings.push(iter::repeat(init_string).take(height).collect());
         }
-        SimplePosition {
+        let mut pos = SimplePosition {
             top_strings: top_strings,
             left_strings: left_strings,
             down_strings: down_strings,
             right_strings: right_strings,
             zhash: ZHash::new(width, height),
+        };
+        if !init_string {
+            pos.reset_zhash(0);
+        }
+        pos
+    }
+
+    // Every move on an empty board of the given dimensions, in the form used by legal_moves().
+    pub fn all_moves(width: usize, height: usize) -> Vec<Move> {
+        SimplePosition::new_game(width, height).legal_moves()
+    }
+
+    // Recalculate the Zobrist hash from scratch using the given seed. A fresh ZHash
+    // represents a board with every string present, so toggle each string which has been cut.
+    // This ensures that the hash depends only on the dimensions, the seed and the strings
+    // present, however the position was constructed.
+    fn reset_zhash(self: &mut SimplePosition, extra_seed: usize) {
+        self.zhash = ZHash::new_seeded(self.width(), self.height(), extra_seed);
+        for m in SimplePosition::all_moves(self.width(), self.height()) {
+            if !self.is_legal_move(m) {
+                self.zhash.toggle_element(m);
+            }
         }
     }
 
@@ -502,7 +524,7 @@ impl CompoundPosition {
     pub fn new(mut parts: Vec<SimplePosition>) -> CompoundPosition {
         // We need different components to have different zhashes even if identical
         for idx in 0..parts.len() {
-            parts[idx].zhash = ZHash::new_seeded(parts[idx].width(), parts[idx].height(), idx);
+            parts[idx].reset_zhash(idx);
         }
         CompoundPosition{ parts: parts }
     }
@@ -1066,5 +1088,30 @@ mod tests {
         }
         assert_eq!(legals.len() * 2 + 1, hashes.len());
         assert_eq!(false, hashes.contains(&0));
+    }
+
+    #[test]
+    fn zhash_independent_of_construction() {
+        // Same position reached by play and built from an end-game position
+        let mut played = SimplePosition::new_game(2, 2);
+        for m in played.legal_moves() {
+            played.make_move(m);
+        }
+        assert_eq!(played.zhash(), SimplePosition::new_end_game(2, 2).zhash());
+
+        // An empty board and a finished one must not collide
+        assert_ne!(SimplePosition::new_game(2, 2).zhash(), SimplePosition::new_end_game(2, 2).zhash());
+
+        // Compound position built from parts with moves already made, versus moves made afterwards
+        let prebuilt = CompoundPosition::new(vec![make_chain(3), make_chain(2)]);
+        let mut played = CompoundPosition::new(vec![SimplePosition::new_game(3, 1), SimplePosition::new_game(2, 1)]);
+        for (part, len) in [(0, 3), (1, 2)] {
+            for x in 0..len {
+                played.make_move(CPosMove::new(part, x, 0, Side::Top));
+                played.make_move(CPosMove::new(part, x, 0, Side::Bottom));
+            }
+        }
+        assert!(prebuilt.eq(&played));
+        assert_eq!(prebuilt.zhash(), played.zhash());
     }
 }
