@@ -105,6 +105,34 @@ the 3-by-2 corner discussed in the paper.
 Other actions are standard to Cargo. For example ```cargo test``` runs
 the unit tests, and ```cargo bench``` runs the benchmarks.
 
+# Running the web interface
+
+There is also a web interface to the engine in the ```web``` directory,
+which runs the engine in the browser by compiling it to WebAssembly.
+It is still in early development: currently it lets you play through
+games on a board of any size, in either a dots-and-boxes or a
+strings-and-coins view, and move backwards and forwards through them.
+
+As well as the Rust toolchain, you will need
+[Node.js](https://nodejs.org/), the WebAssembly target for Rust, and
+the ```wasm-bindgen``` command-line tool. Its version must exactly
+match the version of the ```wasm-bindgen``` crate in
+```web/engine-wasm/Cargo.lock```:
+
+* ```rustup target add wasm32-unknown-unknown```
+* ```cargo install wasm-bindgen-cli --version 0.2.130 --locked```
+
+Then, from the ```web/app``` directory:
+
+* ```npm install``` to install the JavaScript dependencies
+* ```npm run build:wasm``` to build the engine (re-run this after
+  changing any Rust code)
+* ```npm run dev``` to start a development server, then open the URL
+  it prints
+* ```npm test``` to run the unit tests, and ```npm run typecheck``` to
+  check the TypeScript
+* ```npm run build``` to build a static site in ```web/app/dist```
+
 # Licensing
 
 All material in this repository is Copyright 2016-2019 Andrew Medworth

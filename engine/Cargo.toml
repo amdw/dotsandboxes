@@ -7,7 +7,8 @@ edition = "2024"
 [dependencies]
 # Only seeded StdRng is used, so OS randomness (which doesn't build for WebAssembly) isn't needed
 rand = { version = "0.10", default-features = false, features = ["std", "std_rng"] }
-regex = "1"
+# Only ASCII patterns are used, so leave out the Unicode tables (which bloat the WebAssembly build)
+regex = { version = "1", default-features = false, features = ["std", "perf"] }
 serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]

@@ -1,0 +1,70 @@
+name: Web app
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'engine/**'
+      - 'web/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'engine/**'
+      - 'web/**'
+      - '.github/workflows/web.yml'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/wasm-bindgen
+            web/engine-wasm/target
+          key: ${{ runner.os }}-wasm-${{ hashFiles('web/engine-wasm/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-wasm-
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/app/package-lock.json
+      - name: Install WebAssembly toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          # wasm-bindgen-cli must exactly match the wasm-bindgen crate version
+          version=$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p}' ../engine-wasm/Cargo.lock)
+          if [ "$(wasm-bindgen --version 2>/dev/null)" != "wasm-bindgen $version" ]; then
+            cargo install wasm-bindgen-cli --version "$version" --locked
+          fi
+      - name: Test WebAssembly API natively
+        working-directory: web/engine-wasm
+        run: cargo test
+      - name: Install npm packages
+        run: npm ci
+      - name: Build WebAssembly module
+        run: npm run build:wasm
+      - name: Type check
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build app
+        run: npm run build
