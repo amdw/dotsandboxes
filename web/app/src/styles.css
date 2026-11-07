@@ -115,15 +115,15 @@ button,
 }
 
 @media (hover: hover) {
-  button:not(:disabled):hover,
+  /* (Not the selected view, since choosing it again does nothing) */
+  button:not(:disabled):not([aria-checked="true"]):hover,
   .panel label.file:hover {
     background: var(--hover);
     border-color: var(--muted);
   }
 
-  /* Dark-filled buttons (primary actions, the selected view) lighten slightly instead */
-  button.primary:not(:disabled):hover,
-  .segmented button[aria-checked="true"]:hover {
+  /* Dark-filled primary buttons fade slightly instead */
+  button.primary:not(:disabled):hover {
     background: var(--fg);
     border-color: var(--fg);
     opacity: 0.85;
@@ -340,6 +340,7 @@ button.example {
 }
 
 .segmented button[aria-checked="true"] {
+  cursor: default;
   background: var(--fg);
   color: var(--bg);
   border-color: var(--fg);
