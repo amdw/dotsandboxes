@@ -1,12 +1,16 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
-import type { CPosMove, PositionData } from "./engine/types";
+import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
+import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
+import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
 import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
 
 const VIEW_KEY = "dab-view";
+const COUNT_SCORE_KEY = "dab-count-score";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
 const MAX_ENLARGEMENT = 1.4;
 
@@ -17,6 +21,23 @@ function loadView(): View {
     return localStorage.getItem(VIEW_KEY) === "snc" ? "snc" : "dab";
   } catch {
     return "dab";
+  }
+}
+
+// Whether evaluation values include the score so far (the default), as remembered
+function loadCountScore(): boolean {
+  try {
+    return localStorage.getItem(COUNT_SCORE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function saveCountScore(count: boolean) {
+  try {
+    localStorage.setItem(COUNT_SCORE_KEY, String(count));
+  } catch {
+    // Not important if the preference can't be saved
   }
 }
 
@@ -42,6 +63,11 @@ function sizesOf(position: PositionData): [number, number][] {
   return position.parts.map((p) => [p.width, p.height]);
 }
 
+function NimstringValueText({ value }: { value: NimstringValue }) {
+  const text = formatNimstring(value);
+  return <span class={text === LOONY ? "loony" : undefined}>{text}</span>;
+}
+
 export function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [name, setName] = useState("position");
@@ -49,6 +75,61 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>(loadView);
   const [panel, setPanel] = useState<Panel | null>(null);
+
+  // Engine analysis: results are cached per position (keyed by positionKey)
+  const analyser = useRef<Analyser | null>(null);
+  const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
+  const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number } | null>(null);
+  const [now, setNow] = useState(0);
+  // Values are only calculated when chosen, since analysing larger positions takes a long
+  // time, so this is off unless the chosen values are available for the position shown
+  const [boardValues, setBoardValues] = useState<BoardValues>("off");
+  const [countScore, setCountScore] = useState(loadCountScore);
+
+  // Tick while an analysis runs, to show the time taken so far
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => setNow(performance.now()), 100);
+    return () => clearInterval(timer);
+  }, [running]);
+
+  useEffect(() => () => analyser.current?.cancel(), []);
+
+  // When the position shown changes, stop analysing the previous one, and switch the board
+  // values off unless they're already available for the new position
+  const shownPosition = game ? current(game).position : null;
+  const shownKey = shownPosition ? positionKey(shownPosition) : null;
+  const wanted: AnalysisKind | null = boardValues === "evaluation" ? "evaluate" : boardValues === "nimstring" ? "nimstring" : null;
+  useEffect(() => {
+    if (running && running.key !== shownKey) {
+      analyser.current?.cancel();
+      setRunning(null);
+    }
+    if (wanted && shownKey && !results.get(shownKey)?.[wanted] && !(running?.key === shownKey && running.kind === wanted)) {
+      setBoardValues("off");
+    }
+  }, [shownKey]);
+
+  const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
+    const a = (analyser.current ??= new Analyser());
+    const start = performance.now();
+    setRunning({ kind, key, start });
+    setNow(start);
+    const promise: Promise<Evaluation | NimstringAnalysis> = kind === "evaluate" ? a.evaluate(position) : a.nimstringAnalysis(position);
+    promise
+      .then((result) => {
+        const timed = { result, seconds: (performance.now() - start) / 1000 };
+        setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
+        setRunning(null);
+      })
+      .catch((e: unknown) => {
+        if (!(e instanceof CancelledError)) {
+          setError(errorMessage(e));
+          setRunning(null);
+          setBoardValues("off");
+        }
+      });
+  };
 
   useEffect(() => {
     loadEngine()
@@ -89,6 +170,40 @@ export function App() {
   const right = Math.max(...partMargins.map((m) => m.right));
   const margins = partMargins.map((m) => ({ ...m, left, right }));
   const maxWidth = Math.max(...snap.position.parts.map((p, i) => naturalWidth(p, margins[i])));
+  const key = positionKey(snap.position);
+  const here = results.get(key) ?? {};
+  let labels: MoveLabels | undefined;
+  if (boardValues === "evaluation" && here.evaluate) {
+    const scoreDiff = snap.scores[snap.toMove] - snap.scores[other(snap.toMove)];
+    labels = evaluationLabels(here.evaluate.result, scoreDiff, countScore ? "margin" : "engine");
+  } else if (boardValues === "nimstring" && here.nimstring) {
+    labels = nimstringLabels(here.nimstring.result.moves);
+  }
+  // Nimstring value of each part, shown beside it while Nimstring values are on the board
+  const partNimbers = boardValues === "nimstring" && here.nimstring ? partValues(here.nimstring.result.components, snap.position.parts.length) : null;
+
+  // Choosing values for the board calculates them if they aren't already available,
+  // cancelling any other analysis in progress
+  const chooseBoardValues = (values: BoardValues) => {
+    setBoardValues(values);
+    setError(null);
+    const kind: AnalysisKind | null = values === "evaluation" ? "evaluate" : values === "nimstring" ? "nimstring" : null;
+    if (running && running.kind !== kind) {
+      analyser.current?.cancel();
+      setRunning(null);
+    }
+    if (kind && !here[kind] && !(running?.key === key && running.kind === kind)) {
+      analyse(kind, snap.position, key);
+    }
+  };
+
+  // Stop the analysis in progress, switching off the values it was calculating
+  const cancelAnalysis = () => {
+    analyser.current?.cancel();
+    setRunning(null);
+    setBoardValues("off");
+  };
+
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y))));
 
   const attempt = (f: () => void) => {
@@ -128,8 +243,9 @@ export function App() {
   const status = snap.gameOver
     ? A === B
       ? `Game over: draw ${A}–${B}`
-      : `Game over: ${A > B ? "A" : "B"} wins ${Math.max(A, B)}–${Math.min(A, B)}`
+      : `Game over: ${A > B ? "A" : "B"} wins ${Math.max(A, B)}–${Math.min(A, B)}, by ${Math.abs(A - B)}`
     : `${snap.toMove} to move`;
+  const lead = A === B ? "Scores level" : `${A > B ? "A" : "B"} leads by ${Math.abs(A - B)}`;
 
   return (
     <main>
@@ -185,6 +301,7 @@ export function App() {
               Switch
             </button>
           )}
+          {!snap.gameOver && <div class="lead">{lead}</div>}
         </div>
         <div class={`score player-B${!snap.gameOver && snap.toMove === "B" ? " active" : ""}`}>
           <span class="name">B</span> <span class="points">{B}</span>
@@ -195,13 +312,18 @@ export function App() {
 
       {/* All parts are drawn at the same scale: the board column fits the widest part (up
           to the maximum enlargement, or the available width), and each board's width is its
-          natural width relative to the widest part's. */}
+          natural width relative to the widest part's. Part numbers go on the left of compound
+          positions, and Nimstring values (when shown) on the right. */}
       <section
-        class={multiPart ? "boards multi" : "boards"}
+        class="boards"
         style={{
-          gridTemplateColumns: multiPart
-            ? `var(--part-number-width) min(${MAX_ENLARGEMENT * maxWidth}px, calc(100% - var(--part-number-width) - var(--boards-gap)))`
-            : `min(${MAX_ENLARGEMENT * maxWidth}px, 100%)`,
+          gridTemplateColumns: [
+            multiPart && "var(--part-number-width)",
+            `min(${MAX_ENLARGEMENT * maxWidth}px, calc(100%${multiPart ? " - var(--part-number-width) - var(--boards-gap)" : ""}${partNimbers ? " - var(--part-value-width) - var(--boards-gap)" : ""}))`,
+            partNimbers && "var(--part-value-width)",
+          ]
+            .filter(Boolean)
+            .join(" "),
         }}
       >
         {snap.position.parts.map((data, i) => [
@@ -223,9 +345,24 @@ export function App() {
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
+              labels={labels}
             />
           </div>,
+          partNimbers && (
+            <div key={`v${i}`} class="part-value" title={multiPart ? `Nimstring value of part ${i}` : "Nimstring value"}>
+              <NimstringValueText value={partNimbers[i]} />
+            </div>
+          ),
         ])}
+        {partNimbers && multiPart && here.nimstring && [
+          <div key="tn" />,
+          <div key="tl" class="total-label">
+            Total
+          </div>,
+          <div key="tv" class="part-value total" title="Nimstring value of the whole position">
+            <NimstringValueText value={here.nimstring.result.value} />
+          </div>,
+        ]}
       </section>
 
       {atStart && anyCaptured && (
@@ -251,6 +388,18 @@ export function App() {
           ⏭
         </button>
       </nav>
+
+      <AnalysisPanel
+        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
+        boardValues={boardValues}
+        onBoardValues={chooseBoardValues}
+        countScore={countScore}
+        onCountScore={(count) => {
+          setCountScore(count);
+          saveCountScore(count);
+        }}
+        onCancel={cancelAnalysis}
+      />
     </main>
   );
 }

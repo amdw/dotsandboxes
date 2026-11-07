@@ -1,0 +1,77 @@
+import { beforeAll, describe, expect, it } from "vitest";
+import { engine } from "../engine/engine";
+import { evaluationLabels, formatNimstring, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
+import { loadTestEngine } from "./testEngine";
+
+beforeAll(loadTestEngine);
+
+const example = (id: string) => engine.examples().find((e) => e.id === id)!;
+
+describe("analysis", () => {
+  it("formats values", () => {
+    expect(signed(3)).toBe("+3");
+    expect(signed(-2)).toBe("−2");
+    expect(signed(0)).toBe("0");
+    expect(formatNimstring({ Nimber: 4 })).toBe("*4");
+    expect(formatNimstring("Loony")).toBe("\u263D\uFE0E");
+  });
+
+  it("labels moves with engine values or final margins, marking the best", () => {
+    const position = example("berlekamp-ex3.1").position;
+    const evaluation = engine.evaluate(position);
+    const engineLabels = evaluationLabels(evaluation, 0, "engine");
+    expect(engineLabels.size).toBe(evaluation.moves.length);
+    const best = [...engineLabels.values()].filter((l) => l.best);
+    expect(best.length).toBeGreaterThan(0);
+    expect(best.every((l) => l.text === signed(evaluation.value))).toBe(true);
+    // Berlekamp's answer for exercise 3.1 is (2, 1) Bottom, worth +3
+    const answer = engineLabels.get(lineKeyOf({ part: 0, m: { x: 2, y: 1, side: "Bottom" } }))!;
+    expect(answer).toEqual({ text: "+3", best: true });
+
+    const marginLabels = evaluationLabels(evaluation, 2, "margin");
+    expect(marginLabels.get(lineKeyOf({ part: 0, m: { x: 2, y: 1, side: "Bottom" } }))).toEqual({ text: "+5", best: true });
+  });
+
+  it("labels moves with Nimstring values", () => {
+    const position = example("berlekamp-p50").position;
+    const analysis = engine.nimstringAnalysis(position);
+    expect(formatNimstring(analysis.value)).toBe("*7");
+    const labels = nimstringLabels(analysis.moves);
+    expect(labels.size).toBe(analysis.moves.length);
+    expect(labels.get(lineKeyOf({ part: 0, m: { x: 0, y: 3, side: "Bottom" } }))!.text).toBe("*0");
+  });
+
+  it("keys positions by content", () => {
+    expect(positionKey(engine.newGame([[2, 2]]))).toBe(positionKey(engine.newGame([[2, 2]])));
+    expect(positionKey(engine.newGame([[2, 2]]))).not.toBe(positionKey(engine.newGame([[2, 3]])));
+  });
+
+  it("adds Nimstring values", () => {
+    expect(nimAdd({ Nimber: 5 }, { Nimber: 3 })).toEqual({ Nimber: 6 });
+    expect(nimAdd({ Nimber: 2 }, "Loony")).toBe("Loony");
+  });
+
+  it("gives the value of each part from its components, adding up to the whole", () => {
+    // The page 50 example as one part with three components, plus two more parts
+    const p50 = example("berlekamp-p50").position.parts[0];
+    const nim = example("nimstring-examples").position.parts;
+    const position = { parts: [p50, nim[4], nim[5]] };
+    const analysis = engine.nimstringAnalysis(position);
+    const values = partValues(analysis.components, 3);
+    expect(values).toEqual([{ Nimber: 7 }, { Nimber: 1 }, { Nimber: 0 }]);
+    expect(values.reduce(nimAdd)).toEqual(analysis.value);
+    // A loony part makes the whole position loony
+    const loony = engine.nimstringAnalysis({ parts: [nim[2], nim[4]] });
+    expect(partValues(loony.components, 2)).toEqual(["Loony", { Nimber: 1 }]);
+    expect(loony.value).toBe("Loony");
+  });
+
+  it("values finished parts as *0", () => {
+    const finished = engine.newGame([[1, 1]]);
+    let position = finished;
+    for (const m of engine.legalMoves(finished)) position = engine.makeMove(position, m).position;
+    const analysis = engine.nimstringAnalysis({ parts: [position.parts[0], example("nimstring-examples").position.parts[4]] });
+    expect(partValues(analysis.components, 2)).toEqual([{ Nimber: 0 }, { Nimber: 1 }]);
+  });
+});
+

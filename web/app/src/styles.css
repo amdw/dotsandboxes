@@ -15,6 +15,8 @@
   --player-B-soft: #fbe3d2;
   --neutral-soft: #e6e6e1;
   --accent: #b3261e;
+  --best: #1e7a3c;
+  --best-soft: #d8f0df;
   --error-bg: #fde8e6;
   color-scheme: light;
 }
@@ -37,6 +39,8 @@
     --player-B-soft: #4a2a14;
     --neutral-soft: #2e2d2a;
     --accent: #ff7a6e;
+    --best: #5fd08a;
+    --best-soft: #1c3b27;
     --error-bg: #4a1f1b;
     color-scheme: dark;
   }
@@ -59,6 +63,8 @@
   --player-B-soft: #4a2a14;
   --neutral-soft: #2e2d2a;
   --accent: #ff7a6e;
+  --best: #5fd08a;
+  --best-soft: #1c3b27;
   --error-bg: #4a1f1b;
   color-scheme: dark;
 }
@@ -393,6 +399,11 @@ button.example {
   color: var(--muted);
 }
 
+.message .lead {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .error {
   background: var(--error-bg);
   border-radius: 6px;
@@ -405,6 +416,7 @@ button.example {
 
 .boards {
   --part-number-width: 1.5em;
+  --part-value-width: 3em;
   --boards-gap: 12px;
   display: grid;
   justify-content: center;
@@ -420,6 +432,27 @@ button.example {
 
 .part-board {
   min-width: 0;
+}
+
+.part-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The loony symbol has no bold form in most fonts, so make it a little larger instead */
+.part-value .loony {
+  font-size: 1.2em;
+  font-weight: normal;
+}
+
+.total-label {
+  text-align: right;
+  color: var(--muted);
+}
+
+.part-value.total {
+  border-top: 1px solid var(--border);
+  padding-top: 2px;
 }
 
 .board {
@@ -616,4 +649,79 @@ button.example {
   text-align: center;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Analysis values on the legal moves */
+.board .value-label {
+  pointer-events: none;
+}
+
+.board .value-label rect {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.board .value-label text {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The loony symbol has no bold form in most fonts, so make it a little larger instead */
+.board .value-label text.loony {
+  font-size: 15px;
+}
+
+.board .value-label.best rect {
+  fill: var(--best-soft);
+  stroke: var(--best);
+}
+
+.board .value-label.best text {
+  fill: var(--best);
+}
+
+
+/* Analysis panel */
+.analysis {
+  max-width: 640px;
+  margin: 20px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.analysis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.running {
+  margin: 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+
+.selectors {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
