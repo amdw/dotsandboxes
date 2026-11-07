@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -16,7 +16,8 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
-use crate::game::{Move, Position, SimplePosition, Side, CompoundPosition};
+use crate::game::{Move, Position, SimplePosition, Side, CompoundPosition, CPosMove};
+use crate::posfile;
 use std::iter;
 
 // Top of example from page 50 of Berlekamp's book
@@ -226,6 +227,127 @@ pub fn one_long_multi_three(three_chain_count: usize, long_chain_size: usize) ->
     CompoundPosition::new(parts)
 }
 
+// Build a single-coin-row position with the given strings present, for the
+// small Nimstring examples: `ground_left`/`ground_right` are the ground strings at
+// either end, and the coins are always linked to each other.
+fn coin_row(length: usize, ground_left: bool, ground_right: bool) -> SimplePosition {
+    let mut pos = make_chain(length);
+    if !ground_left {
+        pos.make_move(Move::new(0, 0, Side::Left));
+    }
+    if !ground_right {
+        pos.make_move(Move::new(length - 1, 0, Side::Right));
+    }
+    pos
+}
+
+// The small positions illustrating Nimstring values in the paper, as separate parts
+pub fn nimstring_examples() -> CompoundPosition {
+    CompoundPosition::new(vec!(
+        coin_row(1, true, false),
+        coin_row(2, false, false),
+        coin_row(2, true, false),
+        coin_row(3, false, false),
+        make_chain(2),
+        make_chain(3),
+    ))
+}
+
+// A named example position, optionally with a sequence of moves to be played from it
+// (e.g. a sample game from the paper)
+pub struct Example {
+    pub id: &'static str,
+    pub title: &'static str,
+    pub description: &'static str,
+    pub position: CompoundPosition,
+    pub moves: Vec<CPosMove>,
+}
+
+impl Example {
+    fn new(id: &'static str, title: &'static str, description: &'static str, position: CompoundPosition) -> Example {
+        Example{ id: id, title: title, description: description, position: position, moves: Vec::new() }
+    }
+
+    fn simple(id: &'static str, title: &'static str, description: &'static str, position: SimplePosition) -> Example {
+        Example::new(id, title, description, CompoundPosition::from_single(position))
+    }
+
+    // An example consisting of a game played from the start on a board of the given size,
+    // with moves given as a comma-separated list in the .pos format, e.g. "0 0 r, 1 0 b"
+    fn game(id: &'static str, title: &'static str, description: &'static str,
+            width: usize, height: usize, moves: &str) -> Example {
+        let position = CompoundPosition::from_single(SimplePosition::new_game(width, height));
+        let moves = moves.split(',').map(|m| {
+            let m = posfile::parse_simple_move(m.trim()).unwrap();
+            position.normalise_move(CPosMove{ part: 0, m: m }).unwrap()
+        }).collect();
+        Example{ id: id, title: title, description: description, position: position, moves: moves }
+    }
+}
+
+// All the named example positions, from Berlekamp's book "The Dots-and-Boxes Game"
+// and from the paper in this repository
+pub fn catalogue() -> Vec<Example> {
+    vec!(
+        Example::game("sample-game-2x2", "Sample 2×2 game",
+            "The sample game from the introduction of the paper, in both its dots-and-boxes and strings-and-coins figures",
+            2, 2, "0 0 r, 1 0 r, 0 0 b, 0 1 r, 1 1 b, 0 0 l, 0 0 t, 0 1 l, 0 1 b, 1 1 r, 1 1 t, 1 0 t"),
+        Example::new("p45", "P(4,5)",
+            "Four 3-chains and a 5-chain, from the paper's analysis of one long chain with multiple 3-chains",
+            one_long_multi_three(4, 5)),
+        Example::new("p34", "P(3,4)",
+            "Three 3-chains and a 4-chain (also in p3_4.pos)",
+            one_long_multi_three(3, 4)),
+        Example::simple("double-deal", "Double-dealing on a chain",
+            "Two 5-chains: the player to move must open one, and the opponent double-deals to win 8-2 (paper figure)",
+            double_chain(5)),
+        Example::simple("loop-double-deal", "Double-dealing on a loop",
+            "Two 10-loops: the player to move must open one, and the opponent double-deals to win 16-4 (paper figure)",
+            double_loop(5)),
+        Example::simple("drawn-loony", "Drawn loony endgame",
+            "Two 4-loops, a drawn endgame (paper figure)",
+            double_loop(2)),
+        Example::new("nimstring-examples", "Nimstring value examples",
+            "The small positions used to illustrate Nimstring values in the paper, each as a separate part",
+            nimstring_examples()),
+        Example::simple("3x3-strategy", "Berlekamp's 3×3 strategy",
+            "The opening position of Berlekamp's winning 3×3 strategy (paper figure)",
+            {
+                let mut pos = SimplePosition::new_game(3, 3);
+                for m in [Move::new(0, 0, Side::Bottom), Move::new(0, 2, Side::Right),
+                          Move::new(2, 2, Side::Top), Move::new(2, 0, Side::Left)] {
+                    pos.make_move(m);
+                }
+                pos
+            }),
+        Example::game("3x3-sample-game", "Sample 3×3 game",
+            "A sample game played according to Berlekamp's winning 3×3 strategy (paper figure)",
+            3, 3, "1 2 b, 1 2 l, 1 1 t, 0 1 t, 2 1 t, 1 1 r, 1 0 t, 0 1 l, 0 0 t, 0 0 r, \
+                   0 0 l, 1 0 r, 0 2 l, 2 0 t, 2 0 r, 2 2 b, 2 2 r, 0 2 b, 0 2 t, 0 1 r"),
+        Example::simple("berlekamp-p50", "Berlekamp p. 50",
+            "Figure 25 from page 50 of Berlekamp's book, used in the paper to motivate Nimstring (also in p50.pos)",
+            p50()),
+        Example::simple("berlekamp-p50-top", "Berlekamp p. 50 (top)",
+            "The top component of the page 50 example", p50_top()),
+        Example::simple("berlekamp-p50-bottom-left", "Berlekamp p. 50 (bottom left)",
+            "The bottom-left component of the page 50 example (also in p50bl.pos)", p50_bottomleft()),
+        Example::simple("berlekamp-p50-bottom-right", "Berlekamp p. 50 (bottom right)",
+            "The bottom-right component of the page 50 example", p50_bottomright()),
+        Example::simple("berlekamp-ex3.1", "Berlekamp exercise 3.1",
+            "Exercise 3.1 from Berlekamp's book (paper figure; also in ex5p1.pos)", ex3p1()),
+        Example::simple("berlekamp-ex3.12", "Berlekamp exercise 3.12",
+            "Exercise 3.12 from Berlekamp's book (paper figure)", ex3p12()),
+        Example::simple("berlekamp-ex6.2", "Berlekamp exercise 6.2",
+            "Exercise 6.2 from Berlekamp's book", ex6p2()),
+        Example::simple("berlekamp-ex7.2", "Berlekamp exercise 7.2",
+            "Exercise 7.2 from Berlekamp's book", ex7p2()),
+        Example::simple("icelandic-2x2", "Icelandic 2×2",
+            "A 2×2 board with the top and left edges already drawn", icelandic_game(2, 2)),
+        Example::simple("icelandic-3x3", "Icelandic 3×3",
+            "A 3×3 board with the top and left edges already drawn", icelandic_game(3, 3)),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::examples::*;
@@ -238,5 +360,49 @@ mod tests {
         // Just to assert that the repeated components are really cloned/independent
         pos.make_move(CPosMove::new(1, 0, 0, Side::Right));
         assert_eq!(13, pos.legal_moves().len());
+    }
+
+    #[test]
+    fn catalogue_valid() {
+        let examples = catalogue();
+        let mut ids: Vec<&str> = examples.iter().map(|e| e.id).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(examples.len(), ids.len(), "Example IDs must be unique");
+        for example in examples {
+            // Every move in a game record must be legal when it is played
+            let mut pos = example.position.clone();
+            for &m in &example.moves {
+                assert!(pos.is_legal_move(m), "{}: {}", example.id, m);
+                pos.make_move(m);
+            }
+        }
+    }
+
+    #[test]
+    fn sample_games_finish() {
+        for id in ["sample-game-2x2"] {
+            let example = catalogue().into_iter().find(|e| e.id == id).unwrap();
+            let mut pos = example.position.clone();
+            for &m in &example.moves {
+                pos.make_move(m);
+            }
+            assert!(pos.is_end_of_game(), "{}", id);
+        }
+    }
+
+    #[test]
+    fn paper_figure_values() {
+        use crate::eval::eval;
+        use crate::nimstring::{component_values, Value};
+        let find = |id: &str| catalogue().into_iter().find(|e| e.id == id).unwrap().position;
+        assert_eq!(-6, eval(&find("double-deal")).0);
+        assert_eq!(-12, eval(&find("loop-double-deal")).0);
+        assert_eq!(0, eval(&find("drawn-loony")).0);
+
+        // Values as given in the Nimstring examples figure
+        let values: Vec<Value> = component_values(&nimstring_examples()).iter().map(|c| c.value).collect();
+        assert_eq!(vec!(Value::Nimber(0), Value::Nimber(0), Value::Loony, Value::Nimber(0),
+                        Value::Nimber(1), Value::Nimber(0)), values);
     }
 }

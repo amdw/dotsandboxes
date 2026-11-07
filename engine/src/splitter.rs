@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -27,23 +27,39 @@ pub trait SplittablePosition<M> : Position<M> {
     fn split(&self) -> Vec<SimplePosition>;
 }
 
-impl SplittablePosition<Move> for SimplePosition {
-    fn split(self: &SimplePosition) -> Vec<SimplePosition> {
-        let mut visited: Vec<Vec<bool>> = Vec::with_capacity(self.width());
-        for _ in 0..self.width() {
-            visited.push(iter::repeat(false).take(self.height()).collect());
-        }
-        let mut result = Vec::new();
-        for x in 0..self.width() {
-            for y in 0..self.height() {
-                if !visited[x][y] && self.valency(x, y) > 0 {
-                    let mut frag_coords = Vec::new();
-                    search(self, x, y, &mut visited, &mut frag_coords);
-                    result.push(make_fragment(self, &frag_coords));
-                }
+// An independent fragment of a SimplePosition, together with the coordinates
+// (in the original position) of the coins it consists of
+pub struct Fragment {
+    pub coins: Vec<(usize, usize)>,
+    pub position: SimplePosition,
+}
+
+// Split a SimplePosition into its independent fragments, keeping track of
+// which coins of the original position each fragment consists of.
+// Coins which have already been captured are not part of any fragment.
+pub fn fragments(pos: &SimplePosition) -> Vec<Fragment> {
+    let mut visited: Vec<Vec<bool>> = Vec::with_capacity(pos.width());
+    for _ in 0..pos.width() {
+        visited.push(iter::repeat(false).take(pos.height()).collect());
+    }
+    let mut result = Vec::new();
+    for x in 0..pos.width() {
+        for y in 0..pos.height() {
+            if !visited[x][y] && pos.valency(x, y) > 0 {
+                let mut frag_coords = Vec::new();
+                search(pos, x, y, &mut visited, &mut frag_coords);
+                let position = make_fragment(pos, &frag_coords);
+                frag_coords.sort();
+                result.push(Fragment{ coins: frag_coords, position: position });
             }
         }
-        result
+    }
+    result
+}
+
+impl SplittablePosition<Move> for SimplePosition {
+    fn split(self: &SimplePosition) -> Vec<SimplePosition> {
+        fragments(self).into_iter().map(|f| f.position).collect()
     }
 }
 
@@ -123,6 +139,28 @@ mod tests {
         assert_eq!(1, parts.len());
         let part = &parts[0];
         assert_eq!(true, part.eq(&pos));
+    }
+
+    #[test]
+    fn fragment_coins() {
+        let frags = fragments(&p50());
+        assert_eq!(3, frags.len());
+        let coin_count: usize = frags.iter().map(|f| f.coins.len()).sum();
+        assert_eq!(20, coin_count);
+        // Bottom-right corner of p50 is a 2x2 fragment
+        let br: Vec<&Fragment> = frags.iter().filter(|f| f.position.eq(&p50_bottomright())).collect();
+        assert_eq!(1, br.len());
+        assert_eq!(vec![(3, 2), (3, 3), (4, 2), (4, 3)], br[0].coins);
+    }
+
+    #[test]
+    fn fragments_skip_captured() {
+        let mut pos = make_chain(3);
+        pos.make_move(Move::new(0, 0, Side::Left));
+        pos.make_move(Move::new(0, 0, Side::Right));
+        let frags = fragments(&pos);
+        assert_eq!(1, frags.len());
+        assert_eq!(vec![(1, 0), (2, 0)], frags[0].coins);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -19,6 +19,7 @@
 use crate::game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
 use crate::nimstring::{self, NimstringPosition};
 use std::collections::HashMap;
+use std::hash::Hash;
 
 pub trait EvaluablePosition<M> : NimstringPosition<M> {
     // Given a loony position and the capture, find the corresponding double-dealing move.
@@ -67,11 +68,7 @@ where M: Copy, P: EvaluablePosition<M> {
     let mut value = isize::MIN;
     let mut best_move = moves[0];
     for &m in moves {
-        let outcome = pos.make_move(m);
-        let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
-        let (next_val, _) = eval_cache(pos, cache);
-        let sub_val = (outcome.coins_captured as isize) + sign * next_val;
-        pos.undo_move(m);
+        let sub_val = eval_move(pos, m, cache);
         if sub_val > value {
             value = sub_val;
             best_move = m;
@@ -79,6 +76,17 @@ where M: Copy, P: EvaluablePosition<M> {
     }
     cache.insert(pos.zhash(), (value, best_move));
     (value, Some(best_move))
+}
+
+// Evaluate a single move: the coins it captures, plus or minus the value of the resulting
+// position depending on whether the same player moves again
+fn eval_move<M, P>(pos: &mut P, m: M, cache: &mut HashMap<u64, (isize, M)>) -> isize
+where M: Copy, P: EvaluablePosition<M> {
+    let outcome = pos.make_move(m);
+    let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
+    let (next_val, _) = eval_cache(pos, cache);
+    pos.undo_move(m);
+    (outcome.coins_captured as isize) + sign * next_val
 }
 
 // Determine what moves deserve consideration in a given position
@@ -127,6 +135,21 @@ where M: Copy, P: EvaluablePosition<M> + Clone {
     let mut cache = HashMap::new();
     let mut pos = pos.clone();
     eval_cache(&mut pos, &mut cache)
+}
+
+// Calculate the value function of a given position, along with the value achieved by
+// each legal move (i.e. the net number of coins the player to move gains from the rest
+// of the game by making that move, assuming optimal play thereafter).
+pub fn eval_with_moves<M, P>(pos: &P) -> (isize, HashMap<M, isize>)
+where M: Copy + Hash + Eq, P: EvaluablePosition<M> + Clone {
+    let mut cache = HashMap::new();
+    let mut pos = pos.clone();
+    let (value, _) = eval_cache(&mut pos, &mut cache);
+    let mut per_move = HashMap::new();
+    for m in pos.legal_moves() {
+        per_move.insert(m, eval_move(&mut pos, m, &mut cache));
+    }
+    (value, per_move)
 }
 
 #[cfg(test)]
@@ -396,6 +419,56 @@ mod test {
             }
             i += 1;
         }
+    }
+
+    // Naive value of a single move, for comparison with eval_with_moves
+    fn naive_move_value(pos: &mut SimplePosition, m: Move) -> isize {
+        let captures = pos.make_move(m).coins_captured as isize;
+        let next_val = naive_minimax(pos);
+        pos.undo_move(m);
+        if captures > 0 { captures + next_val } else { -next_val }
+    }
+
+    #[test]
+    fn eval_with_moves_matches_naive_minimax() {
+        let test_time_s = 5 as f64;
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 77;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let start_time = Instant::now();
+        let mut i = 0;
+        while start_time.elapsed().as_secs_f64() < test_time_s {
+            let mut pos = make_random_pos(&mut r);
+            let (val, per_move) = eval_with_moves(&pos);
+            assert_eq!(naive_minimax(&mut pos), val, "Position {}: {}", i, pos);
+            let legal_moves = pos.legal_moves();
+            assert_eq!(legal_moves.len(), per_move.len());
+            for m in legal_moves {
+                assert_eq!(naive_move_value(&mut pos, m), per_move[&m], "Position {}, move {}: {}", i, m, pos);
+            }
+            if let Some(&best) = per_move.values().max() {
+                assert_eq!(val, best);
+            }
+            i += 1;
+        }
+    }
+
+    #[test]
+    fn eval_with_moves_compound() {
+        // By the double-chain formula (4 - 2n), two closed 3-chains are worth -2 to the
+        // player to move, and since every move opens a chain, every move has that value.
+        let pos = CompoundPosition::new(vec![make_chain(3), make_chain(3)]);
+        let (val, per_move) = eval_with_moves(&pos);
+        assert_eq!(-2, val);
+        assert_eq!(pos.legal_moves().len(), per_move.len());
+        assert!(per_move.values().all(|&v| v == -2), "{:?}", per_move);
+    }
+
+    #[test]
+    fn eval_with_moves_end_of_game() {
+        let (val, per_move) = eval_with_moves(&SimplePosition::new_end_game(2, 2));
+        assert_eq!(0, val);
+        assert!(per_move.is_empty());
     }
 
     // TODO: Test that rotations and reflections do not affect the evaluation

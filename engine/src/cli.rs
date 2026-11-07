@@ -1,5 +1,5 @@
 /*
-    Copyright 2017-2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017-2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -17,13 +17,14 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use crate::game::{Move, SimplePosition, CompoundPosition, Side, CPosMove};
+use crate::game::{Move, SimplePosition, CompoundPosition, CPosMove};
 use crate::nimstring;
 use crate::eval::{self, EvaluablePosition};
+use crate::posfile;
 
 use std::fmt::Display;
 use std::hash::Hash;
-use std::io::{self, BufRead};
+use std::io;
 use std::fs::File;
 use regex::Regex;
 use std::time::Instant;
@@ -85,18 +86,7 @@ trait CLIPosition<M> : EvaluablePosition<M> + Display + Clone {
 
 impl CLIPosition<Move> for SimplePosition {
     fn parse_move(self: &SimplePosition, input: &str) -> Result<Move, String> {
-        let move_re = Regex::new(r"^(\d+) (\d+) ([a-zA-Z]+)$").unwrap();
-        if let Some(caps) = move_re.captures(&input) {
-            let x = caps[1].parse::<usize>().unwrap();
-            let y = caps[2].parse::<usize>().unwrap();
-            let side_s = caps[3].to_string();
-            match parse_side(&side_s) {
-                Some(side) => Ok(Move{x: x, y: y, side: side}),
-                None => Err(format!("Unrecognised side: [{}]", side_s))
-            }
-        } else {
-            Err(format!("Could not extract move from [{}]", input))
-        }
+        posfile::parse_simple_move(input)
     }
 
     fn move_cmd_help(self: &SimplePosition, verb: &str) -> String {
@@ -110,27 +100,7 @@ impl CLIPosition<Move> for SimplePosition {
 
 impl CLIPosition<CPosMove> for CompoundPosition {
     fn parse_move(self: &CompoundPosition, input: &str) -> Result<CPosMove, String> {
-        // If there's only one part, let the user use the SimplePosition format for short
-        if self.parts.len() == 1 {
-            if let Ok(m) = self.parts[0].parse_move(&input) {
-                return Ok(CPosMove{part: 0, m: m});
-            }
-        }
-        let move_re = Regex::new(r"^(\d+) (.*)$").unwrap();
-        if let Some(caps) = move_re.captures(&input) {
-            let p = caps[1].parse::<usize>().unwrap();
-            let rest = &caps[2];
-            if p >= self.parts.len() {
-                return Err(format!("Part {} out of bounds (count={})", p, self.parts.len()));
-            }
-            if let Ok(m) = self.parts[p].parse_move(rest) {
-                Ok(CPosMove{part: p, m: m})
-            } else {
-                Err(format!("Could not parse [{}] as SimplePosition move", rest))
-            }
-        } else {
-            Err(format!("Could not extract move from [{}]", input))
-        }
+        posfile::parse_compound_move(input, self)
     }
 
     fn move_cmd_help(self: &CompoundPosition, verb: &str) -> String {
@@ -154,14 +124,6 @@ where P: CLIPosition<M> {
     println!("eval - evaluate the current position");
     println!("help - print this help message");
     println!("quit/exit - exit program");
-}
-
-fn parse_side(side_s: &str) -> Option<Side> {
-    if side_s == "l" || side_s == "left" { Some(Side::Left) }
-    else if side_s == "r" || side_s == "right" { Some(Side::Right) }
-    else if side_s == "t" || side_s == "top" { Some(Side::Top) }
-    else if side_s == "b" || side_s == "bottom" { Some(Side::Bottom) }
-    else { None }
 }
 
 fn parse_command<M, P: CLIPosition<M>>(input: &str, pos: &P) -> Result<Command<M>, String> {
@@ -229,37 +191,6 @@ where M: Copy + Display + Eq + Hash, P: CLIPosition<M> {
     }
 }
 
-fn parse_position<R: BufRead>(reader: R) -> Result<CompoundPosition, String> {
-    let mut lines = reader.lines();
-    let size_spec = lines.next().map_or(
-        Err("No lines found".to_string()),
-        |l| l.map_err(|e| format!("Could not read first line: {}", e)))?;
-    let mut size_spec_parts: Vec<usize> = Vec::with_capacity(2);
-    for part in size_spec.split(" ") {
-        let dim = part.parse::<usize>().map_err(
-            |e| format!("Could not parse int from [{}]: {}", part, e))?;
-        size_spec_parts.push(dim);
-    }
-    if size_spec_parts.len() < 2 || size_spec_parts.len() % 2 != 0 {
-        return Err(format!(
-            "Expected an even number of dimensions and at least 2, found: {:?}", size_spec_parts));
-    }
-    let mut parts: Vec<SimplePosition> = Vec::with_capacity(size_spec_parts.len() / 2);
-    for pair in size_spec_parts.chunks(2) {
-        parts.push(SimplePosition::new_game(pair[0], pair[1]));
-    }
-    let mut pos = CompoundPosition::new(parts);
-    for line in lines {
-        let line = line.map_err(|e| format!("Could not read line: {}", e))?;
-        if line.trim().len() == 0 || line.starts_with("#") {
-            continue;
-        }
-        let command = parse_command(&line, &pos)?;
-        command.execute(&mut pos);
-    }
-    Ok(pos)
-}
-
 // Enter the main loop of the CLI from the start of the game
 pub fn main_loop_start(width: usize, height: usize) {
     let mut pos = SimplePosition::new_game(width, height);
@@ -272,7 +203,7 @@ pub fn main_loop_file(filename: &str) {
     let f = File::open(filename).expect(
         format!("Could not open file [{}]", filename).as_str());
     let reader = io::BufReader::new(f);
-    let mut pos = parse_position(reader).expect(
+    let mut pos = posfile::parse_reader(reader).expect(
         format!("Could not read position from [{}]", filename).as_str());
     main_loop_from(&mut pos);
 }
@@ -282,7 +213,6 @@ mod tests {
     use crate::examples::*;
     use crate::game::*;
     use crate::cli::*;
-    use std::io::Cursor;
 
     #[test]
     fn parse_make_move_cmd() {
@@ -345,49 +275,5 @@ mod tests {
         let pos = SimplePosition::new_game(1, 1);
         assert_eq!(Command::Quit, parse_command("quit", &pos).unwrap());
         assert_eq!(Command::Quit, parse_command("exit", &pos).unwrap());
-    }
-
-    #[test]
-    fn parse_simple_position() {
-        let input_str = vec!(
-            "3 1", "0 0 t", "0 0 b", "1 0 t", "1 0 b", "2 0 t", "2 0 b"
-        ).join("\n");
-        let expected = CompoundPosition::from_single(make_chain(3));
-        let actual = parse_position(Cursor::new(input_str)).unwrap();
-        assert_eq!(true, expected.eq(&actual), "{}", actual);
-    }
-
-    #[test]
-    fn parse_compound_position() {
-        let input_str = vec!(
-            "3 1 4 1",
-            "# A comment followed by a blank line", "",
-            "0 0 0 t", "0 0 0 b", "0 1 0 t", "0 1 0 b", "0 2 0 t", "0 2 0 b",
-            "1 0 0 t", "1 0 0 b", "1 1 0 t", "1 1 0 b", "1 2 0 t", "1 2 0 b", "1 3 0 t", "1 3 0 b"
-        ).join("\n");
-        let expected = CompoundPosition::new(vec!(make_chain(3), make_chain(4)));
-        let actual = parse_position(Cursor::new(input_str)).unwrap();
-        assert_eq!(true, expected.eq(&actual), "{}", actual);
-    }
-
-    #[test]
-    fn parse_position_errors() {
-        let parsed = parse_position(Cursor::new(""));
-        assert!(parsed.is_err());
-        assert_eq!("No lines found", parsed.err().unwrap());
-
-        let parsed = parse_position(Cursor::new("1"));
-        assert!(parsed.is_err());
-        assert!(parsed.err().unwrap().starts_with(
-            "Expected an even number of dimensions and at least 2"));
-
-        let parsed = parse_position(Cursor::new("1 2 3"));
-        assert!(parsed.is_err());
-        assert!(parsed.err().unwrap().starts_with(
-            "Expected an even number of dimensions and at least 2"));
-
-        let parsed = parse_position(Cursor::new("zxcv"));
-        assert!(parsed.is_err());
-        assert!(parsed.err().unwrap().contains("Could not parse int"));
     }
 }
