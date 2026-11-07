@@ -1,0 +1,390 @@
+:root {
+  --bg: #fafaf8;
+  --fg: #1d1d1b;
+  --muted: #6b6b66;
+  --surface: #ffffff;
+  --border: #d9d9d3;
+  --ink: #2b2b28;
+  --dot: #1d1d1b;
+  --coin: #f4efe3;
+  --coin-edge: #2b2b28;
+  --player-A: #2f6fd6;
+  --player-B: #d4620f;
+  --player-A-soft: #dbe7fb;
+  --player-B-soft: #fbe3d2;
+  --neutral-soft: #e6e6e1;
+  --accent: #b3261e;
+  --error-bg: #fde8e6;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615;
+    --fg: #ecebe6;
+    --muted: #a3a29b;
+    --surface: #211f1d;
+    --border: #3a3936;
+    --ink: #dcdad3;
+    --dot: #ecebe6;
+    --coin: #3a3631;
+    --coin-edge: #dcdad3;
+    --player-A: #74a3f2;
+    --player-B: #f2994f;
+    --player-A-soft: #1f3354;
+    --player-B-soft: #4a2a14;
+    --neutral-soft: #2e2d2a;
+    --accent: #ff7a6e;
+    --error-bg: #4a1f1b;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #161615;
+  --fg: #ecebe6;
+  --muted: #a3a29b;
+  --surface: #211f1d;
+  --border: #3a3936;
+  --ink: #dcdad3;
+  --dot: #ecebe6;
+  --coin: #3a3631;
+  --coin-edge: #dcdad3;
+  --player-A: #74a3f2;
+  --player-B: #f2994f;
+  --player-A-soft: #1f3354;
+  --player-B-soft: #4a2a14;
+  --neutral-soft: #2e2d2a;
+  --accent: #ff7a6e;
+  --error-bg: #4a1f1b;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 12px;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  min-height: 36px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button:focus-visible,
+input:focus-visible,
+.move:focus-visible {
+  outline: 2px solid var(--player-A);
+  outline-offset: 2px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.new-game {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.new-game label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.new-game input {
+  color: var(--fg);
+  width: 4.5em;
+  padding: 6px 8px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.segmented {
+  display: inline-flex;
+}
+
+.segmented button {
+  border-radius: 0;
+}
+
+.segmented button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.segmented button:last-child {
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+
+.segmented button[aria-checked="true"] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.status {
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.score .name {
+  font-weight: 600;
+}
+
+.score .points {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.score.player-A {
+  color: var(--player-A);
+}
+
+.score.player-B {
+  color: var(--player-B);
+}
+
+.score.active {
+  border-color: currentColor;
+}
+
+.message {
+  flex: 1;
+  text-align: center;
+  color: var(--muted);
+}
+
+.error {
+  background: var(--error-bg);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.loading {
+  color: var(--muted);
+}
+
+.boards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.boards figure {
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.boards figcaption {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.board {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.board .dot {
+  fill: var(--dot);
+}
+
+.board .drawn {
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.board .drawn.last {
+  stroke: var(--accent);
+}
+
+.board .box rect {
+  stroke: none;
+}
+
+.board .box.owner-A rect {
+  fill: var(--player-A-soft);
+}
+
+.board .box.owner-B rect {
+  fill: var(--player-B-soft);
+}
+
+.board .box.owner-none rect {
+  fill: var(--neutral-soft);
+}
+
+.board text {
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.board .owner-A text {
+  fill: var(--player-A);
+}
+
+.board .owner-B text {
+  fill: var(--player-B);
+}
+
+.board .string {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.board .cut.last {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+  opacity: 0.8;
+}
+
+.board .coin {
+  fill: var(--coin);
+  stroke: var(--coin-edge);
+  stroke-width: 2;
+}
+
+.board .captured circle {
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  stroke: var(--muted);
+  fill: none;
+}
+
+.board .captured.owner-A circle {
+  fill: var(--player-A-soft);
+  stroke: var(--player-A);
+}
+
+.board .captured.owner-B circle {
+  fill: var(--player-B-soft);
+  stroke: var(--player-B);
+}
+
+.board .captured text {
+  font-size: 13px;
+}
+
+/* Legal moves: a wide invisible hit area, and a preview shown on hover or focus */
+.board .move {
+  cursor: pointer;
+  outline: none;
+}
+
+.board .move .hit {
+  stroke: transparent;
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+
+.board .move .preview {
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.board.to-move-A .move .preview {
+  stroke: var(--player-A);
+}
+
+.board.to-move-B .move .preview {
+  stroke: var(--player-B);
+}
+
+.board.view-snc .move .preview {
+  stroke-dasharray: 6 4;
+}
+
+.board .move:focus-visible .preview {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .board .move:hover .preview {
+    opacity: 0.85;
+  }
+}
+
+.history {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.move-count {
+  min-width: 9em;
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

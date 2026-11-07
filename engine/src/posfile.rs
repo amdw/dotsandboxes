@@ -46,7 +46,7 @@ fn side_letter(side: Side) -> &'static str {
 
 // Parse a move in a SimplePosition, in the form "x y side"
 pub fn parse_simple_move(input: &str) -> Result<Move, String> {
-    let move_re = Regex::new(r"^(\d+) (\d+) ([a-zA-Z]+)$").unwrap();
+    let move_re = Regex::new(r"^([0-9]+) ([0-9]+) ([a-zA-Z]+)$").unwrap();
     if let Some(caps) = move_re.captures(input) {
         let x = caps[1].parse::<usize>().map_err(|e| format!("Bad x coordinate: {}", e))?;
         let y = caps[2].parse::<usize>().map_err(|e| format!("Bad y coordinate: {}", e))?;
@@ -68,7 +68,7 @@ pub fn parse_compound_move(input: &str, pos: &CompoundPosition) -> Result<CPosMo
             return Ok(CPosMove{part: 0, m: m});
         }
     }
-    let move_re = Regex::new(r"^(\d+) (.*)$").unwrap();
+    let move_re = Regex::new(r"^([0-9]+) (.*)$").unwrap();
     if let Some(caps) = move_re.captures(input) {
         let p = caps[1].parse::<usize>().map_err(|e| format!("Bad part number: {}", e))?;
         let rest = &caps[2];

@@ -1,0 +1,22 @@
+[package]
+name = "dabengine-wasm"
+version = "0.1.0"
+authors = ["Andrew Medworth <github@medworth.org.uk>"]
+edition = "2024"
+description = "WebAssembly bindings to the dots-and-boxes engine, for the web interface"
+
+[lib]
+# cdylib for WebAssembly; rlib so the API can be unit tested natively
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+dabengine = { path = "../../engine", features = ["serde"] }
+console_error_panic_hook = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+# Must exactly match the version of wasm-bindgen-cli used to generate the JavaScript bindings
+wasm-bindgen = "=0.2.130"
+
+[profile.release]
+lto = true
+codegen-units = 1

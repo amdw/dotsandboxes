@@ -1,0 +1,26 @@
+{
+  "name": "dabengine-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Web interface to the dots-and-boxes engine",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "cargo build --release --target wasm32-unknown-unknown --manifest-path ../engine-wasm/Cargo.toml && wasm-bindgen --target web --remove-name-section --out-dir src/wasm ../engine-wasm/target/wasm32-unknown-unknown/release/dabengine_wasm.wasm",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}
