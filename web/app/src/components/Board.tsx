@@ -200,7 +200,13 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
   const canonicalLines = canonical
     ? lines
         .filter((line) => isStringPresent(data, line) && canonical.has(lineKey(line)))
-        .map((line) => <Segment key={`k${line.orientation}${line.x},${line.y}`} ends={ends(line)} class="canonical" />)
+        .map((line) => (
+          <g key={`k${line.orientation}${line.x},${line.y}`}>
+            <Segment ends={ends(line)} class="canonical" />
+            {/* Including the arrowhead of a ground string */}
+            {view === "snc" && sncEnds(line).ground && <GroundArrow ends={ends(line)} class="canonical arrow" />}
+          </g>
+        ))
     : [];
 
   // Analysis values, at the middle of each legal move's line/string
