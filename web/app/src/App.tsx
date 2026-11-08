@@ -365,10 +365,16 @@ export function App() {
   };
 
   // Start a new game: the engine stops playing, so it never starts on a game unasked
-  const startGame = (newGame: GameState) => {
-    setGame(newGame);
+  // Stop the engine playing (setting "Engine plays" to Neither): done for every change to the
+  // position which isn't a move, so the engine never starts playing a position unasked
+  const stopEngine = () => {
     setEngineSides({ A: false, B: false });
     setPaused(false);
+  };
+
+  const startGame = (newGame: GameState) => {
+    setGame(newGame);
+    stopEngine();
   };
 
   // A different link pasted into the address bar (changing just the fragment, so the page
@@ -401,18 +407,18 @@ export function App() {
     });
 
   // Setting up the starting position: change who owns a captured coin, or who moves first
-  // These pause the engine, so it doesn't move before the start has been set up: it
-  // continues when Resume is pressed or a move is made
+  // Like any other change to the position which isn't a move, these stop the engine
+  // playing, so it doesn't move before the start has been set up
   const cycleOwner = (part: number, x: number, y: number) =>
     attempt(() => {
       const owners = snap.owners.map((p, i) => (i === part ? p.map((row, ry) => row.map((o, rx) => (rx === x && ry === y ? nextOwner(o) : o))) : p));
       setGame(withStart(game, { owners }, engine.makeMove));
-      setPaused(true);
+      stopEngine();
     });
   const swapFirstPlayer = () =>
     attempt(() => {
       setGame(withStart(game, { toMove: other(game.snapshots[0].toMove) }, engine.makeMove));
-      setPaused(true);
+      stopEngine();
     });
 
   const togglePanel = (p: Panel) => setPanel(panel === p ? null : p);
