@@ -877,16 +877,7 @@ button.canonical-play {
   font-weight: 700;
 }
 
-/* The last move's badge: green if it was the best move, amber for "?", red for "??" */
-.board .move-mark.best rect {
-  fill: var(--best-soft);
-  stroke: var(--best);
-}
-
-.board .move-mark.best text {
-  fill: var(--best);
-}
-
+/* The last move's badge: amber for "?", red for "??" */
 .board .move-mark.inaccuracy rect {
   fill: var(--warn-soft);
   stroke: var(--warn);

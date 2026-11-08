@@ -421,25 +421,11 @@ export function App() {
     judgement?.mark && previousSnapshot
       ? { mark: judgement.mark, title: `Not the best move: ${previousSnapshot.toMove} ${outcome(judgement.played)} instead of ${outcome(judgement.best)}` }
       : null;
-  // The badge beside the last move: with evaluation values on the board, its value (in the
-  // same terms as the other values), coloured by how good it was; otherwise just "?" or "??"
-  let lastBadge: LastMoveBadge | null = null;
-  if (judgement && previousSnapshot && snap.lastMove && previousEvaluation) {
-    const kind = judgement.mark === "??" ? "blunder" : judgement.mark === "?" ? "inaccuracy" : "best";
-    const title = lastMark?.title ?? "The best move";
-    if (boardValues === "evaluation") {
-      const mover = previousSnapshot.toMove;
-      const label = evaluationLabels(
-        previousEvaluation.result,
-        previousSnapshot.scores[mover] - previousSnapshot.scores[other(mover)],
-        countScore ? "margin" : "engine",
-        perspective === "A" && mover === "B",
-      ).get(lineKeyOf(snap.lastMove));
-      if (label) lastBadge = { text: label.text, kind, title };
-    } else if (judgement.mark) {
-      lastBadge = { text: judgement.mark, kind, title };
-    }
-  }
+  // The badge beside the last move, for a mistake: "?" or "??". (Not its value, even with
+  // evaluation values on the board: its value belongs to the position before it, so showing it
+  // alongside the values for the position now would invite misleading comparisons.)
+  const lastBadge: LastMoveBadge | null =
+    lastMark && judgement?.mark ? { text: judgement.mark, kind: judgement.mark === "??" ? "blunder" : "inaccuracy", title: lastMark.title } : null;
   // The last move can be checked on request when judging it wasn't cheap
   const canCheckMove = showLastMove && !!previousKey && !previousEvaluation && notCheap.has(`${previousKey} evaluate`);
   const checkingMove = !!running && running.key === previousKey && running.kind === "evaluate" && !engineActive;

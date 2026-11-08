@@ -10,9 +10,10 @@ import type { Player } from "../game/state";
 
 export type View = "dab" | "snc";
 
+// A badge judging the last move: "?" for an inaccuracy or "??" for a blunder
 export interface LastMoveBadge {
   text: string;
-  kind: "best" | "inaccuracy" | "blunder";
+  kind: "inaccuracy" | "blunder";
   title: string;
 }
 
@@ -22,8 +23,7 @@ interface BoardProps {
   owners: (Player | null)[][];
   view: View;
   toMove: Player;
-  // The last move, if it's to be shown, and any badge judging it: its value or mark (e.g.
-  // "?"), how good it was, and an explanation
+  // The last move, if it's to be shown, and any badge judging it ("?" or "??"), with an explanation
   lastMove: Line | null;
   lastBadge?: LastMoveBadge | null;
   interactive: boolean;
