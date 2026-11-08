@@ -32,6 +32,23 @@ describe("analysis", () => {
     expect(marginLabels.get(lineKeyOf({ part: 0, m: { x: 2, y: 1, side: "Bottom" } }))).toEqual({ text: "+5", best: true });
   });
 
+  it("labels moves from the other player's point of view when flipped", () => {
+    const position = example("berlekamp-ex3.1").position;
+    const evaluation = engine.evaluate(position);
+    const answer = lineKeyOf({ part: 0, m: { x: 2, y: 1, side: "Bottom" } });
+    // The mover's best move is worth +3 to them, so -3 to the other player, and still marked best
+    expect(evaluationLabels(evaluation, 0, "engine", true).get(answer)).toEqual({ text: "−3", best: true });
+    // Counting a 2-point lead for the mover: +5 for them, -5 for the other player
+    expect(evaluationLabels(evaluation, 2, "margin", true).get(answer)).toEqual({ text: "−5", best: true });
+    // Every label is negated, and the same moves are marked best
+    const plain = evaluationLabels(evaluation, 1, "margin");
+    const flipped = evaluationLabels(evaluation, 1, "margin", true);
+    for (const [key, label] of plain) {
+      expect(flipped.get(key)!.best).toBe(label.best);
+      expect(flipped.get(key)!.text).toBe(label.text === "0" ? "0" : label.text.startsWith("+") ? `−${label.text.slice(1)}` : `+${label.text.slice(1)}`);
+    }
+  });
+
   it("labels moves with Nimstring values", () => {
     const position = example("berlekamp-p50").position;
     const analysis = engine.nimstringAnalysis(position);
