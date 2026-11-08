@@ -29,6 +29,8 @@ interface BoardProps {
   labels?: MoveLabels;
   // Canonical moves to highlight, keyed by lineKey
   canonical?: Set<string>;
+  // Coins which the highlighted canonical moves would capture
+  canonicalCoins?: [number, number][];
   // voids[y][x]: cells which aren't coins, just padding (see GameState.voids)
   voids?: boolean[][] | null;
 }
@@ -135,7 +137,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
   // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
   const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
   const lineBordersOnlyVoids = (line: Line) =>
@@ -241,6 +243,10 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
+      ...canonicalCoins.map(([x, y]) => {
+        const [dx, dy] = dot(x, y);
+        return <rect key={`kb${x},${y}`} class="canonical-box" x={dx} y={dy} width={CELL} height={CELL} />;
+      }),
       ...previewCoins.map(([x, y]) => {
         const [dx, dy] = dot(x, y);
         return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
@@ -275,7 +281,9 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       ...coins.filter(([x, y]) => !isVoid(x, y)).map(([x, y]) => {
         const [cx, cy] = centre(x, y);
         if (!isCoinCaptured(data, x, y)) {
-          return <circle key={`c${x},${y}`} class={willCapture(x, y) ? "coin capture-preview" : "coin"} cx={cx} cy={cy} r={COIN_R} />;
+          const canonicalCapture = canonicalCoins.some(([kx, ky]) => kx === x && ky === y);
+          const cls = willCapture(x, y) ? "coin capture-preview" : canonicalCapture ? "coin canonical-capture" : "coin";
+          return <circle key={`c${x},${y}`} class={cls} cx={cx} cy={cy} r={COIN_R} />;
         }
         const owner = owners[y][x];
         return (

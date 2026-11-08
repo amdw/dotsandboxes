@@ -162,17 +162,24 @@ export function restart(game: GameState): GameState {
   return startFrom(game.snapshots[0], { baseScores: game.baseScores, voids: game.voids });
 }
 
+// A sequence of canonical moves, and the coins they capture
+export interface CanonicalSequence {
+  moves: CPosMove[];
+  captured: Coin[];
+}
+
 // The canonical moves (given by canonicalMoves) which can be played one after another
 // from a position until there are none left. They're all captures, so all by the player
 // to move, and all on strings present in the position.
-export function canonicalSequence(position: PositionData, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): CPosMove[] {
-  const sequence: CPosMove[] = [];
+export function canonicalSequence(position: PositionData, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): CanonicalSequence {
+  const sequence: CanonicalSequence = { moves: [], captured: [] };
   let current = position;
   for (let i = 0; i < 10000; i++) {
     const moves = canonicalMoves(current);
     if (moves.length === 0) break;
-    sequence.push(moves[0]);
+    sequence.moves.push(moves[0]);
     const result = makeMove(current, moves[0]);
+    sequence.captured.push(...result.captured);
     if (result.end_of_game) break;
     current = result.position;
   }
@@ -181,5 +188,5 @@ export function canonicalSequence(position: PositionData, canonicalMoves: (posit
 
 // Play the canonical sequence from the current position, each as a separate move in the history
 export function playCanonicalMoves(game: GameState, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): GameState {
-  return canonicalSequence(current(game).position, canonicalMoves, makeMove).reduce((g, m) => playMove(g, m, makeMove), game);
+  return canonicalSequence(current(game).position, canonicalMoves, makeMove).moves.reduce((g, m) => playMove(g, m, makeMove), game);
 }

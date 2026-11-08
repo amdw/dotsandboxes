@@ -17,6 +17,7 @@
   --accent: #b3261e;
   --best: #1e7a3c;
   --canonical: #7b4fd6;
+  --canonical-soft: #ebe2fb;
   --best-soft: #d8f0df;
   --error-bg: #fde8e6;
   color-scheme: light;
@@ -42,6 +43,7 @@
     --accent: #ff7a6e;
     --best: #5fd08a;
     --canonical: #b39cff;
+    --canonical-soft: #2f2645;
     --best-soft: #1c3b27;
     --error-bg: #4a1f1b;
     color-scheme: dark;
@@ -67,6 +69,7 @@
   --accent: #ff7a6e;
   --best: #5fd08a;
   --canonical: #b39cff;
+  --canonical-soft: #2f2645;
   --best-soft: #1c3b27;
   --error-bg: #4a1f1b;
   color-scheme: dark;
@@ -754,6 +757,16 @@ button.canonical-play {
 
 
 /* Canonical moves (captures which can be made without loss), when highlighted */
+.board .canonical-box {
+  fill: var(--canonical-soft);
+  pointer-events: none;
+}
+
+.board .coin.canonical-capture {
+  fill: var(--canonical-soft);
+  stroke: var(--canonical);
+}
+
 .board .canonical {
   stroke: var(--canonical);
   stroke-width: 6;

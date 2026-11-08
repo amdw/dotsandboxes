@@ -343,7 +343,8 @@ export function App() {
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
   // Canonical moves, when highlighted: the whole sequence of them which can be played from here
-  const canonicalMoves = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : [];
+  const canonicalPlan = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : { moves: [], captured: [] };
+  const canonicalMoves = canonicalPlan.moves;
   const canonical = new Set(canonicalMoves.map(lineKeyOf));
   const playCanonical = () =>
     attempt(() => {
@@ -565,6 +566,7 @@ export function App() {
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
               voids={game.voids?.[i]}
               canonical={canonical}
+              canonicalCoins={canonicalPlan.captured.filter((c) => c.part === i).map((c): [number, number] => [c.x, c.y])}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}

@@ -225,8 +225,11 @@ describe("game state", () => {
     // Opened 5-chain with another 5-chain left: three coins, then the decision point
     let game = newGameState(engine.examples().find((e) => e.id === "double-deal")!.position);
     game = playMove(game, mv(0, 0, "Left"), engine.makeMove);
-    const sequence = canonicalSequence(current(game).position, engine.canonicalMoves, engine.makeMove);
+    const first = canonicalSequence(current(game).position, engine.canonicalMoves, engine.makeMove);
+    const sequence = first.moves;
     expect(sequence).toHaveLength(3);
+    // Those three moves capture the first three coins of the opened chain
+    expect(first.captured.map((c) => `${c.part} ${c.x} ${c.y}`).sort()).toEqual(["0 0 0", "0 1 0", "0 2 0"]);
     expect(new Set(sequence.map((m) => `${m.m.x} ${m.m.y} ${m.m.side}`)).size).toBe(3);
 
     // B double-deals; now A takes the two coins, then the last chain is all canonical
@@ -236,7 +239,10 @@ describe("game state", () => {
     expect(current(game).scores).toEqual({ A: 2, B: 3 });
     // ...and must open the last chain; B can then take all of it
     game = playMove(game, mv(0, 1, "Left"), engine.makeMove);
-    expect(canonicalSequence(current(game).position, engine.canonicalMoves, engine.makeMove)).toHaveLength(5);
+    const last = canonicalSequence(current(game).position, engine.canonicalMoves, engine.makeMove);
+    expect(last.moves).toHaveLength(5);
+    // Taking the whole last chain captures all five of its coins
+    expect(last.captured.map((c) => `${c.part} ${c.x} ${c.y}`).sort()).toEqual(["0 0 1", "0 1 1", "0 2 1", "0 3 1", "0 4 1"]);
     game = playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove);
     expect(current(game).gameOver).toBe(true);
     expect(current(game).scores).toEqual({ A: 2, B: 8 });
