@@ -20,7 +20,7 @@ dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs) vc.tex
 	./genpdf.py
 
 fig_%.pdf: fig_%.svg
-	inkscape -D -z --file=$< --export-pdf=$@ --export-latex
+	inkscape -D --export-type=pdf --export-latex --export-filename=$@ $<
 
 fig_%.svg: fig_%.py svg.py
 	python3 $< > $@

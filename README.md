@@ -5,11 +5,11 @@ game](https://en.wikipedia.org/wiki/Dots_and_Boxes). Its website is
 [amdw.github.io/dotsandboxes](https://amdw.github.io/dotsandboxes/).
 
 The main thing here is a draft of a paper I am writing on the game. A
-PDF version of this paper is available
-[here](https://drive.google.com/file/d/17FfeXFUwnBBKf1XHLdn83dD_sf7kzaMK/view?usp=sharing),
-though this may not always be up-to-date with the head of this
-repository (the commit used to generate the PDF may be found in the
-footnote at the end).
+PDF version of this paper, built from the head of this repository, is
+available
+[here](https://amdw.github.io/dotsandboxes/dotsandboxes.pdf) (the
+commit used to generate the PDF may be found in the footnote at the
+end).
 
 There is also an engine for the game, written in the [Rust programming
 language](https://www.rust-lang.org/), which you can use in your
@@ -43,12 +43,13 @@ material.
 
 ## On Linux
 
-To build the PDF from the source in this repository, you need a full
-installation of [LaTeX](http://latex-project.org/), as well as Python
-3 and Inkscape to generate some of the diagrams, and `make` to
-coordinate the build. E.g. on Fedora, `dnf install texlive texlive-svg
-inkscape pstoedit make`, `cd` into this repository, and run
-`make`.
+To build the PDF from the source in this repository, you need
+[LaTeX](http://latex-project.org/), Python 3 and Inkscape (1.0 or
+later) to generate the diagrams, `gawk` and Git for the version
+footnote, and `make` to coordinate the build. E.g. on Debian or
+Ubuntu, `apt-get install --no-install-recommends texlive-latex-base
+texlive-fonts-recommended inkscape gawk python3 make git`, `cd` into
+this repository, and run `make`.
 
 To perform [Pylint](https://www.pylint.org/) checks on the Python
 scripts, run `make pylint` (requires `python3-pylint`). It
@@ -70,7 +71,7 @@ with Docker on your computer before attempting this.
 The basic procedure is:
 
 * Build a base image containing the required external packages (which
-is slow, as it requires hundreds of packages to be downloaded, but you
+is slow, as it requires many packages to be downloaded, but you
 only have to do it once)
 * Perform the build in a container starting from that base image
 * Extract any files you may want from that container.
