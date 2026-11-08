@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2016 Andrew Medworth (github@medworth.org.uk)
+# Copyright 2016-2026 Andrew Medworth (github@medworth.org.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -18,31 +18,34 @@
 """Generate PDF file"""
 
 import subprocess
+import sys
 
 def main():
     """Entry point"""
-    # Run pdflatex until it no longer gives "re-run to get cross references right" output
-    # But no more than five times, to avoid an infinite loop
-    runs = 0
+    # Run pdflatex until it no longer gives "re-run to get cross references right" output,
+    # but no more than five times, to avoid an infinite loop. Earlier runs report undefined
+    # references which later runs resolve, so only show the output of the final run (or of
+    # a run which fails), which is also kept in pdflatex.log.
     max_runs = 5
-    success = False
-    command = "pdflatex -halt-on-error dotsandboxes.tex"
+    command = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "dotsandboxes.tex"]
     search_text = "Rerun to get cross-references right"
     log_filename = "pdflatex.log"
-    while runs < max_runs:
-        runs += 1
-        subprocess.check_call("{0} | tee {1}".format(command, log_filename), shell=True)
-        grep_result = subprocess.call(["grep", search_text, log_filename])
-        if grep_result not in [0, 1]:
-            raise Exception("grep failed with status {0}".format(grep_result))
-        if grep_result == 1:
-            success = True
-            break
+    for runs in range(1, max_runs + 1):
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                encoding="utf-8", errors="replace", check=False)
+        with open(log_filename, "w", encoding="utf-8") as log_file:
+            log_file.write(result.stdout)
+        if result.returncode != 0:
+            sys.stdout.write(result.stdout)
+            raise Exception("pdflatex failed with status {0}".format(result.returncode))
+        if search_text not in result.stdout:
+            sys.stdout.write(result.stdout)
+            print("pdflatex success in {0} runs".format(runs))
+            return
+        print("pdflatex run {0} done, re-running to get cross-references right".format(runs))
 
-    if not success:
-        raise Exception("Still got cross-references warning after {0} runs".format(max_runs))
-
-    print("pdflatex success in {0} runs".format(runs))
+    sys.stdout.write(result.stdout)
+    raise Exception("Still got cross-references warning after {0} runs".format(max_runs))
 
 if __name__ == '__main__':
     main()
