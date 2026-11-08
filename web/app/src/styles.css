@@ -254,7 +254,7 @@ button.small {
   color: var(--muted);
 }
 
-.panel input[type="number"] {
+.panel .part-size input {
   color: var(--fg);
   width: 4.5em;
   padding: 6px 8px;
@@ -262,6 +262,10 @@ button.small {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
+}
+
+.panel .part-size input[aria-invalid="true"] {
+  border-color: var(--accent);
 }
 
 .panel textarea {
