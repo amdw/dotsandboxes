@@ -426,6 +426,31 @@ button.example {
 
 .part-number {
   text-align: right;
+  position: relative;
+}
+
+/* A confirmation shown beside the control which opened it */
+.popover {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.popover button.small {
+  margin-left: 4px;
 }
 
 /* Part numbers are buttons which isolate that part */

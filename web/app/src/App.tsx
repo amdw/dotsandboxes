@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
 import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
+import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
@@ -75,6 +76,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>(loadView);
   const [panel, setPanel] = useState<Panel | null>(null);
+  // The part whose "play on its own" confirmation is open, if any
+  const [isolating, setIsolating] = useState<number | null>(null);
+  const closeIsolating = useCallback(() => setIsolating(null), []);
 
   // Engine analysis: results are cached per position (keyed by positionKey)
   const analyser = useRef<Analyser | null>(null);
@@ -347,14 +351,24 @@ export function App() {
                 class="part-chip"
                 title={`Play part ${i} on its own`}
                 aria-label={`Play part ${i} on its own`}
-                onClick={() => {
-                  setGame(isolatePart(game, i));
-                  setName(`${name}-part${i}`);
-                  setPanel(null);
-                }}
+                aria-expanded={isolating === i}
+                onClick={() => setIsolating(isolating === i ? null : i)}
               >
                 {i}
               </button>
+              {isolating === i && (
+                <ConfirmPopover
+                  question={`Play part ${i} on its own?`}
+                  confirmLabel="Play"
+                  onConfirm={() => {
+                    setIsolating(null);
+                    setGame(isolatePart(game, i));
+                    setName(`${name}-part${i}`);
+                    setPanel(null);
+                  }}
+                  onCancel={closeIsolating}
+                />
+              )}
             </div>
           ),
           <div key={`b${i}`} class="part-board">
