@@ -102,9 +102,9 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
           <Segmented
             label="Values for"
             options={[
+              ["A", "Player A"],
               // Naming the player to move, so it's always clear whose values these are
               ["mover", `Player to move (${props.toMove})`],
-              ["A", "A"],
             ]}
             value={props.perspective}
             onChange={props.onPerspective}
