@@ -17,6 +17,9 @@
   --accent: #b3261e;
   --best: #1e7a3c;
   --canonical: #7b4fd6;
+  --warn: #9a6a00;
+  --last-move: #9c9c95;
+  --warn-soft: #fbefc8;
   --canonical-soft: #ebe2fb;
   --best-soft: #d8f0df;
   --error-bg: #fde8e6;
@@ -43,6 +46,9 @@
     --accent: #ff7a6e;
     --best: #5fd08a;
     --canonical: #b39cff;
+    --warn: #e8bf4a;
+    --last-move: #8a8983;
+    --warn-soft: #3d3216;
     --canonical-soft: #2f2645;
     --best-soft: #1c3b27;
     --error-bg: #4a1f1b;
@@ -69,6 +75,9 @@
   --accent: #ff7a6e;
   --best: #5fd08a;
   --canonical: #b39cff;
+  --warn: #e8bf4a;
+  --last-move: #8a8983;
+  --warn-soft: #3d3216;
   --canonical-soft: #2f2645;
   --best-soft: #1c3b27;
   --error-bg: #4a1f1b;
@@ -537,8 +546,9 @@ button.part-chip {
   stroke-linecap: round;
 }
 
+/* The last move, in a neutral colour (red being for mistakes) */
 .board .drawn.last {
-  stroke: var(--accent);
+  stroke: var(--last-move);
 }
 
 .board .box rect {
@@ -841,4 +851,72 @@ button.canonical-play {
     font-size: 0.85rem;
     white-space: nowrap;
   }
+}
+
+/* The last move: in the strings-and-coins view, the string it cut, as a thin dotted line, and
+   any mark judging it ("?" or "??") */
+.board .last-cut-string {
+  stroke: var(--last-move);
+  stroke-width: 1.5;
+  stroke-dasharray: 1 4;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.board .last-cut-string.arrow {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.board .move-mark {
+  pointer-events: none;
+}
+
+.board .move-mark text {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* The last move's badge: green if it was the best move, amber for "?", red for "??" */
+.board .move-mark.best rect {
+  fill: var(--best-soft);
+  stroke: var(--best);
+}
+
+.board .move-mark.best text {
+  fill: var(--best);
+}
+
+.board .move-mark.inaccuracy rect {
+  fill: var(--warn-soft);
+  stroke: var(--warn);
+}
+
+.board .move-mark.inaccuracy text {
+  fill: var(--warn);
+}
+
+.board .move-mark.blunder rect {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.board .move-mark.blunder text {
+  fill: var(--surface);
+}
+
+.move-count .move-mark {
+  margin-left: 6px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.move-count .move-mark.inaccuracy {
+  color: var(--warn);
+}
+
+.move-count .checking {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }

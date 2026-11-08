@@ -10,13 +10,22 @@ import type { Player } from "../game/state";
 
 export type View = "dab" | "snc";
 
+export interface LastMoveBadge {
+  text: string;
+  kind: "best" | "inaccuracy" | "blunder";
+  title: string;
+}
+
 interface BoardProps {
   data: PartData;
   part: number;
   owners: (Player | null)[][];
   view: View;
   toMove: Player;
+  // The last move, if it's to be shown, and any badge judging it: its value or mark (e.g.
+  // "?"), how good it was, and an explanation
   lastMove: Line | null;
+  lastBadge?: LastMoveBadge | null;
   interactive: boolean;
   onPlay: (line: Line) => void;
   // If given, captured squares/coins can be clicked to change their owner
@@ -137,7 +146,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = null, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
   // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
   const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
   const lineBordersOnlyVoids = (line: Line) =>
@@ -229,6 +238,45 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         })
     : [];
 
+  // A badge judging the last move, just beside it (so as not to hide it): offset from the middle
+  // of its line or string at right angles, towards the inside of the board
+  const lastMoveMarkers: JSX.Element[] = [];
+  if (lastMove && lastBadge) {
+    const [[x1, y1], [x2, y2]] = ends(lastMove);
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const [px, py] = [-(y2 - y1) / len, (x2 - x1) / len];
+    const offset = CELL * 0.26;
+    let [cx, cy] = [(x1 + x2) / 2 + px * offset, (y1 + y2) / 2 + py * offset];
+    if (cx < CELL * 0.3 || cy < CELL * 0.3 || cx > width - CELL * 0.3 || cy > height - CELL * 0.3) {
+      [cx, cy] = [(x1 + x2) / 2 - px * offset, (y1 + y2) / 2 - py * offset];
+    }
+    const w = lastBadge.text.replace(/\uFE0E/g, "").length * 6.5 + 8;
+    lastMoveMarkers.push(
+      <g key="badge" class={`move-mark ${lastBadge.kind}`}>
+        <title>{lastBadge.title}</title>
+        <rect x={cx - w / 2} y={cy - 8} width={w} height={16} rx={8} />
+        <text x={cx} y={cy}>
+          {lastBadge.text}
+        </text>
+      </g>,
+    );
+  }
+
+  // In the strings-and-coins view, the string the last move cut, as a thin dotted line
+  // (under the coins); the coins it captured are shown as captured anyway
+  const lastCut =
+    view === "snc" && lastMove
+      ? (() => {
+          const { ends: cutEnds, ground } = sncEnds(lastMove);
+          return (
+            <g key="last-cut" class="last-cut">
+              <Segment ends={cutEnds} class="last-cut-string" />
+              {ground && <GroundArrow ends={cutEnds} class="last-cut-string arrow" />}
+            </g>
+          );
+        })()
+      : null;
+
   let content: (JSX.Element | null)[];
   if (view === "dab") {
     content = [
@@ -282,6 +330,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
+      lastCut,
       ...canonicalLines,
       ...moveTargets,
       ...coins.filter(([x, y]) => !isVoid(x, y)).map(([x, y]) => {
@@ -315,6 +364,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       aria-label={`Part ${part}`}
     >
       {content}
+      {lastMoveMarkers}
       {valueLabels}
     </svg>
   );

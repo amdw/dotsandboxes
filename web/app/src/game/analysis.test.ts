@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { chooseEngineMove, evaluationLabels, formatNimstring, isWinningNimstringMove, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
+import { chooseEngineMove, evaluationLabels, formatNimstring, isWinningNimstringMove, judgeMove, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -126,6 +126,22 @@ describe("analysis", () => {
     }
     // No moves left
     expect(chooseEngineMove({ value: 0, moves: [] })).toBeNull();
+  });
+
+  it("judges moves as optimal, ? or ??", () => {
+    // Exercise 3.1: A's best move is worth +3; the others are worth -1, -5 or -7
+    const evaluation = engine.evaluate(example("berlekamp-ex3.1").position);
+    const valueOf = (v: number) => evaluation.moves.find((m) => m.value === v)!.move;
+    expect(judgeMove(evaluation, valueOf(3), 0)).toEqual({ mark: null, best: 3, played: 3 });
+    // Losing instead of winning
+    expect(judgeMove(evaluation, valueOf(-1), 0)).toEqual({ mark: "??", best: 3, played: -1 });
+    // With a 5-point lead already, -1 still wins (by 4 instead of 8): not optimal, same outcome
+    expect(judgeMove(evaluation, valueOf(-1), 5)).toEqual({ mark: "?", best: 8, played: 4 });
+    // Turning a win into a draw also changes the outcome
+    expect(judgeMove(evaluation, valueOf(-1), 1)?.mark).toBe("??");
+    expect(judgeMove(evaluation, valueOf(-1), 1)?.played).toBe(0);
+    // A move which isn't in the evaluation (e.g. from another position)
+    expect(judgeMove(evaluation, { part: 3, m: { x: 0, y: 0, side: "Top" } }, 0)).toBeNull();
   });
 });
 

@@ -31,6 +31,8 @@ with nothing to install. There you can:
   them on its own
 * Highlight and play canonical moves (captures which can be made
   without loss)
+* See the last move made, marked "?" if it wasn't the best move or
+  "??" if it changed the outcome
 * Share any game as a link (the address bar always holds one), which
   reopens it exactly as it was
 
