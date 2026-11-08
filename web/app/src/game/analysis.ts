@@ -37,10 +37,16 @@ export function formatNimstring(value: NimstringValue): string {
   return value === "Loony" ? LOONY : `*${value.Nimber}`;
 }
 
-export function evaluationLabels(evaluation: Evaluation, scoreDiff: number, mode: ValueMode): MoveLabels {
+// Labels for the board from an evaluation (whose values are for the player to move). With
+// flip, the values are negated, i.e. shown from the other player's point of view. Either way,
+// the best moves (for the player to move) are marked.
+export function evaluationLabels(evaluation: Evaluation, scoreDiff: number, mode: ValueMode, flip = false): MoveLabels {
   const best = Math.max(...evaluation.moves.map((m) => m.value));
   return new Map(
-    evaluation.moves.map((m) => [lineKeyOf(m.move), { text: signed(mode === "engine" ? m.value : m.value + scoreDiff), best: m.value === best }]),
+    evaluation.moves.map((m) => {
+      const value = mode === "engine" ? m.value : m.value + scoreDiff;
+      return [lineKeyOf(m.move), { text: signed(flip ? -value : value), best: m.value === best }];
+    }),
   );
 }
 

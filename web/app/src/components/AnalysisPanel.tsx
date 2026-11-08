@@ -2,9 +2,13 @@
 // and showing progress (with cancellation) while they're calculated
 import type { ComponentChildren } from "preact";
 import type { AnalysisKind } from "../game/analysis";
+import type { Player } from "../game/state";
 
 // What the board shows on the legal moves
 export type BoardValues = "evaluation" | "nimstring" | "off";
+
+// Whose point of view evaluation values are shown from: the player to move, or always A
+export type Perspective = "mover" | "A";
 
 export interface Timed<T> {
   result: T;
@@ -21,6 +25,9 @@ interface AnalysisPanelProps {
   // the rest of the game (the engine's own value, which ignores coins already taken)
   countScore: boolean;
   onCountScore: (count: boolean) => void;
+  perspective: Perspective;
+  onPerspective: (perspective: Perspective) => void;
+  toMove: Player;
   onCancel: () => void;
 }
 
@@ -89,6 +96,18 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
             ]}
             value={props.countScore}
             onChange={props.onCountScore}
+          />
+        )}
+        {props.boardValues === "evaluation" && (
+          <Segmented
+            label="Values for"
+            options={[
+              // Naming the player to move, so it's always clear whose values these are
+              ["mover", `Player to move (${props.toMove})`],
+              ["A", "A"],
+            ]}
+            value={props.perspective}
+            onChange={props.onPerspective}
           />
         )}
 

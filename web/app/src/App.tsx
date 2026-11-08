@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preac
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
-import { AnalysisPanel, AnalysisProgress, Segmented, type BoardValues, type Timed } from "./components/AnalysisPanel";
+import { AnalysisPanel, AnalysisProgress, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
@@ -39,6 +39,34 @@ function loadCountScore(): boolean {
     return localStorage.getItem(COUNT_SCORE_KEY) !== "false";
   } catch {
     return true;
+  }
+}
+
+// Whose point of view evaluation values are shown from, remembered separately for values
+// including and excluding the score so far. By default, values including the score are for
+// A (so their sign doesn't flip as the turn changes), and those excluding it for the
+// player to move.
+function perspectiveKey(countScore: boolean): string {
+  return countScore ? "dab-perspective-with-score" : "dab-perspective-without-score";
+}
+
+function loadPerspectives(): Record<"withScore" | "withoutScore", Perspective> {
+  const load = (countScore: boolean, fallback: Perspective): Perspective => {
+    try {
+      const stored = localStorage.getItem(perspectiveKey(countScore));
+      return stored === "A" || stored === "mover" ? stored : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  return { withScore: load(true, "A"), withoutScore: load(false, "mover") };
+}
+
+function savePerspective(countScore: boolean, perspective: Perspective) {
+  try {
+    localStorage.setItem(perspectiveKey(countScore), perspective);
+  } catch {
+    // Not important if the preference can't be saved
   }
 }
 
@@ -119,6 +147,8 @@ export function App() {
   // time, so this is off unless the chosen values are available for the position shown
   const [boardValues, setBoardValues] = useState<BoardValues>("off");
   const [countScore, setCountScore] = useState(loadCountScore);
+  const [perspectives, setPerspectives] = useState(loadPerspectives);
+  const perspective = countScore ? perspectives.withScore : perspectives.withoutScore;
 
   // Tick while an analysis runs, to show the time taken so far
   useEffect(() => {
@@ -296,7 +326,7 @@ export function App() {
   let labels: MoveLabels | undefined;
   if (boardValues === "evaluation" && here.evaluate) {
     const scoreDiff = snap.scores[snap.toMove] - snap.scores[other(snap.toMove)];
-    labels = evaluationLabels(here.evaluate.result, scoreDiff, countScore ? "margin" : "engine");
+    labels = evaluationLabels(here.evaluate.result, scoreDiff, countScore ? "margin" : "engine", perspective === "A" && snap.toMove === "B");
   } else if (boardValues === "nimstring" && here.nimstring) {
     labels = nimstringLabels(here.nimstring.result.moves, snap.position);
   }
@@ -674,6 +704,12 @@ export function App() {
         boardValues={boardValues}
         onBoardValues={chooseBoardValues}
         countScore={countScore}
+        perspective={perspective}
+        toMove={snap.toMove}
+        onPerspective={(p) => {
+          setPerspectives(countScore ? { ...perspectives, withScore: p } : { ...perspectives, withoutScore: p });
+          savePerspective(countScore, p);
+        }}
         onCountScore={(count) => {
           setCountScore(count);
           saveCountScore(count);

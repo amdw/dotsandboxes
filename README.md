@@ -24,8 +24,9 @@ with nothing to install. There you can:
   compound position), a named example from Berlekamp's book or the
   paper, a position file, or any position reached in another game
 * See the value of every move, either for the rest of the game or
-  counting the score so far, and the Nimstring value of every move and
-  of each part of the position
+  counting the score so far, and from the point of view of the player
+  to move or of A; and the Nimstring value of every move and of each
+  part of the position
 * Split a position into its independent components, and play any of
   them on its own
 * Highlight and play canonical moves (captures which can be made
