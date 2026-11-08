@@ -91,3 +91,27 @@ export function chooseEngineMove(evaluation: Evaluation, random: () => number = 
   if (best.length === 0) return null;
   return best[Math.min(best.length - 1, Math.floor(random() * best.length))].move;
 }
+
+export type MoveMark = "?" | "??";
+
+export interface MoveJudgement {
+  // "?" for a move which wasn't optimal but didn't change the outcome (win, draw or loss),
+  // "??" for one which did, or null for an optimal move
+  mark: MoveMark | null;
+  // Final margins for the player who moved, counting the score so far, after the best
+  // move and after the move played
+  best: number;
+  played: number;
+}
+
+// Judge a move, given the evaluation of the position before it (for the player who moved)
+// and that player's lead before it. Null if the move isn't one of the evaluation's.
+export function judgeMove(before: Evaluation, move: CPosMove, scoreDiffBefore: number): MoveJudgement | null {
+  const key = lineKeyOf(move);
+  const played = before.moves.find((m) => lineKeyOf(m.move) === key);
+  if (!played) return null;
+  const best = before.value + scoreDiffBefore;
+  const result = played.value + scoreDiffBefore;
+  const mark = result === best ? null : Math.sign(result) !== Math.sign(best) ? "??" : "?";
+  return { mark, best, played: result };
+}

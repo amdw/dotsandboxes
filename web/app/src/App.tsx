@@ -6,7 +6,7 @@ import { AnalysisPanel, AnalysisProgress, Segmented, type BoardValues, type Pers
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
-import { chooseEngineMove, evaluationLabels, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
+import { chooseEngineMove, evaluationLabels, judgeMove, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
 import { decodeGame, encodeGame } from "./game/share";
 import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
@@ -20,6 +20,7 @@ const ENGINE_DELAY_MS = 600;
 const CHEAP_ANALYSIS_POSITIONS = 100_000;
 const COUNT_SCORE_KEY = "dab-count-score";
 const SHOW_CANONICAL_KEY = "dab-show-canonical";
+const SHOW_LAST_MOVE_KEY = "dab-show-last-move";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
 const MAX_ENLARGEMENT = 1.4;
 
@@ -78,6 +79,27 @@ function saveCountScore(count: boolean) {
   }
 }
 
+function loadShowLastMove(): boolean {
+  try {
+    return localStorage.getItem(SHOW_LAST_MOVE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function saveShowLastMove(show: boolean) {
+  try {
+    localStorage.setItem(SHOW_LAST_MOVE_KEY, String(show));
+  } catch {
+    // Not important if the preference can't be saved
+  }
+}
+
+// How a final margin for a player reads, e.g. "wins by 3"
+function outcome(margin: number): string {
+  return margin > 0 ? `wins by ${margin}` : margin < 0 ? `loses by ${-margin}` : "draws";
+}
+
 function loadShowCanonical(): boolean {
   try {
     return localStorage.getItem(SHOW_CANONICAL_KEY) === "true";
@@ -134,6 +156,8 @@ export function App() {
   const [paused, setPaused] = useState(false);
   // Whether to highlight canonical moves (captures which can be made without loss)
   const [showCanonical, setShowCanonical] = useState(loadShowCanonical);
+  // Whether to show the last move made, and marks judging it
+  const [showLastMove, setShowLastMove] = useState(loadShowLastMove);
   // The part whose "play on its own" confirmation is open, if any
   const [isolating, setIsolating] = useState<number | null>(null);
   const closeIsolating = useCallback(() => setIsolating(null), []);
@@ -213,6 +237,16 @@ export function App() {
       analyseIfCheap(wanted, shownPosition, shownKey);
     }
   }, [shownKey]);
+
+  // To judge the last move, evaluate the position before it, but only if that's cheap (e.g.
+  // the engine explored it while evaluating or playing), never starting a long calculation
+  const previousSnapshot = game && game.cursor > 0 ? game.snapshots[game.cursor - 1] : null;
+  const previousKey = previousSnapshot ? positionKey(previousSnapshot.position) : null;
+  useEffect(() => {
+    if (showLastMove && previousSnapshot && previousKey && !results.get(previousKey)?.evaluate) {
+      analyseIfCheap("evaluate", previousSnapshot.position, previousKey);
+    }
+  }, [previousKey, showLastMove]);
 
   // A full analysis, however long it takes (shown in progress, with Cancel)
   const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
@@ -312,7 +346,7 @@ export function App() {
 
   const snap = current(game);
   const atStart = game.cursor === 0;
-  const last = snap.lastMove ? moveToLine(snap.lastMove) : null;
+  const last = showLastMove && snap.lastMove ? moveToLine(snap.lastMove) : null;
   const multiPart = snap.position.parts.length > 1;
   // Margins depend on the game's starting position, so boards don't change size during it.
   // Left and right margins are shared by all parts, so their squares/coins line up in columns.
@@ -372,6 +406,17 @@ export function App() {
   };
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
+  // The judgement of the last move ("?" or "??"), if the position before it has been evaluated
+  const previousEvaluation = previousKey ? results.get(previousKey)?.evaluate : undefined;
+  const judgement =
+    showLastMove && previousSnapshot && snap.lastMove && previousEvaluation
+      ? judgeMove(previousEvaluation.result, snap.lastMove, previousSnapshot.scores[previousSnapshot.toMove] - previousSnapshot.scores[other(previousSnapshot.toMove)])
+      : null;
+  const lastMark =
+    judgement?.mark && previousSnapshot
+      ? { mark: judgement.mark, title: `Not the best move: ${previousSnapshot.toMove} ${outcome(judgement.played)} instead of ${outcome(judgement.best)}` }
+      : null;
+
   // Canonical moves, when highlighted: the whole sequence of them which can be played from here
   const canonicalPlan = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : { moves: [], captured: [] };
   const canonicalMoves = canonicalPlan.moves;
@@ -604,6 +649,8 @@ export function App() {
               view={view}
               toMove={snap.toMove}
               lastMove={last && last.part === i ? last : null}
+              lastCaptured={showLastMove ? snap.lastCaptured.filter((c) => c.part === i).map((c): [number, number] => [c.x, c.y]) : []}
+              lastMark={last && last.part === i ? lastMark : null}
               interactive={!snap.gameOver && !engineActive}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
@@ -647,6 +694,11 @@ export function App() {
         </button>
         <span class="move-count">
           Move {game.cursor} of {game.snapshots.length - 1}
+          {lastMark && (
+            <span class="move-mark" title={lastMark.title}>
+              {lastMark.mark}
+            </span>
+          )}
         </span>
         <button type="button" onClick={() => navigate(game.cursor + 1)} disabled={game.cursor === game.snapshots.length - 1} aria-label="Forward one move">
           ▶
@@ -665,6 +717,18 @@ export function App() {
           ]}
           value={view}
           onChange={chooseView}
+        />
+        <Segmented
+          label="Last move"
+          options={[
+            [true, "Show"],
+            [false, "Hide"],
+          ]}
+          value={showLastMove}
+          onChange={(show) => {
+            setShowLastMove(show);
+            saveShowLastMove(show);
+          }}
         />
         <Segmented
           label="Engine plays"

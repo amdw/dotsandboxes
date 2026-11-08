@@ -16,7 +16,11 @@ interface BoardProps {
   owners: (Player | null)[][];
   view: View;
   toMove: Player;
+  // The last move, if it's to be shown, the coins it captured, and any mark (e.g. "?")
+  // judging it, with an explanation
   lastMove: Line | null;
+  lastCaptured?: [number, number][];
+  lastMark?: { mark: string; title: string } | null;
   interactive: boolean;
   onPlay: (line: Line) => void;
   // If given, captured squares/coins can be clicked to change their owner
@@ -137,7 +141,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, lastCaptured = [], lastMark = null, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
   // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
   const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
   const lineBordersOnlyVoids = (line: Line) =>
@@ -229,6 +233,39 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         })
     : [];
 
+  // Where the last move was made: the middle of its line (or string, in the strings-and-coins
+  // view), marked there with a cross (strings-and-coins) and any mark judging it
+  const lastMovePoint: Point | null = lastMove
+    ? (() => {
+        const [[x1, y1], [x2, y2]] = ends(lastMove);
+        return [(x1 + x2) / 2, (y1 + y2) / 2];
+      })()
+    : null;
+  const lastMoveMarkers: JSX.Element[] = [];
+  if (lastMovePoint && lastMark) {
+    const [cx, cy] = lastMovePoint;
+    const w = lastMark.mark.length * 9 + 10;
+    lastMoveMarkers.push(
+      <g key="mark" class={`move-mark ${lastMark.mark === "??" ? "blunder" : "inaccuracy"}`}>
+        <title>{lastMark.title}</title>
+        <rect x={cx - w / 2} y={cy - 10} width={w} height={20} rx={10} />
+        <text x={cx} y={cy}>
+          {lastMark.mark}
+        </text>
+      </g>,
+    );
+  } else if (lastMovePoint && view === "snc") {
+    const [cx, cy] = lastMovePoint;
+    const d = CELL * 0.09;
+    lastMoveMarkers.push(
+      <g key="cut" class="last-cut">
+        <line x1={cx - d} y1={cy - d} x2={cx + d} y2={cy + d} />
+        <line x1={cx - d} y1={cy + d} x2={cx + d} y2={cy - d} />
+      </g>,
+    );
+  }
+  const wasLastCaptured = (x: number, y: number) => lastCaptured.some(([lx, ly]) => lx === x && ly === y);
+
   let content: (JSX.Element | null)[];
   if (view === "dab") {
     content = [
@@ -295,6 +332,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         return (
           <g key={`c${x},${y}`} class={`captured owner-${owner ?? "none"}${onCycleOwner ? " editable" : ""}`} {...ownerButton(x, y, owner, view, onCycleOwner)}>
             <circle cx={cx} cy={cy} r={COIN_R} />
+            {wasLastCaptured(x, y) && <circle class="last-captured" cx={cx} cy={cy} r={COIN_R + 4} />}
             {owner && (
               <text x={cx} y={cy}>
                 {owner}
@@ -315,6 +353,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       aria-label={`Part ${part}`}
     >
       {content}
+      {lastMoveMarkers}
       {valueLabels}
     </svg>
   );
