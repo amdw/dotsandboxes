@@ -9,8 +9,12 @@ const MAX_PARTS = 8;
 
 export type LoadPosition = (position: PositionData, moves?: CPosMove[], name?: string) => void;
 
-function clamp(n: number): number {
-  return Number.isFinite(n) ? Math.max(1, Math.min(MAX_SIZE, Math.round(n))) : 1;
+// A board dimension as typed, if it's valid: a whole number from 1 to MAX_SIZE
+export function parseSize(text: string): number | null {
+  const trimmed = text.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  return n >= 1 && n <= MAX_SIZE ? n : null;
 }
 
 interface NewGamePanelProps {
@@ -39,21 +43,43 @@ function ExampleList({ examples, onLoad }: { examples: Example[]; onLoad: LoadPo
 }
 
 export function NewGamePanel({ initial, onLoad, onRestart }: NewGamePanelProps) {
-  const [sizes, setSizes] = useState<[number, number][]>(initial);
+  // The sizes exactly as typed, so they can be freely edited (e.g. deleted and retyped);
+  // they're only checked when starting the game
+  const [sizes, setSizes] = useState<[string, string][]>(initial.map(([w, h]) => [String(w), String(h)]));
   const [error, setError] = useState<string | null>(null);
   const examples: Example[] = engine.examples();
 
-  const update = (i: number, dim: 0 | 1, value: number) =>
-    setSizes(sizes.map((s, j) => (j === i ? (dim === 0 ? [clamp(value), s[1]] : [s[0], clamp(value)]) : s)));
+  const update = (i: number, dim: 0 | 1, text: string) => {
+    setSizes(sizes.map((s, j) => (j === i ? (dim === 0 ? [text, s[1]] : [s[0], text]) : s)));
+    setError(null);
+  };
 
   const start = (e: Event) => {
     e.preventDefault();
+    const parsed = sizes.map(([w, h]) => [parseSize(w), parseSize(h)]);
+    if (parsed.some(([w, h]) => w === null || h === null)) {
+      setError(`Widths and heights must be whole numbers from 1 to ${MAX_SIZE}.`);
+      return;
+    }
     try {
-      onLoad(engine.newGame(sizes));
+      onLoad(engine.newGame(parsed as [number, number][]));
     } catch (err) {
       setError(errorMessage(err));
     }
   };
+
+  // A size field: text, but asking for a numeric keypad on phones
+  const sizeInput = (i: number, dim: 0 | 1, value: string) => (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      autoComplete="off"
+      value={value}
+      aria-invalid={error !== null && parseSize(value) === null}
+      onInput={(e) => update(i, dim, e.currentTarget.value)}
+    />
+  );
 
   return (
     <div class="panel new-game">
@@ -74,11 +100,11 @@ export function NewGamePanel({ initial, onLoad, onRestart }: NewGamePanelProps) 
             {sizes.length > 1 && <span class="part-label">Part {i}</span>}
             <label>
               Width
-              <input type="number" min={1} max={MAX_SIZE} value={w} onInput={(e) => update(i, 0, e.currentTarget.valueAsNumber)} />
+              {sizeInput(i, 0, w)}
             </label>
             <label>
               Height
-              <input type="number" min={1} max={MAX_SIZE} value={h} onInput={(e) => update(i, 1, e.currentTarget.valueAsNumber)} />
+              {sizeInput(i, 1, h)}
             </label>
             {sizes.length > 1 && (
               <button type="button" class="quiet" aria-label={`Remove part ${i}`} onClick={() => setSizes(sizes.filter((_, j) => j !== i))}>
