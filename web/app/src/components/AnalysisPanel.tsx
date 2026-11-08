@@ -16,7 +16,7 @@ export interface Timed<T> {
 }
 
 interface AnalysisPanelProps {
-  running: { kind: AnalysisKind; seconds: number } | null;
+  running: { kind: AnalysisKind; seconds: number; positions?: number } | null;
   // Whether the analysis running is the engine thinking about its move, or checking the
   // last move (both of which show their progress elsewhere)
   engineThinking: boolean;
@@ -61,12 +61,21 @@ export function Segmented<T extends string | boolean>({ label, options, value, o
   );
 }
 
+// How long an analysis has taken, and how many positions the engine has cached, e.g.
+// "3.2 s · 1.4M positions"
+export function progressText(seconds: number, positions?: number): string {
+  const time = `${seconds.toFixed(1)} s`;
+  if (!positions) return time;
+  const count = positions >= 1e6 ? `${(positions / 1e6).toFixed(1)}M` : positions >= 1e3 ? `${Math.round(positions / 1e3)}k` : String(positions);
+  return `${time} · ${count} positions`;
+}
+
 // Progress of an analysis, with a Cancel button: shown in the .controls grid under the
 // option which started it
-export function AnalysisProgress({ label, seconds, onCancel }: { label: string; seconds: number; onCancel: () => void }) {
+export function AnalysisProgress({ label, seconds, positions, onCancel }: { label: string; seconds: number; positions?: number; onCancel: () => void }) {
   return (
     <p class="running" role="status">
-      {label}… {seconds.toFixed(1)} s
+      {label}… {progressText(seconds, positions)}
       <button type="button" class="quiet small" onClick={onCancel}>
         Cancel
       </button>
@@ -115,7 +124,7 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
 
       {/* (When the engine is thinking about its move, the progress is shown under "Engine plays" instead) */}
       {running && !props.engineThinking && !props.checkingMove && (
-        <AnalysisProgress label={running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"} seconds={running.seconds} onCancel={props.onCancel} />
+        <AnalysisProgress label={running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"} seconds={running.seconds} positions={running.positions} onCancel={props.onCancel} />
       )}
     </>
   );

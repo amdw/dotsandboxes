@@ -20,8 +20,13 @@ is a static site with no server.
   time, runs in a Web Worker so the page stays responsive.
 * The worker's engine keeps its caches of evaluated positions between
   analyses, so analysing the positions reached as a game goes on is
-  usually almost instant. An analysis can only be cancelled by
-  terminating the worker, which also discards these caches.
+  usually almost instant.
+* The engine can't be interrupted part-way through a calculation, so
+  the worker does long analyses in chunks (each a limited number of
+  new positions). Between chunks it reports progress, handles other
+  requests, and notices if the analysis has been cancelled. Each chunk
+  caches everything it finishes, so cancelling keeps the work done so
+  far, and asking again carries on from there.
 
 ## Building and running
 
