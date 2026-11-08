@@ -172,27 +172,62 @@ where M: Copy, P: EvaluablePosition<M> {
     eval_moves(pos, &moves, cache)
 }
 
+// An evaluator which keeps the values of the positions it has evaluated, so that later
+// evaluations can reuse them: for example, as a game goes on, most of the positions
+// reachable from the next position were already explored when evaluating the previous one.
+// The value of a position depends only on the position, so the cache never goes stale.
+pub struct Evaluator<M> {
+    cache: HashMap<u64, (isize, M)>,
+}
+
+impl<M: Copy> Evaluator<M> {
+    pub fn new() -> Evaluator<M> {
+        Evaluator{ cache: HashMap::new() }
+    }
+
+    // Number of positions whose values are cached
+    pub fn cached_positions(&self) -> usize {
+        self.cache.len()
+    }
+
+    // Forget all cached values, freeing their memory
+    pub fn clear(&mut self) {
+        self.cache = HashMap::new();
+    }
+
+    // Calculate the value function of a given position and a move which achieves that value
+    pub fn eval<P>(&mut self, pos: &P) -> (isize, Option<M>)
+    where P: EvaluablePosition<M> + Clone {
+        let mut pos = pos.clone();
+        eval_cache(&mut pos, &mut self.cache)
+    }
+
+    // Calculate the value function of a given position, along with the value achieved by
+    // each legal move (i.e. the net number of coins the player to move gains from the rest
+    // of the game by making that move, assuming optimal play thereafter).
+    pub fn eval_with_moves<P>(&mut self, pos: &P) -> (isize, HashMap<M, isize>)
+    where M: Hash + Eq, P: EvaluablePosition<M> + Clone {
+        let mut pos = pos.clone();
+        let (value, _) = eval_cache(&mut pos, &mut self.cache);
+        let mut per_move = HashMap::new();
+        for m in pos.legal_moves() {
+            per_move.insert(m, eval_move(&mut pos, m, &mut self.cache));
+        }
+        (value, per_move)
+    }
+}
+
 // Calculate the value function of a given position and a move which achieves that value
 pub fn eval<M, P>(pos: &P) -> (isize, Option<M>)
 where M: Copy, P: EvaluablePosition<M> + Clone {
-    let mut cache = HashMap::new();
-    let mut pos = pos.clone();
-    eval_cache(&mut pos, &mut cache)
+    Evaluator::new().eval(pos)
 }
 
 // Calculate the value function of a given position, along with the value achieved by
-// each legal move (i.e. the net number of coins the player to move gains from the rest
-// of the game by making that move, assuming optimal play thereafter).
+// each legal move (see Evaluator::eval_with_moves).
 pub fn eval_with_moves<M, P>(pos: &P) -> (isize, HashMap<M, isize>)
 where M: Copy + Hash + Eq, P: EvaluablePosition<M> + Clone {
-    let mut cache = HashMap::new();
-    let mut pos = pos.clone();
-    let (value, _) = eval_cache(&mut pos, &mut cache);
-    let mut per_move = HashMap::new();
-    for m in pos.legal_moves() {
-        per_move.insert(m, eval_move(&mut pos, m, &mut cache));
-    }
-    (value, per_move)
+    Evaluator::new().eval_with_moves(pos)
 }
 
 #[cfg(test)]
@@ -568,6 +603,44 @@ mod test {
             }
         }
         assert!(checked > 0);
+    }
+
+    #[test]
+    fn evaluator_reuse_matches_fresh_evaluation() {
+        // One evaluator shared across many positions (including games played on from them)
+        // must give exactly the same results as evaluating each from scratch
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 99;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut evaluator = Evaluator::new();
+        for _ in 0..200 {
+            let mut pos = CompoundPosition::from_single(make_random_pos(&mut r));
+            while !pos.is_end_of_game() {
+                let (val, per_move) = evaluator.eval_with_moves(&pos);
+                assert_eq!(eval_with_moves(&pos), (val, per_move.clone()), "{}", pos);
+                let best = per_move.iter().find(|&(_, &v)| v == val).map(|(&m, _)| m).unwrap();
+                pos.make_move(best);
+            }
+        }
+        assert!(evaluator.cached_positions() > 0);
+        evaluator.clear();
+        assert_eq!(0, evaluator.cached_positions());
+    }
+
+    #[test]
+    fn evaluator_reuse_saves_work() {
+        // After evaluating a position, evaluating the position after the best move
+        // finds almost everything it needs already cached
+        let mut pos = CompoundPosition::from_single(ex3p12());
+        let mut evaluator = Evaluator::new();
+        let (_, best) = evaluator.eval(&pos);
+        let after_first = evaluator.cached_positions();
+        pos.make_move(best.unwrap());
+        evaluator.eval_with_moves(&pos);
+        let added = evaluator.cached_positions() - after_first;
+        let mut fresh = Evaluator::new();
+        fresh.eval_with_moves(&pos);
+        assert!(added * 2 < fresh.cached_positions(), "added {} vs fresh {}", added, fresh.cached_positions());
     }
 
     // TODO: Test that rotations and reflections do not affect the evaluation

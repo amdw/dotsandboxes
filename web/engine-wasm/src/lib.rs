@@ -20,10 +20,18 @@
 // plain JavaScript values (converted with serde), and reports errors as exceptions.
 pub mod api;
 
+use dabengine::eval::Evaluator;
 use dabengine::game::{CPosMove, CompoundPositionData};
+use std::cell::RefCell;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use wasm_bindgen::prelude::*;
+
+thread_local! {
+    // Kept between evaluations, so each can reuse the values cached by earlier ones (this
+    // module runs in a single Web Worker, which is terminated to cancel an analysis)
+    static EVALUATOR: RefCell<Evaluator<CPosMove>> = RefCell::new(Evaluator::new());
+}
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -63,7 +71,7 @@ pub fn make_move(position: JsValue, m: JsValue) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn evaluate(position: JsValue) -> Result<JsValue, JsError> {
     let position: CompoundPositionData = from_js(position)?;
-    to_js(api::evaluate(&position))
+    to_js(EVALUATOR.with(|evaluator| api::evaluate_with(&mut evaluator.borrow_mut(), &position)))
 }
 
 #[wasm_bindgen(js_name = nimstringAnalysis)]

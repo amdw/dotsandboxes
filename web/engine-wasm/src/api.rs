@@ -19,7 +19,7 @@
 // The engine operations used by the web interface, on plain data, independent of
 // wasm-bindgen so that they can be tested natively. Positions and moves are passed
 // in on every call rather than held in the WebAssembly module.
-use dabengine::eval;
+use dabengine::eval::{self, Evaluator};
 use dabengine::examples;
 use dabengine::game::{CPosMove, CompoundPosition, CompoundPositionData, Position, SimplePosition};
 use dabengine::nimstring::{self, ComponentValue, Value};
@@ -140,11 +140,24 @@ pub fn make_move(data: &CompoundPositionData, m: CPosMove) -> Result<MoveResult,
     })
 }
 
-pub fn evaluate(data: &CompoundPositionData) -> Result<Evaluation, String> {
+// Most positions cached by an evaluator kept between evaluations before it is cleared, to
+// bound memory use (an empty 3x3 board's evaluation caches about 8 million positions)
+pub const MAX_CACHED_POSITIONS: usize = 10_000_000;
+
+// Evaluate a position with an evaluator kept between evaluations, so later evaluations
+// (e.g. of the positions reached as a game is played on) can reuse its cached values
+pub fn evaluate_with(evaluator: &mut Evaluator<CPosMove>, data: &CompoundPositionData) -> Result<Evaluation, String> {
     let pos = position_from(data)?;
-    let (value, per_move) = eval::eval_with_moves(&pos);
+    if evaluator.cached_positions() > MAX_CACHED_POSITIONS {
+        evaluator.clear();
+    }
+    let (value, per_move) = evaluator.eval_with_moves(&pos);
     let moves = pos.legal_moves().into_iter().map(|m| MoveValue{ m: m, value: per_move[&m] }).collect();
     Ok(Evaluation{ value: value, moves: moves })
+}
+
+pub fn evaluate(data: &CompoundPositionData) -> Result<Evaluation, String> {
+    evaluate_with(&mut Evaluator::new(), data)
 }
 
 pub fn nimstring_analysis(data: &CompoundPositionData) -> Result<NimstringAnalysis, String> {
@@ -263,6 +276,22 @@ mod tests {
         assert_eq!(-3, result.value);
         assert_eq!(4, result.moves.len());
         assert!(result.moves.iter().all(|mv| mv.value == -3));
+    }
+
+    #[test]
+    fn evaluation_with_kept_evaluator() {
+        // Playing on from a position, a kept evaluator gives the same values as a fresh one
+        let mut evaluator = Evaluator::new();
+        let mut pos = CompoundPosition::from_single(examples::ex3p12()).to_data();
+        for _ in 0..5 {
+            let kept = evaluate_with(&mut evaluator, &pos).unwrap();
+            let fresh = evaluate(&pos).unwrap();
+            assert_eq!(fresh.value, kept.value);
+            assert_eq!(fresh.moves, kept.moves);
+            let best = kept.moves.iter().find(|m| m.value == kept.value).unwrap().m;
+            pos = make_move(&pos, best).unwrap().position;
+        }
+        assert!(evaluator.cached_positions() > 0);
     }
 
     #[test]
