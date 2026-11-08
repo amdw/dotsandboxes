@@ -1,10 +1,11 @@
-// Runs engine analyses in a Web Worker. Requests are handled in turn; the worker keeps the
-// engine's caches between them, so cancelling (which terminates the worker, the only way to
-// interrupt the engine) also discards the caches.
+// Runs engine analyses in a Web Worker (see worker.ts), which keeps the engine's caches
+// between them. Long analyses report their progress, and cancelling one stops it at the end
+// of its current chunk, keeping everything it has calculated so far.
 import type { AnalysisKind } from "../game/analysis";
 import type { Evaluation, NimstringAnalysis, PositionData } from "./types";
 
 export interface AnalysisRequest {
+  type: "analyse";
   id: number;
   kind: AnalysisKind;
   position: PositionData;
@@ -13,9 +14,15 @@ export interface AnalysisRequest {
   maxNew?: number;
 }
 
+export type WorkerMessage = AnalysisRequest | { type: "cancel"; id: number };
+
 type Result = Evaluation | NimstringAnalysis | null;
 
-export type AnalysisResponse = { id: number; ok: true; result: Result } | { id: number; ok: false; error: string };
+export type AnalysisResponse =
+  | { type: "result"; id: number; ok: true; result: Result }
+  | { type: "result"; id: number; ok: false; error: string }
+  // A full analysis's progress: the number of positions the engine has cached
+  | { type: "progress"; id: number; positions: number };
 
 export class CancelledError extends Error {
   constructor() {
@@ -24,8 +31,10 @@ export class CancelledError extends Error {
 }
 
 interface Pending {
+  full: boolean;
   resolve: (r: Result) => void;
   reject: (e: Error) => void;
+  onProgress?: (positions: number) => void;
 }
 
 export class Analyser {
@@ -40,46 +49,45 @@ export class Analyser {
         const response = event.data;
         const pending = this.pending.get(response.id);
         if (!pending) return;
+        if (response.type === "progress") {
+          pending.onProgress?.(response.positions);
+          return;
+        }
         this.pending.delete(response.id);
         if (response.ok) pending.resolve(response.result);
-        else pending.reject(new Error(response.error));
+        else pending.reject(response.error === "cancelled" ? new CancelledError() : new Error(response.error));
       };
       this.worker.onerror = (event) => {
         // The worker may be unusable (e.g. out of memory), so start a fresh one next time
-        this.stop(new Error(event.message || "The engine stopped unexpectedly"));
+        this.worker?.terminate();
+        this.worker = null;
+        const pending = [...this.pending.values()];
+        this.pending.clear();
+        for (const p of pending) p.reject(new Error(event.message || "The engine stopped unexpectedly"));
       };
     }
     return this.worker;
   }
 
-  evaluate(position: PositionData, maxNew?: number): Promise<Evaluation | null> {
-    return this.run("evaluate", position, maxNew) as Promise<Evaluation | null>;
-  }
-
-  nimstringAnalysis(position: PositionData, maxNew?: number): Promise<NimstringAnalysis | null> {
-    return this.run("nimstring", position, maxNew) as Promise<NimstringAnalysis | null>;
-  }
-
-  run(kind: AnalysisKind, position: PositionData, maxNew?: number): Promise<Result> {
+  run(kind: AnalysisKind, position: PositionData, options: { maxNew?: number; onProgress?: (positions: number) => void } = {}): Promise<Result> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      const request: AnalysisRequest = { id, kind, position, maxNew };
+      this.pending.set(id, { full: options.maxNew === undefined, resolve, reject, onProgress: options.onProgress });
+      const request: AnalysisRequest = { type: "analyse", id, kind, position, maxNew: options.maxNew };
       this.getWorker().postMessage(request);
     });
   }
 
-  // Stop all analyses in progress or waiting. The engine can't be interrupted, so the worker
-  // is terminated (losing its caches), and a new one started for the next analysis.
+  // Stop all full analyses in progress or waiting (limited ones finish quickly anyway). They
+  // stop at the end of their current chunk (the engine can't be interrupted part-way through
+  // one), keeping what they've calculated; as far as the caller is concerned, they're
+  // cancelled at once.
   cancel(): void {
-    this.stop(new CancelledError());
-  }
-
-  private stop(reason: Error): void {
-    this.worker?.terminate();
-    this.worker = null;
-    const pending = [...this.pending.values()];
-    this.pending.clear();
-    for (const p of pending) p.reject(reason);
+    for (const [id, p] of this.pending) {
+      if (!p.full) continue;
+      this.worker?.postMessage({ type: "cancel", id } satisfies WorkerMessage);
+      this.pending.delete(id);
+      p.reject(new CancelledError());
+    }
   }
 }

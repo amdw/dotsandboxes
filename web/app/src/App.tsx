@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preac
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
-import { AnalysisPanel, AnalysisProgress, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
+import { AnalysisPanel, AnalysisProgress, progressText, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type LastMoveBadge, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
@@ -175,7 +175,8 @@ export function App() {
   // Engine analysis: results are cached per position (keyed by positionKey)
   const analyser = useRef<Analyser | null>(null);
   const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
-  const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number } | null>(null);
+  // The full analysis running, if any, and its progress (the number of positions cached)
+  const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number; positions?: number } | null>(null);
   const [now, setNow] = useState(0);
   // Values are only calculated when chosen, since analysing larger positions takes a long
   // time, so this is off unless the chosen values are available for the position shown
@@ -226,7 +227,7 @@ export function App() {
     const a = (analyser.current ??= new Analyser());
     const start = performance.now();
     const stillWanted = () => shownKeyRef.current === key && wantedRef.current === kind;
-    a.run(kind, position, CHEAP_ANALYSIS_POSITIONS)
+    a.run(kind, position, { maxNew: CHEAP_ANALYSIS_POSITIONS })
       .then((result) => {
         if (result) storeResult(key, kind, result, start);
         else {
@@ -269,7 +270,9 @@ export function App() {
     const start = performance.now();
     setRunning({ kind, key, start });
     setNow(start);
-    a.run(kind, position)
+    a.run(kind, position, {
+      onProgress: (positions) => setRunning((r) => (r && r.key === key && r.kind === kind ? { ...r, positions } : r)),
+    })
       .then((result) => {
         storeResult(key, kind, result!, start);
         setRunning(null);
@@ -736,7 +739,7 @@ export function App() {
           )}
           {checkingMove && running && (
             <span class="checking">
-              Checking… {(Math.max(0, now - running.start) / 1000).toFixed(1)} s
+              Checking… {progressText(Math.max(0, now - running.start) / 1000, running.positions)}
               <button type="button" class="quiet small" onClick={cancelCheck}>
                 Cancel
               </button>
@@ -786,7 +789,7 @@ export function App() {
           onChange={(v) => chooseEngineSides({ A: v === "A" || v === "both", B: v === "B" || v === "both" })}
         />
         {running && engineActive && (
-          <AnalysisProgress label={`${snap.toMove} (engine) thinking`} seconds={Math.max(0, now - running.start) / 1000} onCancel={cancelAnalysis} />
+          <AnalysisProgress label={`${snap.toMove} (engine) thinking`} seconds={Math.max(0, now - running.start) / 1000} positions={running.positions} onCancel={cancelAnalysis} />
         )}
         <Segmented
           label="Canonical moves"
@@ -807,7 +810,7 @@ export function App() {
           )}
         </Segmented>
         <AnalysisPanel
-        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
+        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000, positions: running.positions }}
         engineThinking={engineActive}
         checkingMove={checkingMove}
         boardValues={boardValues}

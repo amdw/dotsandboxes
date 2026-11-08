@@ -70,18 +70,34 @@ pub fn make_move(position: JsValue, m: JsValue) -> Result<JsValue, JsError> {
     to_js(api::make_move(&position, m))
 }
 
-// Evaluate a position, or with max_new, only if that's cheap (returning undefined if not)
+// Evaluate a position, or with max_new, only as far as evaluating that many new positions
+// (returning undefined if that isn't enough). With continuing, this continues an earlier call
+// for the same position, so the cache isn't cleared however large it is (see api::evaluate_with).
 #[wasm_bindgen]
-pub fn evaluate(position: JsValue, max_new: Option<u32>) -> Result<JsValue, JsError> {
+pub fn evaluate(position: JsValue, max_new: Option<u32>, continuing: Option<bool>) -> Result<JsValue, JsError> {
     let position: CompoundPositionData = from_js(position)?;
-    to_js(EVALUATOR.with(|evaluator| api::evaluate_with(&mut evaluator.borrow_mut(), &position, max_new.map(|n| n as usize))))
+    let max_new = max_new.map(|n| n as usize);
+    to_js(EVALUATOR.with(|evaluator| api::evaluate_with(&mut evaluator.borrow_mut(), &position, max_new, continuing.unwrap_or(false))))
 }
 
-// Calculate Nimstring values, or with max_new, only if that's cheap (returning undefined if not)
+// Calculate Nimstring values (with max_new and continuing as for evaluate)
 #[wasm_bindgen(js_name = nimstringAnalysis)]
-pub fn nimstring_analysis(position: JsValue, max_new: Option<u32>) -> Result<JsValue, JsError> {
+pub fn nimstring_analysis(position: JsValue, max_new: Option<u32>, continuing: Option<bool>) -> Result<JsValue, JsError> {
     let position: CompoundPositionData = from_js(position)?;
-    to_js(NIMSTRING.with(|calculator| api::nimstring_analysis_with(&mut calculator.borrow_mut(), &position, max_new.map(|n| n as usize))))
+    let max_new = max_new.map(|n| n as usize);
+    to_js(NIMSTRING.with(|calculator| api::nimstring_analysis_with(&mut calculator.borrow_mut(), &position, max_new, continuing.unwrap_or(false))))
+}
+
+// Number of positions whose values are cached for evaluation ("evaluate") or Nimstring
+// values ("nimstring"), e.g. to show the progress of a long calculation
+#[wasm_bindgen(js_name = cachedPositions)]
+pub fn cached_positions(kind: &str) -> u32 {
+    let count = if kind == "evaluate" {
+        EVALUATOR.with(|evaluator| evaluator.borrow().cached_positions())
+    } else {
+        NIMSTRING.with(|calculator| calculator.borrow().cached_positions())
+    };
+    count as u32
 }
 
 #[wasm_bindgen(js_name = parsePos)]
