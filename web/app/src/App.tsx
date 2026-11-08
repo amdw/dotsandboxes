@@ -8,7 +8,7 @@ import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
+import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 // Pause before the engine plays a move it has chosen, so that playouts can be followed
@@ -269,8 +269,8 @@ export function App() {
   };
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
-  // Canonical moves, when highlighted
-  const canonicalMoves = showCanonical && !snap.gameOver ? engine.canonicalMoves(snap.position) : [];
+  // Canonical moves, when highlighted: the whole sequence of them which can be played from here
+  const canonicalMoves = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : [];
   const canonical = new Set(canonicalMoves.map(lineKeyOf));
   const playCanonical = () =>
     attempt(() => {

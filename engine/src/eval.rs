@@ -92,10 +92,37 @@ where M: Copy, P: EvaluablePosition<M> {
 // Whether a move is a canonical capture: one which can be made without loss, so there's
 // no need to consider alternatives. In a position which isn't loony, any capture is
 // canonical (taking a free coin never costs anything); in a loony position, a capture is
-// canonical if the position stays loony (so it doesn't affect the option of double-dealing).
+// canonical if the position stays loony (so it doesn't affect the option of double-dealing),
+// or if after it every remaining coin can be captured (so there's nothing left to gain by
+// double-dealing, e.g. when taking the last chain of the game).
 fn is_canonical_capture<M, P>(pos: &mut P, m: M, is_loony: bool) -> bool
 where M: Copy, P: EvaluablePosition<M> {
-    pos.would_capture(m) > 0 && (!is_loony || nimstring::would_be_loony(pos, m))
+    if pos.would_capture(m) == 0 {
+        return false;
+    }
+    if !is_loony || nimstring::would_be_loony(pos, m) {
+        return true;
+    }
+    pos.make_move(m);
+    let result = can_capture_all(pos);
+    pos.undo_move(m);
+    result
+}
+
+// Whether captures alone can take every remaining coin, ending the game. (Capturing only
+// makes other coins easier to capture, so the order the captures are made in doesn't matter.)
+fn can_capture_all<M, P>(pos: &mut P) -> bool
+where M: Copy, P: EvaluablePosition<M> {
+    let mut made = Vec::new();
+    while let Some(m) = pos.legal_moves().into_iter().find(|&m| pos.would_capture(m) > 0) {
+        pos.make_move(m);
+        made.push(m);
+    }
+    let result = pos.is_end_of_game();
+    for &m in made.iter().rev() {
+        pos.undo_move(m);
+    }
+    result
 }
 
 // All the canonical captures available in a position (see is_canonical_capture)
@@ -497,10 +524,23 @@ mod test {
         chain.make_move(Move::new(0, 0, Side::Left));
         assert_eq!(vec![Move::new(0, 0, Side::Right)], canonical_moves(&chain));
 
-        // Opened 2-chain: taking the first coin gives up the double-dealing option, so isn't
+        // Opened 2-chain with another chain left: taking the first coin gives up the
+        // double-dealing option, so isn't canonical
+        let mut chains = double_chain(2);
+        chains.make_move(Move::new(0, 0, Side::Left));
+        assert!(canonical_moves(&chains).is_empty());
+
+        // But if it's the last chain, there's nothing to gain by double-dealing, so it is
         let mut chain = make_chain(2);
         chain.make_move(Move::new(0, 0, Side::Left));
-        assert!(canonical_moves(&chain).is_empty());
+        assert_eq!(vec![Move::new(0, 0, Side::Right)], canonical_moves(&chain));
+
+        // Likewise the last two coins of a longer last chain
+        let mut chain = make_chain(4);
+        for x in 0..3 {
+            chain.make_move(Move::new(x, 0, Side::Left));
+        }
+        assert_eq!(vec![Move::new(2, 0, Side::Right)], canonical_moves(&chain));
 
         // A single capturable coin in a position which isn't loony is free to take
         let mut chain = make_chain(1);

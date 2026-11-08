@@ -162,15 +162,24 @@ export function restart(game: GameState): GameState {
   return startFrom(game.snapshots[0], { baseScores: game.baseScores, voids: game.voids });
 }
 
-// Play canonical moves (given by canonicalMoves) one after another until there are none
-// left, each as a separate move in the history. They're all captures, so all by the
-// player to move.
-export function playCanonicalMoves(game: GameState, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): GameState {
-  let result = game;
-  for (let i = 0; i < 10000 && !current(result).gameOver; i++) {
-    const moves = canonicalMoves(current(result).position);
+// The canonical moves (given by canonicalMoves) which can be played one after another
+// from a position until there are none left. They're all captures, so all by the player
+// to move, and all on strings present in the position.
+export function canonicalSequence(position: PositionData, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): CPosMove[] {
+  const sequence: CPosMove[] = [];
+  let current = position;
+  for (let i = 0; i < 10000; i++) {
+    const moves = canonicalMoves(current);
     if (moves.length === 0) break;
-    result = playMove(result, moves[0], makeMove);
+    sequence.push(moves[0]);
+    const result = makeMove(current, moves[0]);
+    if (result.end_of_game) break;
+    current = result.position;
   }
-  return result;
+  return sequence;
+}
+
+// Play the canonical sequence from the current position, each as a separate move in the history
+export function playCanonicalMoves(game: GameState, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): GameState {
+  return canonicalSequence(current(game).position, canonicalMoves, makeMove).reduce((g, m) => playMove(g, m, makeMove), game);
 }
