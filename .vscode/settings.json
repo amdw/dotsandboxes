@@ -1,0 +1,6 @@
+{
+    "[latex]": {
+        "rewrap.wrappingColumn": 70,
+        "editor.rulers": [70]
+    }
+}
