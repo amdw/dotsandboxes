@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
 import type { CPosMove } from "../engine/types";
-import { current, goTo, newGameState, nextOwner, playMove, startFrom, startFromCurrent, startSplit, withStart } from "./state";
+import { current, goTo, isolatePart, newGameState, nextOwner, playMove, startFrom, startFromCurrent, startSplit, withStart } from "./state";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -154,6 +154,38 @@ describe("game state", () => {
     ]);
     // Voids don't score
     expect(current(fresh).scores).toEqual({ A: 0, B: 0 });
+  });
+
+  it("isolates one part of a game, keeping its owners and voids but not other points", () => {
+    // A single coin and a 3-chain as separate parts, each with a coin captured
+    const coin = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[0];
+    const chain = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[5]; // 3-chain
+    let game = newGameState({ parts: [coin, chain] });
+    game = playMove(game, mv(0, 0, "Left", 0), engine.makeMove); // A takes part 0's coin
+    game = playMove(game, mv(0, 0, "Left", 1), engine.makeMove); // A opens the chain
+    game = playMove(game, mv(0, 0, "Right", 1), engine.makeMove); // B takes a coin of it
+    expect(current(game).scores).toEqual({ A: 1, B: 1 });
+
+    const chainOnly = isolatePart(game, 1);
+    expect(chainOnly.snapshots).toHaveLength(1);
+    expect(current(chainOnly).position.parts).toEqual([current(game).position.parts[1]]);
+    expect(current(chainOnly).owners).toEqual([[["B", null, null]]]);
+    expect(current(chainOnly).scores).toEqual({ A: 0, B: 1 });
+    expect(current(chainOnly).toMove).toBe("B");
+    expect(chainOnly.voids).toBeNull();
+
+    // Voids from a split go with their part, but the split's base scores (here A 1, B 1,
+    // carried over from the game above) don't
+    const split = startSplit(game, engine.split(engine.parsePos("2 2\n1 0 b\n0 1 r\n1 1 b\n"))!);
+    expect(split.baseScores).toEqual({ A: 1, B: 1 });
+    const lShape = isolatePart(split, 0);
+    expect(lShape.voids).toEqual([
+      [
+        [false, false],
+        [false, true],
+      ],
+    ]);
+    expect(current(lShape).scores).toEqual({ A: 0, B: 0 });
   });
 });
 

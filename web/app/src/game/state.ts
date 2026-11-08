@@ -144,3 +144,14 @@ export function withStart(
   }
   return goTo(result, game.cursor);
 }
+
+// A new game with just one part of the current position of a game, keeping that
+// part's coin owners (and so their points) and the player to move
+export function isolatePart(game: GameState, part: number): GameState {
+  const snapshot = current(game);
+  const position = { parts: [snapshot.position.parts[part]] };
+  return startFrom(
+    { ...snapshot, position, owners: [snapshot.owners[part]], gameOver: isEndOfGame(position.parts) },
+    { baseScores: { A: 0, B: 0 }, voids: game.voids ? [game.voids[part]] : null },
+  );
+}

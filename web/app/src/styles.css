@@ -415,7 +415,7 @@ button.example {
 }
 
 .boards {
-  --part-number-width: 1.5em;
+  --part-number-width: 2.25em;
   --part-value-width: 3em;
   --boards-gap: 12px;
   display: grid;
@@ -425,9 +425,18 @@ button.example {
 }
 
 .part-number {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* Part numbers are buttons which isolate that part */
+button.part-chip {
+  min-height: 0;
+  min-width: 1.8em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .part-board {

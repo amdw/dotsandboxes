@@ -7,7 +7,7 @@ import { Board, boardMargins, naturalWidth, type View } from "./components/Board
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState } from "./game/state";
+import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 const COUNT_SCORE_KEY = "dab-count-score";
@@ -341,8 +341,20 @@ export function App() {
       >
         {snap.position.parts.map((data, i) => [
           multiPart && (
-            <div key={`n${i}`} class="part-number" aria-hidden="true">
-              {i}
+            <div key={`n${i}`} class="part-number">
+              <button
+                type="button"
+                class="part-chip"
+                title={`Play part ${i} on its own`}
+                aria-label={`Play part ${i} on its own`}
+                onClick={() => {
+                  setGame(isolatePart(game, i));
+                  setName(`${name}-part${i}`);
+                  setPanel(null);
+                }}
+              >
+                {i}
+              </button>
             </div>
           ),
           <div key={`b${i}`} class="part-board">
