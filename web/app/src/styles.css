@@ -18,6 +18,7 @@
   --best: #1e7a3c;
   --canonical: #7b4fd6;
   --warn: #9a6a00;
+  --last-move: #9c9c95;
   --warn-soft: #fbefc8;
   --canonical-soft: #ebe2fb;
   --best-soft: #d8f0df;
@@ -46,6 +47,7 @@
     --best: #5fd08a;
     --canonical: #b39cff;
     --warn: #e8bf4a;
+    --last-move: #8a8983;
     --warn-soft: #3d3216;
     --canonical-soft: #2f2645;
     --best-soft: #1c3b27;
@@ -74,6 +76,7 @@
   --best: #5fd08a;
   --canonical: #b39cff;
   --warn: #e8bf4a;
+  --last-move: #8a8983;
   --warn-soft: #3d3216;
   --canonical-soft: #2f2645;
   --best-soft: #1c3b27;
@@ -543,8 +546,9 @@ button.part-chip {
   stroke-linecap: round;
 }
 
+/* The last move, in a neutral colour (red being for mistakes) */
 .board .drawn.last {
-  stroke: var(--accent);
+  stroke: var(--last-move);
 }
 
 .board .box rect {
@@ -852,7 +856,7 @@ button.canonical-play {
 /* The last move: in the strings-and-coins view, the string it cut, as a thin dotted line, and
    any mark judging it ("?" or "??") */
 .board .last-cut-string {
-  stroke: var(--accent);
+  stroke: var(--last-move);
   stroke-width: 1.5;
   stroke-dasharray: 1 4;
   stroke-linecap: round;
