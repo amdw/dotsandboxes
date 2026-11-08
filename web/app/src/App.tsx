@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
 import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
+import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
+import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 const COUNT_SCORE_KEY = "dab-count-score";
@@ -75,6 +76,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>(loadView);
   const [panel, setPanel] = useState<Panel | null>(null);
+  // The part whose "play on its own" confirmation is open, if any
+  const [isolating, setIsolating] = useState<number | null>(null);
+  const closeIsolating = useCallback(() => setIsolating(null), []);
 
   // Engine analysis: results are cached per position (keyed by positionKey)
   const analyser = useRef<Analyser | null>(null);
@@ -204,7 +208,9 @@ export function App() {
     setBoardValues("off");
   };
 
-  const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y))));
+  const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
+  // The position split into its independent components, if that would give more parts
+  const split = engine.split(snap.position);
 
   const attempt = (f: () => void) => {
     try {
@@ -263,11 +269,22 @@ export function App() {
             disabled={atStart}
             title="Start a new game from the current position, keeping the scores"
             onClick={() => {
-              setGame(startFrom(snap));
+              setGame(startFromCurrent(game));
               setPanel(null);
             }}
           >
             Start from here
+          </button>
+          <button
+            type="button"
+            disabled={!split}
+            title="Start a new game from the current position, with each independent component as a separate part"
+            onClick={() => {
+              if (split) setGame(startSplit(game, split));
+              setPanel(null);
+            }}
+          >
+            Split
           </button>
           <button type="button" aria-expanded={panel === "import"} onClick={() => togglePanel("import")}>
             Import
@@ -328,8 +345,30 @@ export function App() {
       >
         {snap.position.parts.map((data, i) => [
           multiPart && (
-            <div key={`n${i}`} class="part-number" aria-hidden="true">
-              {i}
+            <div key={`n${i}`} class="part-number">
+              <button
+                type="button"
+                class="part-chip"
+                title={`Play part ${i} on its own`}
+                aria-label={`Play part ${i} on its own`}
+                aria-expanded={isolating === i}
+                onClick={() => setIsolating(isolating === i ? null : i)}
+              >
+                {i}
+              </button>
+              {isolating === i && (
+                <ConfirmPopover
+                  question={`Play part ${i} on its own?`}
+                  confirmLabel="Play"
+                  onConfirm={() => {
+                    setIsolating(null);
+                    setGame(isolatePart(game, i));
+                    setName(`${name}-part${i}`);
+                    setPanel(null);
+                  }}
+                  onCancel={closeIsolating}
+                />
+              )}
             </div>
           ),
           <div key={`b${i}`} class="part-board">
@@ -343,6 +382,7 @@ export function App() {
               interactive={!snap.gameOver}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
+              voids={game.voids?.[i]}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}

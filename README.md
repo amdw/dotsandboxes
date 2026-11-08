@@ -114,7 +114,8 @@ games in either a dots-and-boxes or a strings-and-coins view, and move
 backwards and forwards through them. Games can start from an empty
 board of any size (or several boards, for a compound position), from
 a ```.pos``` file, from the named examples from Berlekamp's book and
-the paper, or from any position reached in another game. The
+the paper, or from any position reached in another game (optionally
+split into its independent components, one board each). The
 engine can evaluate any position, showing the value of every move
 (both for the rest of the game and as a final winning margin), and
 calculate its Nimstring value, including the value of each

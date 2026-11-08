@@ -415,7 +415,7 @@ button.example {
 }
 
 .boards {
-  --part-number-width: 1.5em;
+  --part-number-width: 2.25em;
   --part-value-width: 3em;
   --boards-gap: 12px;
   display: grid;
@@ -425,9 +425,43 @@ button.example {
 }
 
 .part-number {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
   text-align: right;
+  position: relative;
+}
+
+/* A confirmation shown beside the control which opened it */
+.popover {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.popover button.small {
+  margin-left: 4px;
+}
+
+/* Part numbers are buttons which isolate that part */
+button.part-chip {
+  min-height: 0;
+  min-width: 1.8em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .part-board {

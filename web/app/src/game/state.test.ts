@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
 import type { CPosMove } from "../engine/types";
-import { current, goTo, newGameState, nextOwner, playMove, startFrom, withStart } from "./state";
+import { current, goTo, isolatePart, newGameState, nextOwner, playMove, startFrom, startFromCurrent, startSplit, withStart } from "./state";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -108,4 +108,84 @@ describe("game state", () => {
     expect(current(game).gameOver).toBe(true);
     expect(current(game).scores).toEqual({ A: 2, B: 0 });
   });
+
+  it("splits a game into its components, keeping scores and the player to move", () => {
+    // Two 5-chains in one part; A opens one and B takes a coin, so must move again
+    const position = engine.examples().find((e) => e.id === "double-deal")!.position; // two 5-chains
+    let game = newGameState(position);
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove); // A opens the top chain
+    game = playMove(game, mv(0, 0, "Right"), engine.makeMove); // B takes a coin
+    const split = engine.split(current(game).position)!;
+    expect(split.parts).toHaveLength(2);
+    const fresh = startSplit(game, split);
+    expect(fresh.snapshots).toHaveLength(1);
+    expect(current(fresh).toMove).toBe("B");
+    expect(current(fresh).scores).toEqual({ A: 0, B: 1 });
+    expect(fresh.baseScores).toEqual({ A: 0, B: 1 });
+    // The captured coin is gone; the rest of the top chain is a 4-coin part, with no voids
+    expect(split.parts.map((p) => p.width).sort()).toEqual([4, 5]);
+    expect(fresh.voids!.flat(2).some((v) => v)).toBe(false);
+
+    // Scores carry on from the base, and survive starting again or changing the start
+    // B takes the next coin of the opened chain (its left string is already cut)
+    let later = playMove(fresh, mv(0, 0, "Right", split.parts.findIndex((p) => p.width === 4)), engine.makeMove);
+    expect(current(later).scores).toEqual({ A: 0, B: 2 });
+    later = startFromCurrent(later);
+    expect(current(later).scores).toEqual({ A: 0, B: 2 });
+    expect(later.voids).toBe(fresh.voids);
+    const switched = withStart(fresh, { toMove: "A" }, engine.makeMove);
+    expect(current(switched).scores).toEqual({ A: 0, B: 1 });
+  });
+
+  it("marks cells which aren't coins after splitting", () => {
+    // A 2x2 board where the bottom-right coin is cut off from the rest, with just a
+    // string to the ground on its right: an L-shaped component, and a single coin
+    const position = engine.parsePos("2 2\n1 0 b\n0 1 r\n1 1 b\n");
+    const split = engine.split(position)!;
+    expect(split.parts.map((p) => [p.width, p.height])).toEqual([[2, 2], [1, 1]]);
+    const fresh = startSplit(newGameState(position), split);
+    // The L-shaped part's bounding box includes a cell which isn't one of its coins
+    expect(fresh.voids).toEqual([
+      [
+        [false, false],
+        [false, true],
+      ],
+      [[false]],
+    ]);
+    // Voids don't score
+    expect(current(fresh).scores).toEqual({ A: 0, B: 0 });
+  });
+
+  it("isolates one part of a game, keeping its owners and voids but not other points", () => {
+    // A single coin and a 3-chain as separate parts, each with a coin captured
+    const coin = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[0];
+    const chain = engine.examples().find((e) => e.id === "nimstring-examples")!.position.parts[5]; // 3-chain
+    let game = newGameState({ parts: [coin, chain] });
+    game = playMove(game, mv(0, 0, "Left", 0), engine.makeMove); // A takes part 0's coin
+    game = playMove(game, mv(0, 0, "Left", 1), engine.makeMove); // A opens the chain
+    game = playMove(game, mv(0, 0, "Right", 1), engine.makeMove); // B takes a coin of it
+    expect(current(game).scores).toEqual({ A: 1, B: 1 });
+
+    const chainOnly = isolatePart(game, 1);
+    expect(chainOnly.snapshots).toHaveLength(1);
+    expect(current(chainOnly).position.parts).toEqual([current(game).position.parts[1]]);
+    expect(current(chainOnly).owners).toEqual([[["B", null, null]]]);
+    expect(current(chainOnly).scores).toEqual({ A: 0, B: 1 });
+    expect(current(chainOnly).toMove).toBe("B");
+    expect(chainOnly.voids).toBeNull();
+
+    // Voids from a split go with their part, but the split's base scores (here A 1, B 1,
+    // carried over from the game above) don't
+    const split = startSplit(game, engine.split(engine.parsePos("2 2\n1 0 b\n0 1 r\n1 1 b\n"))!);
+    expect(split.baseScores).toEqual({ A: 1, B: 1 });
+    const lShape = isolatePart(split, 0);
+    expect(lShape.voids).toEqual([
+      [
+        [false, false],
+        [false, true],
+      ],
+    ]);
+    expect(current(lShape).scores).toEqual({ A: 0, B: 0 });
+  });
 });
+
