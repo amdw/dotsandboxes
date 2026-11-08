@@ -89,21 +89,64 @@ where M: Copy, P: EvaluablePosition<M> {
     (outcome.coins_captured as isize) + sign * next_val
 }
 
+// Whether a move is a canonical capture: one which can be made without loss, so there's
+// no need to consider alternatives. In a position which isn't loony, any capture is
+// canonical (taking a free coin never costs anything); in a loony position, a capture is
+// canonical if the position stays loony (so it doesn't affect the option of double-dealing),
+// or if after it every remaining coin can be captured (so there's nothing left to gain by
+// double-dealing, e.g. when taking the last chain of the game).
+fn is_canonical_capture<M, P>(pos: &mut P, m: M, is_loony: bool) -> bool
+where M: Copy, P: EvaluablePosition<M> {
+    if pos.would_capture(m) == 0 {
+        return false;
+    }
+    if !is_loony || nimstring::would_be_loony(pos, m) {
+        return true;
+    }
+    pos.make_move(m);
+    let result = can_capture_all(pos);
+    pos.undo_move(m);
+    result
+}
+
+// Whether captures alone can take every remaining coin, ending the game. (Capturing only
+// makes other coins easier to capture, so the order the captures are made in doesn't matter.)
+fn can_capture_all<M, P>(pos: &mut P) -> bool
+where M: Copy, P: EvaluablePosition<M> {
+    let mut made = Vec::new();
+    while let Some(m) = pos.legal_moves().into_iter().find(|&m| pos.would_capture(m) > 0) {
+        pos.make_move(m);
+        made.push(m);
+    }
+    let result = pos.is_end_of_game();
+    for &m in made.iter().rev() {
+        pos.undo_move(m);
+    }
+    result
+}
+
+// All the canonical captures available in a position (see is_canonical_capture)
+pub fn canonical_moves<M, P>(pos: &P) -> Vec<M>
+where M: Copy, P: EvaluablePosition<M> + Clone {
+    let mut pos = pos.clone();
+    let is_loony = pos.is_loony();
+    pos.legal_moves().into_iter().filter(|&m| is_canonical_capture(&mut pos, m, is_loony)).collect()
+}
+
 // Determine what moves deserve consideration in a given position
 fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
 where M: Copy, P: EvaluablePosition<M> {
     let legal_moves = pos.legal_moves();
 
-    // If there are any captures which don't affect looniness, just go ahead and make those
+    // If there are any canonical captures, just go ahead and make one
     let is_loony = pos.is_loony();
     let mut capture: Option<M> = None;
     for &m in &legal_moves {
-        let captures = pos.would_capture(m);
-        if captures == 0 {
+        if pos.would_capture(m) == 0 {
             continue;
         }
         capture = Some(m);
-        if !is_loony || nimstring::would_be_loony(pos, m) {
+        if is_canonical_capture(pos, m, is_loony) {
             return vec!(m);
         }
     }
@@ -469,6 +512,62 @@ mod test {
         let (val, per_move) = eval_with_moves(&SimplePosition::new_end_game(2, 2));
         assert_eq!(0, val);
         assert!(per_move.is_empty());
+    }
+
+    #[test]
+    fn canonical_moves_in_chains() {
+        // Closed chain: no captures at all
+        assert!(canonical_moves(&make_chain(3)).is_empty());
+
+        // Opened 3-chain: taking the first coin leaves it loony, so is canonical
+        let mut chain = make_chain(3);
+        chain.make_move(Move::new(0, 0, Side::Left));
+        assert_eq!(vec![Move::new(0, 0, Side::Right)], canonical_moves(&chain));
+
+        // Opened 2-chain with another chain left: taking the first coin gives up the
+        // double-dealing option, so isn't canonical
+        let mut chains = double_chain(2);
+        chains.make_move(Move::new(0, 0, Side::Left));
+        assert!(canonical_moves(&chains).is_empty());
+
+        // But if it's the last chain, there's nothing to gain by double-dealing, so it is
+        let mut chain = make_chain(2);
+        chain.make_move(Move::new(0, 0, Side::Left));
+        assert_eq!(vec![Move::new(0, 0, Side::Right)], canonical_moves(&chain));
+
+        // Likewise the last two coins of a longer last chain
+        let mut chain = make_chain(4);
+        for x in 0..3 {
+            chain.make_move(Move::new(x, 0, Side::Left));
+        }
+        assert_eq!(vec![Move::new(2, 0, Side::Right)], canonical_moves(&chain));
+
+        // A single capturable coin in a position which isn't loony is free to take
+        let mut chain = make_chain(1);
+        chain.make_move(Move::new(0, 0, Side::Left));
+        assert_eq!(vec![Move::new(0, 0, Side::Right)], canonical_moves(&chain));
+    }
+
+    #[test]
+    fn canonical_moves_are_optimal() {
+        // Every canonical move achieves the value of the position
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 42;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut checked = 0;
+        for _ in 0..300 {
+            let pos = make_random_pos(&mut r);
+            let canonical = canonical_moves(&pos);
+            if canonical.is_empty() {
+                continue;
+            }
+            let (val, per_move) = eval_with_moves(&pos);
+            for m in canonical {
+                assert_eq!(val, per_move[&m], "Canonical move {} in {}", m, pos);
+                checked += 1;
+            }
+        }
+        assert!(checked > 0);
     }
 
     // TODO: Test that rotations and reflections do not affect the evaluation

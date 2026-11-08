@@ -1,5 +1,6 @@
-// Choice of engine analysis values to show on the board, and progress (with
-// cancellation) while they're calculated
+// Rows of the .controls grid choosing the engine analysis values to show on the board,
+// and showing progress (with cancellation) while they're calculated
+import type { ComponentChildren } from "preact";
 import type { AnalysisKind } from "../game/analysis";
 
 // What the board shows on the legal moves
@@ -23,16 +24,29 @@ interface AnalysisPanelProps {
   onCancel: () => void;
 }
 
-export function Segmented<T extends string | boolean>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange: (v: T) => void }) {
+interface SegmentedProps<T> {
+  label: string;
+  options: [T, string][];
+  value: T;
+  onChange: (v: T) => void;
+  // Shown beside the options, e.g. an action button
+  children?: ComponentChildren;
+}
+
+// A labelled row of options: two cells (label and control) of the .controls grid
+export function Segmented<T extends string | boolean>({ label, options, value, onChange, children }: SegmentedProps<T>) {
   return (
     <div class="selector">
-      <span>{label}</span>
-      <div class="segmented" role="radiogroup" aria-label={label}>
-        {options.map(([v, text]) => (
-          <button key={String(v)} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}>
-            {text}
-          </button>
-        ))}
+      <span class="selector-label">{label}</span>
+      <div class="selector-control">
+        <div class="segmented" role="radiogroup" aria-label={label}>
+          {options.map(([v, text]) => (
+            <button key={String(v)} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}>
+              {text}
+            </button>
+          ))}
+        </div>
+        {children}
       </div>
     </div>
   );
@@ -42,8 +56,7 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
   const { running } = props;
 
   return (
-    <section class="analysis" aria-label="Analysis">
-      <div class="selectors">
+    <>
         <Segmented
           label="Values on board"
           options={[
@@ -65,7 +78,6 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
             onChange={props.onCountScore}
           />
         )}
-      </div>
 
       {running && (
         <p class="running" role="status">
@@ -76,6 +88,6 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
           </button>
         </p>
       )}
-    </section>
+    </>
   );
 }

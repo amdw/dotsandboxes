@@ -16,6 +16,7 @@
   --neutral-soft: #e6e6e1;
   --accent: #b3261e;
   --best: #1e7a3c;
+  --canonical: #7b4fd6;
   --best-soft: #d8f0df;
   --error-bg: #fde8e6;
   color-scheme: light;
@@ -40,6 +41,7 @@
     --neutral-soft: #2e2d2a;
     --accent: #ff7a6e;
     --best: #5fd08a;
+    --canonical: #b39cff;
     --best-soft: #1c3b27;
     --error-bg: #4a1f1b;
     color-scheme: dark;
@@ -64,6 +66,7 @@
   --neutral-soft: #2e2d2a;
   --accent: #ff7a6e;
   --best: #5fd08a;
+  --canonical: #b39cff;
   --best-soft: #1c3b27;
   --error-bg: #4a1f1b;
   color-scheme: dark;
@@ -727,24 +730,6 @@ button.part-chip {
 }
 
 
-/* Analysis panel */
-.analysis {
-  max-width: 640px;
-  margin: 20px auto 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.analysis-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-}
-
 .running {
   margin: 0;
   color: var(--muted);
@@ -752,23 +737,75 @@ button.part-chip {
 }
 
 
-.selectors.players {
-  margin-top: 16px;
+button.canonical-play {
+  border-color: var(--canonical);
+  color: var(--canonical);
 }
 
-.selectors {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+
+/* Canonical moves (captures which can be made without loss), when highlighted */
+.board .canonical {
+  stroke: var(--canonical);
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+  pointer-events: none;
 }
 
-.selector {
-  display: flex;
-  flex-wrap: wrap;
+/* The options under the board: a grid of labels (right-aligned) and their controls, so
+   every row lines up, with the progress of any analysis below */
+.controls {
+  display: grid;
+  grid-template-columns: auto auto;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 10px 12px;
+  margin-top: 20px;
+}
+
+.controls .selector {
+  display: contents;
+}
+
+.selector-label {
+  text-align: right;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.selector-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls .running {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+/* On narrow screens, each label goes above its control */
+@media (max-width: 600px) {
+  .controls {
+    grid-template-columns: auto;
+    gap: 4px;
+  }
+
+  .selector-label {
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  .selector-control {
+    justify-content: center;
+  }
+
+  /* More compact options, so the longest ("Including score so far") fit on one line */
+  .controls .segmented button,
+  .controls .selector-control > button {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
 }

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
 import type { CPosMove } from "../engine/types";
-import { current, goTo, isolatePart, newGameState, nextOwner, playMove, restart, startFrom, startFromCurrent, startSplit, withStart } from "./state";
+import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, playCanonicalMoves, playMove, restart, startFrom, startFromCurrent, startSplit, withStart } from "./state";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -204,6 +204,42 @@ describe("game state", () => {
     expect(current(restarted)).toEqual(start);
     expect(restarted.baseScores).toEqual(game.baseScores);
     expect(restarted.voids).toBe(game.voids);
+  });
+
+  it("plays canonical moves until the decision point", () => {
+    // A opens one of two 5-chains; B takes all but the last two coins, then must decide
+    // whether to take them too or double-deal
+    let game = newGameState(engine.examples().find((e) => e.id === "double-deal")!.position);
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove);
+    expect(engine.canonicalMoves(current(game).position)).toHaveLength(1);
+    game = playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove);
+    expect(game.snapshots).toHaveLength(5);
+    expect(current(game).scores).toEqual({ A: 0, B: 3 });
+    expect(current(game).toMove).toBe("B");
+    expect(engine.canonicalMoves(current(game).position)).toEqual([]);
+    // With nothing canonical, nothing happens
+    expect(playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove)).toBe(game);
+  });
+
+  it("finds the whole canonical sequence, including taking the last chain", () => {
+    // Opened 5-chain with another 5-chain left: three coins, then the decision point
+    let game = newGameState(engine.examples().find((e) => e.id === "double-deal")!.position);
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove);
+    const sequence = canonicalSequence(current(game).position, engine.canonicalMoves, engine.makeMove);
+    expect(sequence).toHaveLength(3);
+    expect(new Set(sequence.map((m) => `${m.m.x} ${m.m.y} ${m.m.side}`)).size).toBe(3);
+
+    // B double-deals; now A takes the two coins, then the last chain is all canonical
+    game = playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove);
+    game = playMove(game, mv(4, 0, "Right"), engine.makeMove); // double-deal: leave the last two
+    game = playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove); // A takes them...
+    expect(current(game).scores).toEqual({ A: 2, B: 3 });
+    // ...and must open the last chain; B can then take all of it
+    game = playMove(game, mv(0, 1, "Left"), engine.makeMove);
+    expect(canonicalSequence(current(game).position, engine.canonicalMoves, engine.makeMove)).toHaveLength(5);
+    game = playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove);
+    expect(current(game).gameOver).toBe(true);
+    expect(current(game).scores).toEqual({ A: 2, B: 8 });
   });
 });
 
