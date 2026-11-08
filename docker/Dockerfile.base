@@ -1,2 +1,5 @@
-FROM fedora:24
-RUN dnf install texlive texlive-svg inkscape pstoedit python3-pylint make git -y
+FROM debian:trixie-slim
+# Keep this package list in step with .github/workflows/paper.yml
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends texlive-latex-base texlive-fonts-recommended inkscape gawk python3 make git \
+    && rm -rf /var/lib/apt/lists/*

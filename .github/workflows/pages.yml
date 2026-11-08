@@ -1,6 +1,7 @@
 name: Pages
 
-# Publish the site (site/, with the web interface to the engine under /engine) to GitHub Pages
+# Publish the site (site/, with the paper and the web interface to the engine under /engine)
+# to GitHub Pages
 
 on:
   push:
@@ -10,6 +11,11 @@ on:
       - 'engine/**'
       - 'web/**'
       - 'site/**'
+      - '*.tex'
+      - '*.py'
+      - 'Makefile'
+      - 'vc'
+      - 'vc-git.awk'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -46,6 +52,13 @@ jobs:
           npm ci
           npm run build:wasm
           npm run build
+      # Keep this package list in step with paper.yml
+      - name: Install LaTeX and Inkscape
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends texlive-latex-base texlive-fonts-recommended inkscape gawk
+      - name: Build paper
+        run: make
       - name: Assemble site
         run: site/assemble.sh _site
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
