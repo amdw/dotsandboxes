@@ -298,7 +298,7 @@ export function App() {
     const scoreDiff = snap.scores[snap.toMove] - snap.scores[other(snap.toMove)];
     labels = evaluationLabels(here.evaluate.result, scoreDiff, countScore ? "margin" : "engine");
   } else if (boardValues === "nimstring" && here.nimstring) {
-    labels = nimstringLabels(here.nimstring.result.moves);
+    labels = nimstringLabels(here.nimstring.result.moves, snap.position);
   }
   // Nimstring value of each part, shown beside it while Nimstring values are on the board
   const partNimbers = boardValues === "nimstring" && here.nimstring ? partValues(here.nimstring.result.components, snap.position.parts.length) : null;

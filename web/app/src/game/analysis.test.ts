@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { chooseEngineMove, evaluationLabels, formatNimstring, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
+import { chooseEngineMove, evaluationLabels, formatNimstring, isWinningNimstringMove, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -36,9 +36,29 @@ describe("analysis", () => {
     const position = example("berlekamp-p50").position;
     const analysis = engine.nimstringAnalysis(position);
     expect(formatNimstring(analysis.value)).toBe("*7");
-    const labels = nimstringLabels(analysis.moves);
+    const labels = nimstringLabels(analysis.moves, position);
     expect(labels.size).toBe(analysis.moves.length);
-    expect(labels.get(lineKeyOf({ part: 0, m: { x: 0, y: 3, side: "Bottom" } }))!.text).toBe("*0");
+    expect(labels.get(lineKeyOf({ part: 0, m: { x: 0, y: 3, side: "Bottom" } }))).toEqual({ text: "*0", best: true });
+    // The position is *7, so the winning moves are exactly the three (non-capturing) moves to *0
+    const winning = [...labels.values()].filter((l) => l.best);
+    expect(winning).toHaveLength(3);
+    expect(winning.every((l) => l.text === "*0")).toBe(true);
+  });
+
+  it("decides which Nimstring moves win, depending on whether they capture", () => {
+    expect(isWinningNimstringMove(false, { Nimber: 0 })).toBe(true);
+    expect(isWinningNimstringMove(false, { Nimber: 2 })).toBe(false);
+    expect(isWinningNimstringMove(false, "Loony")).toBe(false);
+    expect(isWinningNimstringMove(true, { Nimber: 0 })).toBe(false);
+    expect(isWinningNimstringMove(true, { Nimber: 3 })).toBe(true);
+    expect(isWinningNimstringMove(true, "Loony")).toBe(true);
+
+    // An opened 3-chain with another closed 3-chain: taking the first coin leaves a loony
+    // position for the capturer, who moves again, so it's a winning capture
+    const nim = example("nimstring-examples").position.parts;
+    const opened = engine.makeMove({ parts: [nim[5], nim[5]] }, { part: 0, m: { x: 0, y: 0, side: "Left" } }).position;
+    const labels = nimstringLabels(engine.nimstringAnalysis(opened).moves, opened);
+    expect(labels.get(lineKeyOf({ part: 0, m: { x: 0, y: 0, side: "Right" } }))!.best).toBe(true);
   });
 
   it("keys positions by content", () => {
