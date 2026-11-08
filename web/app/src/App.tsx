@@ -375,14 +375,6 @@ export function App() {
             Export
           </button>
         </div>
-        <div class="segmented" role="radiogroup" aria-label="View">
-          <button type="button" role="radio" aria-checked={view === "dab"} onClick={() => chooseView("dab")}>
-            Dots and boxes
-          </button>
-          <button type="button" role="radio" aria-checked={view === "snc"} onClick={() => chooseView("snc")}>
-            Strings and coins
-          </button>
-        </div>
       </section>
 
       {panel === "new" && (
@@ -531,6 +523,15 @@ export function App() {
       </nav>
 
       <section class="controls" aria-label="Options">
+        <Segmented
+          label="View"
+          options={[
+            ["dab", "Dots and boxes"],
+            ["snc", "Strings and coins"],
+          ]}
+          value={view}
+          onChange={chooseView}
+        />
         <Segmented
           label="Engine plays"
           options={[
