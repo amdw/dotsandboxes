@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Material on the game of dots-and-boxes: a paper on the theory of the game, and an engine to play and analyse positions." />
+    <link rel="icon" href="data:," />
+    <title>Dots-and-Boxes</title>
+    <style>
+      :root {
+        --bg: #fafaf8;
+        --fg: #1d1d1b;
+        --muted: #6b6b66;
+        --surface: #ffffff;
+        --border: #d9d9d3;
+        --hover: #eeede7;
+        --accent: #2f6fd6;
+        color-scheme: light;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #161615;
+          --fg: #ecebe6;
+          --muted: #a3a29b;
+          --surface: #211f1d;
+          --border: #3a3936;
+          --hover: #2f2d29;
+          --accent: #74a3f2;
+          color-scheme: dark;
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #161615;
+        --fg: #ecebe6;
+        --muted: #a3a29b;
+        --surface: #211f1d;
+        --border: #3a3936;
+        --hover: #2f2d29;
+        --accent: #74a3f2;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 16px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+        margin: 0 0 8px;
+      }
+
+      .intro {
+        color: var(--muted);
+        margin: 0 0 28px;
+      }
+
+      .intro a {
+        color: var(--accent);
+      }
+
+      .contents {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 12px;
+      }
+
+      .contents a {
+        display: block;
+        padding: 16px 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: inherit;
+        text-decoration: none;
+        transition: background-color 0.12s, border-color 0.12s;
+      }
+
+      .contents a:hover {
+        background: var(--hover);
+        border-color: var(--muted);
+      }
+
+      .contents a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .contents h2 {
+        margin: 0 0 4px;
+        font-size: 1.15rem;
+        color: var(--accent);
+      }
+
+      .contents p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      footer {
+        margin-top: 40px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      footer a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Dots-and-Boxes</h1>
+      <p class="intro">
+        Material on <a href="https://en.wikipedia.org/wiki/Dots_and_boxes">the game of dots-and-boxes</a>, and its close
+        relative strings-and-coins.
+      </p>
+
+      <ul class="contents">
+        <li>
+          <a href="engine/">
+            <h2>Engine</h2>
+            <p>
+              Play dots-and-boxes or strings-and-coins, against the engine or yourself, from any position. See the value of
+              every move, Nimstring values, and canonical moves.
+            </p>
+          </a>
+        </li>
+        <li>
+          <a href="https://drive.google.com/file/d/17FfeXFUwnBBKf1XHLdn83dD_sf7kzaMK/view?usp=sharing">
+            <h2>Paper</h2>
+            <p>A draft paper on the theory of the game (PDF).</p>
+          </a>
+        </li>
+        <li>
+          <a href="https://github.com/amdw/dotsandboxes">
+            <h2>Source</h2>
+            <p>The paper's LaTeX source and the engine's code, on GitHub.</p>
+          </a>
+        </li>
+      </ul>
+
+      <footer>
+        <p>
+          By Andrew Medworth. The paper is licensed under
+          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>, and the software under the
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU Affero General Public License</a>.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

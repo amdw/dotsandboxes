@@ -1,7 +1,8 @@
 # Dots-and-boxes
 
 This repository is dedicated to [the dots-and-boxes
-game](https://en.wikipedia.org/wiki/Dots_and_Boxes).
+game](https://en.wikipedia.org/wiki/Dots_and_Boxes). Its website is
+[amdw.github.io/dotsandboxes](https://amdw.github.io/dotsandboxes/).
 
 The main thing here is a draft of a paper I am writing on the game. A
 PDF version of this paper is available
@@ -10,10 +11,25 @@ though this may not always be up-to-date with the head of this
 repository (the commit used to generate the PDF may be found in the
 footnote at the end).
 
-There is also an engine written in the [Rust programming
-language](https://www.rust-lang.org/), which I intend to assist with
-calculations related to this game. However this engine is currently in
-very early stages of development.
+There is also an engine for the game, written in the [Rust programming
+language](https://www.rust-lang.org/), which you can use in your
+browser at
+[amdw.github.io/dotsandboxes/engine](https://amdw.github.io/dotsandboxes/engine/),
+with nothing to install. There you can:
+
+* Play dots-and-boxes or strings-and-coins (switching between the two
+  views at any time), against the engine or by yourself, or watch the
+  engine play a position out
+* Start from an empty board of any size, several boards at once (a
+  compound position), a named example from Berlekamp's book or the
+  paper, a position file, or any position reached in another game
+* See the value of every move, either for the rest of the game or
+  counting the score so far, and the Nimstring value of every move and
+  of each part of the position
+* Split a position into its independent components, and play any of
+  them on its own
+* Highlight and play canonical moves (captures which can be made
+  without loss)
 
 I would be very grateful to learn of any errors in any of this
 material.
@@ -87,8 +103,9 @@ However this may not work on all platforms.
 
 # Building the engine
 
-For now, the engine is built separately from the paper. It uses the
-standard Cargo mechanism for the Rust programming language.
+The engine can also be used from the command line. It is built
+separately from the paper, using the standard Cargo mechanism for the
+Rust programming language.
 
 First you will need to install the Rust toolchain, if you do not
 already have it, according to the instructions on [the Rust
@@ -105,45 +122,12 @@ the 3-by-2 corner discussed in the paper.
 Other actions are standard to Cargo. For example ```cargo test``` runs
 the unit tests, and ```cargo bench``` runs the benchmarks.
 
-# Running the web interface
+# Website and web interface
 
-There is also a web interface to the engine in the ```web``` directory,
-which runs the engine in the browser by compiling it to WebAssembly.
-It is still in early development: currently it lets you play through
-games in either a dots-and-boxes or a strings-and-coins view, and move
-backwards and forwards through them. Games can start from an empty
-board of any size (or several boards, for a compound position), from
-a ```.pos``` file, from the named examples from Berlekamp's book and
-the paper, or from any position reached in another game (optionally
-split into its independent components, one board each). The
-engine can play either side, or both, so you can play against it or
-watch a position played out, and canonical moves (captures which can
-be made without loss) can be highlighted and played in one click. It can also evaluate any position,
-showing the value of every move (both for the rest of the game and as
-a final winning margin), and
-calculate its Nimstring value, including the value of each
-independent component. Analysis runs in the background and can be
-cancelled, since it can take a long time for larger positions.
-
-As well as the Rust toolchain, you will need
-[Node.js](https://nodejs.org/), the WebAssembly target for Rust, and
-the ```wasm-bindgen``` command-line tool. Its version must exactly
-match the version of the ```wasm-bindgen``` crate in
-```web/engine-wasm/Cargo.lock```:
-
-* ```rustup target add wasm32-unknown-unknown```
-* ```cargo install wasm-bindgen-cli --version 0.2.130 --locked```
-
-Then, from the ```web/app``` directory:
-
-* ```npm install``` to install the JavaScript dependencies
-* ```npm run build:wasm``` to build the engine (re-run this after
-  changing any Rust code)
-* ```npm run dev``` to start a development server, then open the URL
-  it prints
-* ```npm test``` to run the unit tests, and ```npm run typecheck``` to
-  check the TypeScript
-* ```npm run build``` to build a static site in ```web/app/dist```
+The website, including the web interface to the engine, is built and
+published by the ```Pages``` GitHub Actions workflow whenever master
+changes. For how to build, run and develop the web interface, and to
+preview the website locally, see [web/README.md](web/README.md).
 
 # Licensing
 
