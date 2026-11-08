@@ -20,10 +20,20 @@
 // plain JavaScript values (converted with serde), and reports errors as exceptions.
 pub mod api;
 
+use dabengine::eval::Evaluator;
+use dabengine::nimstring::NimstringCalculator;
 use dabengine::game::{CPosMove, CompoundPositionData};
+use std::cell::RefCell;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use wasm_bindgen::prelude::*;
+
+thread_local! {
+    // Kept between evaluations, so each can reuse the values cached by earlier ones (this
+    // module runs in a single Web Worker, which is terminated to cancel an analysis)
+    static EVALUATOR: RefCell<Evaluator<CPosMove>> = RefCell::new(Evaluator::new());
+    static NIMSTRING: RefCell<NimstringCalculator> = RefCell::new(NimstringCalculator::new());
+}
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -60,16 +70,18 @@ pub fn make_move(position: JsValue, m: JsValue) -> Result<JsValue, JsError> {
     to_js(api::make_move(&position, m))
 }
 
+// Evaluate a position, or with max_new, only if that's cheap (returning undefined if not)
 #[wasm_bindgen]
-pub fn evaluate(position: JsValue) -> Result<JsValue, JsError> {
+pub fn evaluate(position: JsValue, max_new: Option<u32>) -> Result<JsValue, JsError> {
     let position: CompoundPositionData = from_js(position)?;
-    to_js(api::evaluate(&position))
+    to_js(EVALUATOR.with(|evaluator| api::evaluate_with(&mut evaluator.borrow_mut(), &position, max_new.map(|n| n as usize))))
 }
 
+// Calculate Nimstring values, or with max_new, only if that's cheap (returning undefined if not)
 #[wasm_bindgen(js_name = nimstringAnalysis)]
-pub fn nimstring_analysis(position: JsValue) -> Result<JsValue, JsError> {
+pub fn nimstring_analysis(position: JsValue, max_new: Option<u32>) -> Result<JsValue, JsError> {
     let position: CompoundPositionData = from_js(position)?;
-    to_js(api::nimstring_analysis(&position))
+    to_js(NIMSTRING.with(|calculator| api::nimstring_analysis_with(&mut calculator.borrow_mut(), &position, max_new.map(|n| n as usize))))
 }
 
 #[wasm_bindgen(js_name = parsePos)]

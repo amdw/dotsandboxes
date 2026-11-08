@@ -135,14 +135,27 @@ fn mex(s: HashSet<usize>) -> usize {
     }
 }
 
-fn calc_value<M, P>(pos: &mut P, cache: &mut HashMap<u64, Value>) -> Value
+// The state of a Nimstring calculation: the cache of position values, and a limit on its
+// size, beyond which the calculation is abandoned (aborted). Once aborted, the search unwinds
+// without caching anything more, so every cached value is still exact.
+struct NimSearch<'a> {
+    cache: &'a mut HashMap<u64, Value>,
+    limit: usize,
+    aborted: bool,
+}
+
+fn calc_value<M, P>(pos: &mut P, search: &mut NimSearch) -> Value
 where M: Copy, P: NimstringPosition<M> {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
-    if let Some(&v) = cache.get(&pos.zhash()) {
+    if let Some(&v) = search.cache.get(&pos.zhash()) {
         return v;
     }
+    if search.cache.len() >= search.limit {
+        search.aborted = true;
+        return Value::Nimber(0);
+    }
     if pos.is_loony() {
-        cache.insert(pos.zhash(), Value::Loony);
+        search.cache.insert(pos.zhash(), Value::Loony);
         return Value::Loony;
     }
 
@@ -150,9 +163,11 @@ where M: Copy, P: NimstringPosition<M> {
     for &m in &legal_moves {
         if pos.would_capture(m) > 0 {
             pos.make_move(m);
-            let result = calc_value(pos, cache);
+            let result = calc_value(pos, search);
             pos.undo_move(m);
-            cache.insert(pos.zhash(), result);
+            if !search.aborted {
+                search.cache.insert(pos.zhash(), result);
+            }
             return result
         }
     }
@@ -162,40 +177,31 @@ where M: Copy, P: NimstringPosition<M> {
     if parts.len() > 1 {
         let mut result = Value::Nimber(0);
         for mut part in parts {
-            let part_value = calc_value(&mut part, cache);
+            let part_value = calc_value(&mut part, search);
+            if search.aborted {
+                return result;
+            }
             result = result + part_value;
         }
-        cache.insert(pos.zhash(), result);
+        search.cache.insert(pos.zhash(), result);
         return result;
     }
 
     let mut options = HashSet::new();
     for &m in &legal_moves {
         pos.make_move(m);
-        if let Value::Nimber(n) = calc_value(pos, cache) {
+        let value = calc_value(pos, search);
+        pos.undo_move(m);
+        if search.aborted {
+            return value;
+        }
+        if let Value::Nimber(n) = value {
             options.insert(n);
         }
-        pos.undo_move(m);
     }
     let result = Value::Nimber(mex(options));
-    cache.insert(pos.zhash(), result);
+    search.cache.insert(pos.zhash(), result);
     result
-}
-
-// Calculate the Nimstring value of a position, along with the values attained
-// by each of the legal moves.
-pub fn calc_value_with_moves<M, P>(pos: &P) -> (Value, HashMap<M, Value>)
-where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
-    let mut cache = HashMap::new();
-    let mut pos = pos.clone();
-    let val = calc_value(&mut pos, &mut cache);
-    let mut per_move = HashMap::new();
-    for m in pos.legal_moves() {
-        pos.make_move(m);
-        per_move.insert(m, calc_value(&mut pos, &mut cache));
-        pos.undo_move(m);
-    }
-    (val, per_move)
 }
 
 // The Nimstring value of one independent component of a position
@@ -211,18 +217,113 @@ pub struct ComponentValue {
     pub value: Value,
 }
 
-// Calculate the Nimstring values of the independent components of a position.
-// The value of the whole position is the sum of these values.
-pub fn component_values(pos: &CompoundPosition) -> Vec<ComponentValue> {
-    let mut cache = HashMap::new();
+// The Nimstring values of a position, of each legal move from it, and of each of its
+// independent components
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub struct NimstringAnalysis<M: Hash + Eq> {
+    pub value: Value,
+    pub per_move: HashMap<M, Value>,
+    pub components: Vec<ComponentValue>,
+}
+
+// A Nimstring calculator which keeps the values of the positions it has calculated, so that
+// later calculations (e.g. of the positions reached as a game goes on) can reuse them. The
+// value of a position depends only on the position, so the cache never goes stale.
+pub struct NimstringCalculator {
+    cache: HashMap<u64, Value>,
+}
+
+impl NimstringCalculator {
+    pub fn new() -> NimstringCalculator {
+        NimstringCalculator{ cache: HashMap::new() }
+    }
+
+    // Number of positions whose values are cached
+    pub fn cached_positions(&self) -> usize {
+        self.cache.len()
+    }
+
+    // Forget all cached values, freeing their memory
+    pub fn clear(&mut self) {
+        self.cache = HashMap::new();
+    }
+
+    fn search(&mut self, max_new: usize) -> NimSearch<'_> {
+        let limit = self.cache.len().saturating_add(max_new);
+        NimSearch{ cache: &mut self.cache, limit: limit, aborted: false }
+    }
+
+    // Calculate the Nimstring value of a position, along with the values attained
+    // by each of the legal moves.
+    pub fn value_with_moves<M, P>(&mut self, pos: &P) -> (Value, HashMap<M, Value>)
+    where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
+        let mut search = self.search(usize::MAX);
+        value_with_moves(pos, &mut search)
+    }
+
+    // Calculate the Nimstring values of the independent components of a position.
+    // The value of the whole position is the sum of these values.
+    pub fn component_values(&mut self, pos: &CompoundPosition) -> Vec<ComponentValue> {
+        let mut search = self.search(usize::MAX);
+        component_values_in(pos, &mut search)
+    }
+
+    // The value of a position, each move and each component, giving up (returning None) if
+    // that would need more than max_new positions which aren't already cached: i.e.
+    // calculate it only if that's cheap. The values calculated before giving up stay cached.
+    pub fn analysis_limited(&mut self, pos: &CompoundPosition, max_new: usize) -> Option<NimstringAnalysis<CPosMove>> {
+        let mut search = self.search(max_new);
+        let (value, per_move) = value_with_moves(pos, &mut search);
+        if search.aborted {
+            return None;
+        }
+        let components = component_values_in(pos, &mut search);
+        if search.aborted { None } else { Some(NimstringAnalysis{ value: value, per_move: per_move, components: components }) }
+    }
+}
+
+fn value_with_moves<M, P>(pos: &P, search: &mut NimSearch) -> (Value, HashMap<M, Value>)
+where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
+    let mut pos = pos.clone();
+    let val = calc_value(&mut pos, search);
+    let mut per_move = HashMap::new();
+    for m in pos.legal_moves() {
+        if search.aborted {
+            break;
+        }
+        pos.make_move(m);
+        per_move.insert(m, calc_value(&mut pos, search));
+        pos.undo_move(m);
+    }
+    (val, per_move)
+}
+
+fn component_values_in(pos: &CompoundPosition, search: &mut NimSearch) -> Vec<ComponentValue> {
     let mut result = Vec::new();
     for (i, part) in pos.parts().iter().enumerate() {
         for mut fragment in splitter::fragments(part) {
-            let value = calc_value(&mut fragment.position, &mut cache);
+            if search.aborted {
+                return result;
+            }
+            let value = calc_value(&mut fragment.position, search);
             result.push(ComponentValue{ part: i, coins: fragment.coins, value: value });
         }
     }
     result
+}
+
+// Calculate the Nimstring value of a position, along with the values attained
+// by each of the legal moves.
+pub fn calc_value_with_moves<M, P>(pos: &P) -> (Value, HashMap<M, Value>)
+where M: Hash + Eq + Copy, P: NimstringPosition<M> + Clone {
+    NimstringCalculator::new().value_with_moves(pos)
+}
+
+// Calculate the Nimstring values of the independent components of a position.
+// The value of the whole position is the sum of these values.
+pub fn component_values(pos: &CompoundPosition) -> Vec<ComponentValue> {
+    NimstringCalculator::new().component_values(pos)
 }
 
 #[cfg(test)]
@@ -268,19 +369,20 @@ mod tests {
         let mut pos = make_chain(3);
         assert!(!pos.is_loony());
         let mut cache = HashMap::new();
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
+        let mut search = NimSearch{ cache: &mut cache, limit: usize::MAX, aborted: false };
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut search));
         pos.make_move(Move{x: 0, y: 0, side: Side::Left});
         assert!(pos.is_loony());
-        assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
+        assert_eq!(Value::Loony, calc_value(&mut pos, &mut search));
         pos.make_move(Move{x: 1, y: 0, side: Side::Left});
         assert!(pos.is_loony());
-        assert_eq!(Value::Loony, calc_value(&mut pos, &mut cache));
+        assert_eq!(Value::Loony, calc_value(&mut pos, &mut search));
         pos.make_move(Move{x: 2, y: 0, side: Side::Left});
         assert!(!pos.is_loony());
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut search));
         pos.make_move(Move{x: 2, y: 0, side: Side::Right});
         assert!(!pos.is_loony());
-        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut cache));
+        assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut search));
     }
 
     #[test]
@@ -430,6 +532,33 @@ mod tests {
         pos.make_move(CPosMove::new(1, 0, 1, Side::Left));
         let values: Vec<Value> = component_values(&pos).iter().map(|c| c.value).collect();
         assert_eq!(vec![Value::Nimber(1), Value::Nimber(0), Value::Loony], values);
+    }
+
+    #[test]
+    fn limited_analysis() {
+        let pos = CompoundPosition::from_single(p50());
+        let mut calculator = NimstringCalculator::new();
+        // Not enough budget: gives up, and what it cached is still correct
+        assert_eq!(None, calculator.analysis_limited(&pos, 5));
+        let full = calculator.analysis_limited(&pos, usize::MAX).unwrap();
+        assert_eq!(calc_value_with_moves(&pos), (full.value, full.per_move.clone()));
+        assert_eq!(component_values(&pos), full.components);
+        // Once calculated, no new positions are needed
+        assert_eq!(Some(full), calculator.analysis_limited(&pos, 0));
+    }
+
+    #[test]
+    fn limited_analysis_after_aborts_matches_fresh() {
+        // Giving up partway through many positions never leaves wrong values cached
+        let mut calculator = NimstringCalculator::new();
+        let positions = vec!(p50(), p50_top(), ex3p1(), ex3p12(), ex6p2(), ex7p2(), icelandic_game(2, 2), double_chain(4));
+        for (i, pos) in positions.iter().enumerate() {
+            let pos = CompoundPosition::from_single(pos.clone());
+            let _ = calculator.analysis_limited(&pos, i * 3);
+            let full = calculator.analysis_limited(&pos, usize::MAX).unwrap();
+            assert_eq!(calc_value_with_moves(&pos), (full.value, full.per_move), "{}", pos);
+            assert_eq!(component_values(&pos), full.components);
+        }
     }
 
     #[test]
