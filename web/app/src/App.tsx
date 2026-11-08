@@ -20,7 +20,12 @@ const ENGINE_DELAY_MS = 600;
 const CHEAP_ANALYSIS_POSITIONS = 100_000;
 const COUNT_SCORE_KEY = "dab-count-score";
 const SHOW_CANONICAL_KEY = "dab-show-canonical";
+const LAST_MOVE_KEY = "dab-last-move";
+// The earlier, on/off form of the setting
 const SHOW_LAST_MOVE_KEY = "dab-show-last-move";
+
+// Whether to show the last move, and if so whether to judge it ("?" or "??" for a mistake)
+type LastMoveDisplay = "hide" | "show" | "judge";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
 const MAX_ENLARGEMENT = 1.4;
 
@@ -79,17 +84,19 @@ function saveCountScore(count: boolean) {
   }
 }
 
-function loadShowLastMove(): boolean {
+function loadLastMoveDisplay(): LastMoveDisplay {
   try {
-    return localStorage.getItem(SHOW_LAST_MOVE_KEY) !== "false";
+    const stored = localStorage.getItem(LAST_MOVE_KEY);
+    if (stored === "hide" || stored === "show" || stored === "judge") return stored;
+    return localStorage.getItem(SHOW_LAST_MOVE_KEY) === "false" ? "hide" : "judge";
   } catch {
-    return true;
+    return "judge";
   }
 }
 
-function saveShowLastMove(show: boolean) {
+function saveLastMoveDisplay(display: LastMoveDisplay) {
   try {
-    localStorage.setItem(SHOW_LAST_MOVE_KEY, String(show));
+    localStorage.setItem(LAST_MOVE_KEY, display);
   } catch {
     // Not important if the preference can't be saved
   }
@@ -157,7 +164,10 @@ export function App() {
   // Whether to highlight canonical moves (captures which can be made without loss)
   const [showCanonical, setShowCanonical] = useState(loadShowCanonical);
   // Whether to show the last move made, and marks judging it
-  const [showLastMove, setShowLastMove] = useState(loadShowLastMove);
+  const [lastMoveDisplay, setLastMoveDisplay] = useState(loadLastMoveDisplay);
+  const showLastMove = lastMoveDisplay !== "hide";
+  // Judging the last move needs the position before it evaluated, so it's only done if wanted
+  const judgeLastMove = lastMoveDisplay === "judge";
   // The part whose "play on its own" confirmation is open, if any
   const [isolating, setIsolating] = useState<number | null>(null);
   const closeIsolating = useCallback(() => setIsolating(null), []);
@@ -248,10 +258,10 @@ export function App() {
   const previousSnapshot = game && game.cursor > 0 ? game.snapshots[game.cursor - 1] : null;
   const previousKey = previousSnapshot ? positionKey(previousSnapshot.position) : null;
   useEffect(() => {
-    if (showLastMove && previousSnapshot && previousKey && !results.get(previousKey)?.evaluate) {
+    if (judgeLastMove && previousSnapshot && previousKey && !results.get(previousKey)?.evaluate) {
       analyseIfCheap("evaluate", previousSnapshot.position, previousKey);
     }
-  }, [previousKey, showLastMove]);
+  }, [previousKey, judgeLastMove]);
 
   // A full analysis, however long it takes (shown in progress, with Cancel)
   const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
@@ -414,7 +424,7 @@ export function App() {
   // The judgement of the last move ("?" or "??"), if the position before it has been evaluated
   const previousEvaluation = previousKey ? results.get(previousKey)?.evaluate : undefined;
   const judgement =
-    showLastMove && previousSnapshot && snap.lastMove && previousEvaluation
+    judgeLastMove && previousSnapshot && snap.lastMove && previousEvaluation
       ? judgeMove(previousEvaluation.result, snap.lastMove, previousSnapshot.scores[previousSnapshot.toMove] - previousSnapshot.scores[other(previousSnapshot.toMove)])
       : null;
   const lastMark =
@@ -427,7 +437,7 @@ export function App() {
   const lastBadge: LastMoveBadge | null =
     lastMark && judgement?.mark ? { text: judgement.mark, kind: judgement.mark === "??" ? "blunder" : "inaccuracy", title: lastMark.title } : null;
   // The last move can be checked on request when judging it wasn't cheap
-  const canCheckMove = showLastMove && !!previousKey && !previousEvaluation && notCheap.has(`${previousKey} evaluate`);
+  const canCheckMove = judgeLastMove && !!previousKey && !previousEvaluation && notCheap.has(`${previousKey} evaluate`);
   const checkingMove = !!running && running.key === previousKey && running.kind === "evaluate" && !engineActive;
   const checkMove = () => {
     if (previousSnapshot && previousKey) analyse("evaluate", previousSnapshot.position, previousKey);
@@ -754,13 +764,14 @@ export function App() {
         <Segmented
           label="Last move"
           options={[
-            [true, "Show"],
-            [false, "Hide"],
+            ["judge", "Show and judge"],
+            ["show", "Show"],
+            ["hide", "Hide"],
           ]}
-          value={showLastMove}
-          onChange={(show) => {
-            setShowLastMove(show);
-            saveShowLastMove(show);
+          value={lastMoveDisplay}
+          onChange={(display: LastMoveDisplay) => {
+            setLastMoveDisplay(display);
+            saveLastMoveDisplay(display);
           }}
         />
         <Segmented
