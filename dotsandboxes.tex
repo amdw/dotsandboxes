@@ -8,6 +8,10 @@
 \usepackage{calc}
 \usepackage{wasysym}
 
+% Inkscape's figures each carry a page group, which pdfTeX warns about harmlessly
+% when more than one is on a page
+\pdfsuppresswarningpagegroup=1
+
 \DeclareMathOperator{\mex}{mex}
 \newcommand{\loony}{\rightmoon}
 \newcommand{\cgtgame}[2]{\{#1 \:|\: #2\}}

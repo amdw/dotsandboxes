@@ -1,4 +1,4 @@
-# Copyright 2016 Andrew Medworth (github@medworth.org.uk)
+# Copyright 2016-2026 Andrew Medworth (github@medworth.org.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
