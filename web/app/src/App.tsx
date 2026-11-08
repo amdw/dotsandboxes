@@ -302,6 +302,9 @@ export function App() {
   }
   // Nimstring value of each part, shown beside it while Nimstring values are on the board
   const partNimbers = boardValues === "nimstring" && here.nimstring ? partValues(here.nimstring.result.components, snap.position.parts.length) : null;
+  // The column for them is kept while they're selected, even while they're being calculated
+  // (left blank), so the boards don't shift sideways each time they're recalculated
+  const showPartNimbers = boardValues === "nimstring";
 
   // Choosing values for the board calculates them if they aren't already available,
   // cancelling any other analysis in progress
@@ -514,8 +517,8 @@ export function App() {
         style={{
           gridTemplateColumns: [
             multiPart && "var(--part-number-width)",
-            `min(${MAX_ENLARGEMENT * maxWidth}px, calc(100%${multiPart ? " - var(--part-number-width) - var(--boards-gap)" : ""}${partNimbers ? " - var(--part-value-width) - var(--boards-gap)" : ""}))`,
-            partNimbers && "var(--part-value-width)",
+            `min(${MAX_ENLARGEMENT * maxWidth}px, calc(100%${multiPart ? " - var(--part-number-width) - var(--boards-gap)" : ""}${showPartNimbers ? " - var(--part-value-width) - var(--boards-gap)" : ""}))`,
+            showPartNimbers && "var(--part-value-width)",
           ]
             .filter(Boolean)
             .join(" "),
@@ -567,19 +570,19 @@ export function App() {
               labels={labels}
             />
           </div>,
-          partNimbers && (
+          showPartNimbers && (
             <div key={`v${i}`} class="part-value" title={multiPart ? `Nimstring value of part ${i}` : "Nimstring value"}>
-              <NimstringValueText value={partNimbers[i]} />
+              {partNimbers && <NimstringValueText value={partNimbers[i]} />}
             </div>
           ),
         ])}
-        {partNimbers && multiPart && here.nimstring && [
+        {showPartNimbers && multiPart && [
           <div key="tn" />,
           <div key="tl" class="total-label">
             Total
           </div>,
           <div key="tv" class="part-value total" title="Nimstring value of the whole position">
-            <NimstringValueText value={here.nimstring.result.value} />
+            {here.nimstring && <NimstringValueText value={here.nimstring.result.value} />}
           </div>,
         ]}
       </section>
