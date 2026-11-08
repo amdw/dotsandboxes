@@ -1,7 +1,7 @@
 // Turning engine analysis results into what the interface shows: per-move labels
 // for the board
 import type { ComponentValue, CPosMove, Evaluation, NimstringValue, PositionData } from "../engine/types";
-import { lineKey, moveToLine } from "./lines";
+import { coinsCapturedBy, lineKey, moveToLine } from "./lines";
 
 export type AnalysisKind = "evaluate" | "nimstring";
 
@@ -44,8 +44,23 @@ export function evaluationLabels(evaluation: Evaluation, scoreDiff: number, mode
   );
 }
 
-export function nimstringLabels(moves: { move: CPosMove; value: NimstringValue }[]): MoveLabels {
-  return new Map(moves.map((m) => [lineKeyOf(m.move), { text: formatNimstring(m.value), best: false }]));
+// Whether a move wins at Nimstring, given the value of the position after it. A move which
+// doesn't capture passes the turn, so it wins if it leaves *0 for the opponent; a capture
+// means moving again, so it wins if it leaves a non-zero value (including loony).
+export function isWinningNimstringMove(captures: boolean, valueAfter: NimstringValue): boolean {
+  const zero = valueAfter !== "Loony" && valueAfter.Nimber === 0;
+  return captures ? !zero : zero;
+}
+
+// Labels for the board, with the winning moves marked as best
+export function nimstringLabels(moves: { move: CPosMove; value: NimstringValue }[], position: PositionData): MoveLabels {
+  return new Map(
+    moves.map((m) => {
+      const line = moveToLine(m.move);
+      const captures = coinsCapturedBy(position.parts[line.part], line).length > 0;
+      return [lineKey(line), { text: formatNimstring(m.value), best: isWinningNimstringMove(captures, m.value) }];
+    }),
+  );
 }
 
 // Nimstring sum: values add as nimbers, and a sum with any loony term is loony
