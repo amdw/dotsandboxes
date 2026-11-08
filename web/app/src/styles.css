@@ -803,9 +803,10 @@ button.canonical-play {
   gap: 8px;
 }
 
+/* Progress of an analysis, under the option which started it, aligned with the controls */
 .controls .running {
-  grid-column: 1 / -1;
-  text-align: center;
+  grid-column: 2;
+  font-size: 0.9rem;
 }
 
 /* On narrow screens, each label goes above its control */
@@ -822,6 +823,11 @@ button.canonical-play {
 
   .selector-control {
     justify-content: center;
+  }
+
+  .controls .running {
+    grid-column: 1;
+    text-align: center;
   }
 
   /* More compact options, so the longest ("Including score so far") fit on one line */

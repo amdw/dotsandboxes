@@ -52,6 +52,19 @@ export function Segmented<T extends string | boolean>({ label, options, value, o
   );
 }
 
+// Progress of an analysis, with a Cancel button: shown in the .controls grid under the
+// option which started it
+export function AnalysisProgress({ label, seconds, onCancel }: { label: string; seconds: number; onCancel: () => void }) {
+  return (
+    <p class="running" role="status">
+      {label}… {seconds.toFixed(1)} s
+      <button type="button" class="quiet small" onClick={onCancel}>
+        Cancel
+      </button>
+    </p>
+  );
+}
+
 export function AnalysisPanel(props: AnalysisPanelProps) {
   const { running } = props;
 
@@ -79,14 +92,9 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
           />
         )}
 
-      {running && (
-        <p class="running" role="status">
-          {props.engineThinking && running.kind === "evaluate" ? "Engine thinking" : running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"}…{" "}
-          {running.seconds.toFixed(1)} s
-          <button type="button" class="quiet small" onClick={props.onCancel}>
-            Cancel
-          </button>
-        </p>
+      {/* (When the engine is thinking about its move, the progress is shown under "Engine plays" instead) */}
+      {running && !props.engineThinking && (
+        <AnalysisProgress label={running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"} seconds={running.seconds} onCancel={props.onCancel} />
       )}
     </>
   );
