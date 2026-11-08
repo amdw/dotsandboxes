@@ -58,9 +58,17 @@ impl EvaluablePosition<CPosMove> for CompoundPosition {
     }
 }
 
+// The state of an evaluation: the cache of position values, and a limit on its size, beyond
+// which the evaluation is abandoned (aborted). Once aborted, the search unwinds without
+// caching anything more, so every cached value is still exact.
+struct Search<'a, M> {
+    cache: &'a mut HashMap<u64, (isize, M)>,
+    limit: usize,
+    aborted: bool,
+}
+
 // Evaluate a position given a set of moves to consider
-fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>,
-              cache: &mut HashMap<u64, (isize, M)>) -> (isize, Option<M>)
+fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, search: &mut Search<M>) -> (isize, Option<M>)
 where M: Copy, P: EvaluablePosition<M> {
     if moves.is_empty() {
         return (0, None);
@@ -68,23 +76,26 @@ where M: Copy, P: EvaluablePosition<M> {
     let mut value = isize::MIN;
     let mut best_move = moves[0];
     for &m in moves {
-        let sub_val = eval_move(pos, m, cache);
+        let sub_val = eval_move(pos, m, search);
+        if search.aborted {
+            return (0, None);
+        }
         if sub_val > value {
             value = sub_val;
             best_move = m;
         }
     }
-    cache.insert(pos.zhash(), (value, best_move));
+    search.cache.insert(pos.zhash(), (value, best_move));
     (value, Some(best_move))
 }
 
 // Evaluate a single move: the coins it captures, plus or minus the value of the resulting
 // position depending on whether the same player moves again
-fn eval_move<M, P>(pos: &mut P, m: M, cache: &mut HashMap<u64, (isize, M)>) -> isize
+fn eval_move<M, P>(pos: &mut P, m: M, search: &mut Search<M>) -> isize
 where M: Copy, P: EvaluablePosition<M> {
     let outcome = pos.make_move(m);
     let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
-    let (next_val, _) = eval_cache(pos, cache);
+    let (next_val, _) = eval_cache(pos, search);
     pos.undo_move(m);
     (outcome.coins_captured as isize) + sign * next_val
 }
@@ -162,14 +173,18 @@ where M: Copy, P: EvaluablePosition<M> {
     }
 }
 
-fn eval_cache<M, P>(pos: &mut P, cache: &mut HashMap<u64, (isize, M)>) -> (isize, Option<M>)
+fn eval_cache<M, P>(pos: &mut P, search: &mut Search<M>) -> (isize, Option<M>)
 where M: Copy, P: EvaluablePosition<M> {
-    if let Some(&(val, best_move)) = cache.get(&pos.zhash()) {
+    if let Some(&(val, best_move)) = search.cache.get(&pos.zhash()) {
         return (val, Some(best_move));
     }
 
     let moves = moves_to_consider(pos);
-    eval_moves(pos, &moves, cache)
+    if !moves.is_empty() && search.cache.len() >= search.limit {
+        search.aborted = true;
+        return (0, None);
+    }
+    eval_moves(pos, &moves, search)
 }
 
 // An evaluator which keeps the values of the positions it has evaluated, so that later
@@ -199,7 +214,8 @@ impl<M: Copy> Evaluator<M> {
     pub fn eval<P>(&mut self, pos: &P) -> (isize, Option<M>)
     where P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
-        eval_cache(&mut pos, &mut self.cache)
+        let mut search = Search{ cache: &mut self.cache, limit: usize::MAX, aborted: false };
+        eval_cache(&mut pos, &mut search)
     }
 
     // Calculate the value function of a given position, along with the value achieved by
@@ -207,13 +223,26 @@ impl<M: Copy> Evaluator<M> {
     // of the game by making that move, assuming optimal play thereafter).
     pub fn eval_with_moves<P>(&mut self, pos: &P) -> (isize, HashMap<M, isize>)
     where M: Hash + Eq, P: EvaluablePosition<M> + Clone {
+        self.eval_with_moves_limited(pos, usize::MAX).unwrap()
+    }
+
+    // As eval_with_moves, but giving up (returning None) if it would need to evaluate more
+    // than max_new positions which aren't already cached: i.e. evaluate it only if that's
+    // cheap. The values of positions evaluated before giving up stay cached.
+    pub fn eval_with_moves_limited<P>(&mut self, pos: &P, max_new: usize) -> Option<(isize, HashMap<M, isize>)>
+    where M: Hash + Eq, P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
-        let (value, _) = eval_cache(&mut pos, &mut self.cache);
+        let limit = self.cache.len().saturating_add(max_new);
+        let mut search = Search{ cache: &mut self.cache, limit: limit, aborted: false };
+        let (value, _) = eval_cache(&mut pos, &mut search);
         let mut per_move = HashMap::new();
         for m in pos.legal_moves() {
-            per_move.insert(m, eval_move(&mut pos, m, &mut self.cache));
+            if search.aborted {
+                break;
+            }
+            per_move.insert(m, eval_move(&mut pos, m, &mut search));
         }
-        (value, per_move)
+        if search.aborted { None } else { Some((value, per_move)) }
     }
 }
 
@@ -625,6 +654,35 @@ mod test {
         assert!(evaluator.cached_positions() > 0);
         evaluator.clear();
         assert_eq!(0, evaluator.cached_positions());
+    }
+
+    #[test]
+    fn limited_evaluation() {
+        let pos = CompoundPosition::from_single(ex3p12());
+        // Not enough budget: gives up, but whatever it cached is still correct
+        let mut evaluator = Evaluator::new();
+        assert_eq!(None, evaluator.eval_with_moves_limited(&pos, 10));
+        assert!(evaluator.cached_positions() > 0);
+        assert_eq!(eval_with_moves(&pos), evaluator.eval_with_moves(&pos));
+        // With the position already evaluated, no new positions are needed
+        assert_eq!(Some(eval_with_moves(&pos)), evaluator.eval_with_moves_limited(&pos, 0));
+        // Positions whose values are already known to cost nothing extra: end of game
+        let end = CompoundPosition::from_single(SimplePosition::new_end_game(2, 2));
+        assert_eq!(Some((0, HashMap::new())), Evaluator::new().eval_with_moves_limited(&end, 0));
+    }
+
+    #[test]
+    fn limited_evaluation_after_aborts_matches_fresh() {
+        // Repeatedly giving up partway, on random positions, never leaves wrong values cached
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 7;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut evaluator = Evaluator::new();
+        for i in 0..300 {
+            let pos = CompoundPosition::from_single(make_random_pos(&mut r));
+            let _ = evaluator.eval_with_moves_limited(&pos, i % 7);
+            assert_eq!(eval_with_moves(&pos), evaluator.eval_with_moves(&pos), "{}", pos);
+        }
     }
 
     #[test]

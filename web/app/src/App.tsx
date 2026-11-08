@@ -13,6 +13,10 @@ import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner,
 const VIEW_KEY = "dab-view";
 // Pause before the engine plays a move it has chosen, so that playouts can be followed
 const ENGINE_DELAY_MS = 600;
+// Most positions not already cached by the engine which a "cheap" analysis may calculate
+// (a fraction of a second's work), when deciding whether to keep showing values on the
+// board after moving to another position
+const CHEAP_ANALYSIS_POSITIONS = 100_000;
 const COUNT_SCORE_KEY = "dab-count-score";
 const SHOW_CANONICAL_KEY = "dab-show-canonical";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
@@ -124,8 +128,8 @@ export function App() {
 
   useEffect(() => () => analyser.current?.cancel(), []);
 
-  // When the position shown changes, stop analysing the previous one, and switch the board
-  // values off unless they're already available for the new position
+  // The position shown and the values wanted on the board, also as refs for use when an
+  // analysis completes (which may be after they've changed)
   const shownSnapshot = game ? current(game) : null;
   const shownPosition = shownSnapshot?.position ?? null;
   const shownKey = shownPosition ? positionKey(shownPosition) : null;
@@ -133,27 +137,61 @@ export function App() {
   // Whether the engine is about to play (it evaluates the position first)
   const engineToMove = !!shownSnapshot && !shownSnapshot.gameOver && engineSides[shownSnapshot.toMove];
   const engineActive = engineToMove && !paused;
+  const shownKeyRef = useRef(shownKey);
+  shownKeyRef.current = shownKey;
+  const wantedRef = useRef(wanted);
+  wantedRef.current = wanted;
+  // Cheap analyses in progress (as "positionKey kind"), so each is only requested once
+  const quickPending = useRef(new Set<string>());
+
+  const storeResult = (key: string, kind: AnalysisKind, result: Evaluation | NimstringAnalysis, start: number) => {
+    const timed = { result, seconds: (performance.now() - start) / 1000 };
+    setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
+  };
+
+  // Try calculating values for the board only if that's cheap (e.g. because the engine
+  // already explored the position when analysing an earlier one), switching the board
+  // values off if not, so the user can choose whether to start a longer calculation
+  const analyseIfCheap = (kind: AnalysisKind, position: PositionData, key: string) => {
+    const id = `${key} ${kind}`;
+    if (quickPending.current.has(id)) return;
+    quickPending.current.add(id);
+    const a = (analyser.current ??= new Analyser());
+    const start = performance.now();
+    const stillWanted = () => shownKeyRef.current === key && wantedRef.current === kind;
+    a.run(kind, position, CHEAP_ANALYSIS_POSITIONS)
+      .then((result) => {
+        if (result) storeResult(key, kind, result, start);
+        else if (stillWanted()) setBoardValues("off");
+      })
+      .catch(() => {
+        if (stillWanted()) setBoardValues("off");
+      })
+      .finally(() => quickPending.current.delete(id));
+  };
+
+  // When the position shown changes, stop any long analysis of the previous one, and show
+  // the values wanted on the board if they're available or cheap to calculate
   useEffect(() => {
     if (running && running.key !== shownKey) {
       analyser.current?.cancel();
       setRunning(null);
     }
     const coming = (running?.key === shownKey && running.kind === wanted) || (wanted === "evaluate" && engineActive);
-    if (wanted && shownKey && !results.get(shownKey)?.[wanted] && !coming) {
-      setBoardValues("off");
+    if (wanted && shownPosition && shownKey && !results.get(shownKey)?.[wanted] && !coming) {
+      analyseIfCheap(wanted, shownPosition, shownKey);
     }
   }, [shownKey]);
 
+  // A full analysis, however long it takes (shown in progress, with Cancel)
   const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
     const a = (analyser.current ??= new Analyser());
     const start = performance.now();
     setRunning({ kind, key, start });
     setNow(start);
-    const promise: Promise<Evaluation | NimstringAnalysis> = kind === "evaluate" ? a.evaluate(position) : a.nimstringAnalysis(position);
-    promise
+    a.run(kind, position)
       .then((result) => {
-        const timed = { result, seconds: (performance.now() - start) / 1000 };
-        setResults((prev) => new Map(prev).set(key, { ...prev.get(key), [kind]: timed }));
+        storeResult(key, kind, result!, start);
         setRunning(null);
       })
       .catch((e: unknown) => {
