@@ -116,8 +116,10 @@ board of any size (or several boards, for a compound position), from
 a ```.pos``` file, from the named examples from Berlekamp's book and
 the paper, or from any position reached in another game (optionally
 split into its independent components, one board each). The
-engine can evaluate any position, showing the value of every move
-(both for the rest of the game and as a final winning margin), and
+engine can play either side, or both, so you can play against it or
+watch a position played out. It can also evaluate any position,
+showing the value of every move (both for the rest of the game and as
+a final winning margin), and
 calculate its Nimstring value, including the value of each
 independent component. Analysis runs in the background and can be
 cancelled, since it can take a long time for larger positions.
