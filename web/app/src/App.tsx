@@ -8,7 +8,7 @@ import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
+import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 // Pause before the engine plays a move it has chosen, so that playouts can be followed
@@ -357,7 +357,20 @@ export function App() {
         </div>
       </section>
 
-      {panel === "new" && <NewGamePanel initial={sizesOf(snap.position)} onLoad={load} />}
+      {panel === "new" && (
+        <NewGamePanel
+          initial={sizesOf(snap.position)}
+          onLoad={load}
+          onRestart={
+            game.snapshots.length > 1
+              ? () => {
+                  startGame(restart(game));
+                  setPanel(null);
+                }
+              : undefined
+          }
+        />
+      )}
       {panel === "import" && <ImportPanel onLoad={load} />}
       {panel === "export" && <ExportPanel position={snap.position} name={name} />}
 
