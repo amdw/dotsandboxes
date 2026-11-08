@@ -401,12 +401,19 @@ export function App() {
     });
 
   // Setting up the starting position: change who owns a captured coin, or who moves first
+  // These pause the engine, so it doesn't move before the start has been set up: it
+  // continues when Resume is pressed or a move is made
   const cycleOwner = (part: number, x: number, y: number) =>
     attempt(() => {
       const owners = snap.owners.map((p, i) => (i === part ? p.map((row, ry) => row.map((o, rx) => (rx === x && ry === y ? nextOwner(o) : o))) : p));
       setGame(withStart(game, { owners }, engine.makeMove));
+      setPaused(true);
     });
-  const swapFirstPlayer = () => attempt(() => setGame(withStart(game, { toMove: other(game.snapshots[0].toMove) }, engine.makeMove)));
+  const swapFirstPlayer = () =>
+    attempt(() => {
+      setGame(withStart(game, { toMove: other(game.snapshots[0].toMove) }, engine.makeMove));
+      setPaused(true);
+    });
 
   const togglePanel = (p: Panel) => setPanel(panel === p ? null : p);
 
