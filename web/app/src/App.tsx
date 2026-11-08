@@ -530,7 +530,7 @@ export function App() {
         </button>
       </nav>
 
-      <section class="selectors players" aria-label="Play options">
+      <section class="controls" aria-label="Options">
         <Segmented
           label="Engine plays"
           options={[
@@ -542,28 +542,25 @@ export function App() {
           value={engineSides.A ? (engineSides.B ? "both" : "A") : engineSides.B ? "B" : "none"}
           onChange={(v) => chooseEngineSides({ A: v === "A" || v === "both", B: v === "B" || v === "both" })}
         />
-        <div class="selector-with-action">
-          <Segmented
-            label="Canonical moves"
-            options={[
-              [true, "Show"],
-              [false, "Hide"],
-            ]}
-            value={showCanonical}
-            onChange={(show) => {
-              setShowCanonical(show);
-              saveShowCanonical(show);
-            }}
-          />
+        <Segmented
+          label="Canonical moves"
+          options={[
+            [true, "Show"],
+            [false, "Hide"],
+          ]}
+          value={showCanonical}
+          onChange={(show) => {
+            setShowCanonical(show);
+            saveShowCanonical(show);
+          }}
+        >
           {canonicalMoves.length > 0 && (
             <button type="button" class="canonical-play" disabled={engineActive} onClick={playCanonical}>
               Play canonical moves
             </button>
           )}
-        </div>
-      </section>
-
-      <AnalysisPanel
+        </Segmented>
+        <AnalysisPanel
         running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
         engineThinking={engineActive}
         boardValues={boardValues}
@@ -574,7 +571,8 @@ export function App() {
           saveCountScore(count);
         }}
         onCancel={cancelAnalysis}
-      />
+        />
+      </section>
     </main>
   );
 }
