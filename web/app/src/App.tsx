@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preac
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
-import { AnalysisPanel, Segmented, type BoardValues, type Timed } from "./components/AnalysisPanel";
+import { AnalysisPanel, AnalysisProgress, Segmented, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
@@ -634,6 +634,9 @@ export function App() {
           value={engineSides.A ? (engineSides.B ? "both" : "A") : engineSides.B ? "B" : "none"}
           onChange={(v) => chooseEngineSides({ A: v === "A" || v === "both", B: v === "B" || v === "both" })}
         />
+        {running && engineActive && (
+          <AnalysisProgress label={`${snap.toMove} (engine) thinking`} seconds={Math.max(0, now - running.start) / 1000} onCancel={cancelAnalysis} />
+        )}
         <Segmented
           label="Canonical moves"
           options={[
