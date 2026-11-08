@@ -328,7 +328,7 @@ pub fn catalogue() -> Vec<Example> {
         Example::simple("berlekamp-p50-bottom-right", "Berlekamp p. 50 (bottom right)",
             "The bottom-right component of the page 50 example", p50_bottomright()),
         Example::simple("berlekamp-ex3.1", "Berlekamp exercise 3.1",
-            "Exercise 3.1 from Berlekamp's book (paper figure; also in ex5p1.pos)", ex3p1()),
+            "Exercise 3.1 from Berlekamp's book (paper figure; also in ex3p1.pos)", ex3p1()),
         Example::simple("berlekamp-ex3.12", "Berlekamp exercise 3.12",
             "Exercise 3.12 from Berlekamp's book (paper figure)", ex3p12()),
         Example::simple("berlekamp-ex6.2", "Berlekamp exercise 6.2",

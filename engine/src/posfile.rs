@@ -254,7 +254,7 @@ mod tests {
             let parsed = parse_str(text).unwrap();
             assert!(expected.eq(&parsed), "{}", parsed);
         };
-        check(include_str!("../ex5p1.pos"), CompoundPosition::from_single(ex3p1()));
+        check(include_str!("../ex3p1.pos"), CompoundPosition::from_single(ex3p1()));
         check(include_str!("../p50.pos"), CompoundPosition::from_single(p50()));
         check(include_str!("../p50bl.pos"), CompoundPosition::from_single(p50_bottomleft()));
         check(include_str!("../p3_4.pos"),
