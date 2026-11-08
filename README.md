@@ -145,6 +145,21 @@ Then, from the ```web/app``` directory:
   check the TypeScript
 * ```npm run build``` to build a static site in ```web/app/dist```
 
+# Website
+
+The web interface and the paper are published at
+[amdw.github.io/dotsandboxes](https://amdw.github.io/dotsandboxes/),
+with the web interface at
+[/engine](https://amdw.github.io/dotsandboxes/engine/). The site is
+built and deployed by the ```Pages``` GitHub Actions workflow whenever
+master changes: ```site/``` holds the top-level pages, and
+```site/assemble.sh``` puts them together with the built web interface.
+
+To preview the site locally, build the web interface as above, then
+from the root of this repository run ```site/assemble.sh _site``` and
+serve the ```_site``` directory, e.g. with ```python3 -m http.server
+--directory _site```.
+
 # Licensing
 
 All material in this repository is Copyright 2016-2020, 2022, 2026 Andrew Medworth
