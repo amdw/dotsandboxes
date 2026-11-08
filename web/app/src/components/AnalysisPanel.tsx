@@ -12,6 +12,8 @@ export interface Timed<T> {
 
 interface AnalysisPanelProps {
   running: { kind: AnalysisKind; seconds: number } | null;
+  // Whether the analysis running is the engine thinking about its move
+  engineThinking: boolean;
   boardValues: BoardValues;
   onBoardValues: (v: BoardValues) => void;
   // Whether evaluation values include the score so far (the final margin), or only
@@ -21,7 +23,7 @@ interface AnalysisPanelProps {
   onCancel: () => void;
 }
 
-function Segmented<T extends string | boolean>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange: (v: T) => void }) {
+export function Segmented<T extends string | boolean>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
     <div class="selector">
       <span>{label}</span>
@@ -67,7 +69,8 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
 
       {running && (
         <p class="running" role="status">
-          {running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"}… {running.seconds.toFixed(1)} s
+          {props.engineThinking && running.kind === "evaluate" ? "Engine thinking" : running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"}…{" "}
+          {running.seconds.toFixed(1)} s
           <button type="button" class="quiet small" onClick={props.onCancel}>
             Cancel
           </button>

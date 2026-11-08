@@ -2,15 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
-import { AnalysisPanel, type BoardValues, type Timed } from "./components/AnalysisPanel";
+import { AnalysisPanel, Segmented, type BoardValues, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
-import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
+import { chooseEngineMove, evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState } from "./game/state";
+import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
 
 const VIEW_KEY = "dab-view";
+// Pause before the engine plays a move it has chosen, so that playouts can be followed
+const ENGINE_DELAY_MS = 600;
 const COUNT_SCORE_KEY = "dab-count-score";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
 const MAX_ENLARGEMENT = 1.4;
@@ -76,6 +78,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>(loadView);
   const [panel, setPanel] = useState<Panel | null>(null);
+  // Which players the engine plays, and whether it is paused (e.g. after moving back
+  // through the game, so as not to overwrite the moves after the position shown)
+  const [engineSides, setEngineSides] = useState<Record<Player, boolean>>({ A: false, B: false });
+  const [paused, setPaused] = useState(false);
   // The part whose "play on its own" confirmation is open, if any
   const [isolating, setIsolating] = useState<number | null>(null);
   const closeIsolating = useCallback(() => setIsolating(null), []);
@@ -101,15 +107,20 @@ export function App() {
 
   // When the position shown changes, stop analysing the previous one, and switch the board
   // values off unless they're already available for the new position
-  const shownPosition = game ? current(game).position : null;
+  const shownSnapshot = game ? current(game) : null;
+  const shownPosition = shownSnapshot?.position ?? null;
   const shownKey = shownPosition ? positionKey(shownPosition) : null;
   const wanted: AnalysisKind | null = boardValues === "evaluation" ? "evaluate" : boardValues === "nimstring" ? "nimstring" : null;
+  // Whether the engine is about to play (it evaluates the position first)
+  const engineToMove = !!shownSnapshot && !shownSnapshot.gameOver && engineSides[shownSnapshot.toMove];
+  const engineActive = engineToMove && !paused;
   useEffect(() => {
     if (running && running.key !== shownKey) {
       analyser.current?.cancel();
       setRunning(null);
     }
-    if (wanted && shownKey && !results.get(shownKey)?.[wanted] && !(running?.key === shownKey && running.kind === wanted)) {
+    const coming = (running?.key === shownKey && running.kind === wanted) || (wanted === "evaluate" && engineActive);
+    if (wanted && shownKey && !results.get(shownKey)?.[wanted] && !coming) {
       setBoardValues("off");
     }
   }, [shownKey]);
@@ -135,6 +146,22 @@ export function App() {
       });
   };
 
+  // When it's the engine's turn, evaluate the position (unless already cached), then play
+  // one of the best moves after a short pause
+  useEffect(() => {
+    if (!engineActive || !shownPosition || !shownKey) return;
+    const evaluation = results.get(shownKey)?.evaluate;
+    if (!evaluation) {
+      if (!running) analyse("evaluate", shownPosition, shownKey);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const move = chooseEngineMove(evaluation.result);
+      if (move) setGame((g) => (g ? playMove(g, move, engine.makeMove) : g));
+    }, ENGINE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [engineActive, shownKey, results, running]);
+
   useEffect(() => {
     loadEngine()
       .then(() => setGame(gameFrom(engine.newGame([[3, 3]]))))
@@ -150,6 +177,7 @@ export function App() {
       if (e.key in delta) {
         e.preventDefault();
         setGame((g) => (g ? goTo(g, g.cursor + delta[e.key]) : g));
+        setPaused(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -201,11 +229,24 @@ export function App() {
     }
   };
 
-  // Stop the analysis in progress, switching off the values it was calculating
+  // Stop the analysis in progress, switching off the values it was calculating (and
+  // pausing the engine, if it was thinking about its move)
   const cancelAnalysis = () => {
     analyser.current?.cancel();
     setRunning(null);
     setBoardValues("off");
+    if (engineActive) setPaused(true);
+  };
+
+  // Moving through the game pauses the engine, so it doesn't play over later moves
+  const navigate = (cursor: number) => {
+    setGame(goTo(game, cursor));
+    setPaused(true);
+  };
+
+  const chooseEngineSides = (sides: Record<Player, boolean>) => {
+    setEngineSides(sides);
+    setPaused(false);
   };
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
@@ -224,11 +265,16 @@ export function App() {
   const load = (position: PositionData, moves: CPosMove[] = [], newName = "position") =>
     attempt(() => {
       setGame(gameFrom(position, moves));
+      setPaused(false);
       setName(newName);
       setPanel(null);
     });
 
-  const play = (line: Line) => attempt(() => setGame(playMove(game, lineToMove(line), engine.makeMove)));
+  const play = (line: Line) =>
+    attempt(() => {
+      setGame(playMove(game, lineToMove(line), engine.makeMove));
+      setPaused(false);
+    });
 
   // Setting up the starting position: change who owns a captured coin, or who moves first
   const cycleOwner = (part: number, x: number, y: number) =>
@@ -250,7 +296,9 @@ export function App() {
     ? A === B
       ? `Game over: draw ${A}–${B}`
       : `Game over: ${A > B ? "A" : "B"} wins ${Math.max(A, B)}–${Math.min(A, B)}, by ${Math.abs(A - B)}`
-    : `${snap.toMove} to move`;
+    : engineToMove
+      ? `${snap.toMove} (engine) ${paused ? "to move" : "thinking…"}`
+      : `${snap.toMove} to move`;
   const lead = A === B ? "Scores level" : `${A > B ? "A" : "B"} leads by ${Math.abs(A - B)}`;
 
   return (
@@ -318,6 +366,11 @@ export function App() {
               Switch
             </button>
           )}
+          {engineToMove && paused && (
+            <button type="button" class="quiet small" onClick={() => setPaused(false)}>
+              Resume
+            </button>
+          )}
           {!snap.gameOver && <div class="lead">{lead}</div>}
         </div>
         <div class={`score player-B${!snap.gameOver && snap.toMove === "B" ? " active" : ""}`}>
@@ -379,7 +432,7 @@ export function App() {
               view={view}
               toMove={snap.toMove}
               lastMove={last && last.part === i ? last : null}
-              interactive={!snap.gameOver}
+              interactive={!snap.gameOver && !engineActive}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
               voids={game.voids?.[i]}
@@ -412,25 +465,40 @@ export function App() {
       )}
 
       <nav class="history" aria-label="Move history">
-        <button type="button" onClick={() => setGame(goTo(game, 0))} disabled={atStart} aria-label="Go to start">
+        <button type="button" onClick={() => navigate(0)} disabled={atStart} aria-label="Go to start">
           ⏮
         </button>
-        <button type="button" onClick={() => setGame(goTo(game, game.cursor - 1))} disabled={atStart} aria-label="Back one move">
+        <button type="button" onClick={() => navigate(game.cursor - 1)} disabled={atStart} aria-label="Back one move">
           ◀
         </button>
         <span class="move-count">
           Move {game.cursor} of {game.snapshots.length - 1}
         </span>
-        <button type="button" onClick={() => setGame(goTo(game, game.cursor + 1))} disabled={game.cursor === game.snapshots.length - 1} aria-label="Forward one move">
+        <button type="button" onClick={() => navigate(game.cursor + 1)} disabled={game.cursor === game.snapshots.length - 1} aria-label="Forward one move">
           ▶
         </button>
-        <button type="button" onClick={() => setGame(goTo(game, game.snapshots.length - 1))} disabled={game.cursor === game.snapshots.length - 1} aria-label="Go to end">
+        <button type="button" onClick={() => navigate(game.snapshots.length - 1)} disabled={game.cursor === game.snapshots.length - 1} aria-label="Go to end">
           ⏭
         </button>
       </nav>
 
+      <section class="selectors players" aria-label="Players">
+        <Segmented
+          label="Engine plays"
+          options={[
+            ["none", "Neither"],
+            ["A", "A"],
+            ["B", "B"],
+            ["both", "Both"],
+          ]}
+          value={engineSides.A ? (engineSides.B ? "both" : "A") : engineSides.B ? "B" : "none"}
+          onChange={(v) => chooseEngineSides({ A: v === "A" || v === "both", B: v === "B" || v === "both" })}
+        />
+      </section>
+
       <AnalysisPanel
         running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
+        engineThinking={engineActive}
         boardValues={boardValues}
         onBoardValues={chooseBoardValues}
         countScore={countScore}

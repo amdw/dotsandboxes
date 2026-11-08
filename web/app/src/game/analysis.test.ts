@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
-import { evaluationLabels, formatNimstring, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
+import { chooseEngineMove, evaluationLabels, formatNimstring, lineKeyOf, nimAdd, nimstringLabels, partValues, positionKey, signed } from "./analysis";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -72,6 +72,23 @@ describe("analysis", () => {
     for (const m of engine.legalMoves(finished)) position = engine.makeMove(position, m).position;
     const analysis = engine.nimstringAnalysis({ parts: [position.parts[0], example("nimstring-examples").position.parts[4]] });
     expect(partValues(analysis.components, 2)).toEqual([{ Nimber: 0 }, { Nimber: 1 }]);
+  });
+
+  it("chooses one of the best moves for the engine", () => {
+    // Exercise 3.1 has a single best move, (2, 1) Bottom
+    const evaluation = engine.evaluate(example("berlekamp-ex3.1").position);
+    for (const r of [0, 0.5, 0.999]) {
+      expect(chooseEngineMove(evaluation, () => r)).toEqual({ part: 0, m: { x: 2, y: 1, side: "Bottom" } });
+    }
+    // Two closed 3-chains: every move is equally good, and the choice spreads over them
+    const twoChains = engine.evaluate({ parts: [example("nimstring-examples").position.parts[5], example("nimstring-examples").position.parts[5]] });
+    const chosen = new Set([0, 0.3, 0.6, 0.99].map((r) => lineKeyOf(chooseEngineMove(twoChains, () => r)!)));
+    expect(chosen.size).toBeGreaterThan(1);
+    for (const key of chosen) {
+      expect(twoChains.moves.find((m) => lineKeyOf(m.move) === key)!.value).toBe(twoChains.value);
+    }
+    // No moves left
+    expect(chooseEngineMove({ value: 0, moves: [] })).toBeNull();
   });
 });
 

@@ -743,6 +743,10 @@ button.part-chip {
 }
 
 
+.selectors.players {
+  margin-top: 16px;
+}
+
 .selectors {
   display: flex;
   flex-direction: column;

@@ -62,3 +62,11 @@ export function partValues(components: ComponentValue[], partCount: number): Nim
   }
   return values;
 }
+
+// The move the engine plays: one of the best moves in an evaluation, chosen at random
+// (random() returning a number in [0, 1)) so that different playouts can vary
+export function chooseEngineMove(evaluation: Evaluation, random: () => number = Math.random): CPosMove | null {
+  const best = evaluation.moves.filter((m) => m.value === evaluation.value);
+  if (best.length === 0) return null;
+  return best[Math.min(best.length - 1, Math.floor(random() * best.length))].move;
+}
