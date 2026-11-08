@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
@@ -8,6 +8,7 @@ import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
+import { decodeGame, encodeGame } from "./game/share";
 import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
 
 const VIEW_KEY = "dab-view";
@@ -221,9 +222,40 @@ export function App() {
 
   useEffect(() => {
     loadEngine()
-      .then(() => setGame(gameFrom(engine.newGame([[3, 3]]))))
+      .then(() => {
+        // Open the game in the link, if any (see share.ts)
+        if (location.hash.length > 1) {
+          try {
+            const shared = decodeGame(location.hash, engine.makeMove);
+            setGame(shared.game);
+            // The view in a link applies to this visit only, not the saved preference
+            if (shared.view) setView(shared.view);
+            return;
+          } catch (e) {
+            setError(`Couldn't open the game in this link: ${errorMessage(e)}`);
+          }
+        }
+        setGame(gameFrom(engine.newGame([[3, 3]])));
+      })
       .catch((e: unknown) => setLoadError(errorMessage(e)));
   }, []);
+
+  const hashChangeHandler = useRef<() => void>(() => {});
+  useEffect(() => {
+    const onHashChange = () => hashChangeHandler.current();
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // Keep the address bar a link to the current game, replacing the URL rather than adding
+  // to the browser history at every move (as part of rendering, so it's never out of date)
+  const writtenHash = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!game) return;
+    const hash = encodeGame(game, view);
+    writtenHash.current = hash;
+    if (location.hash.slice(1) !== hash) history.replaceState(null, "", `#${hash}`);
+  }, [game, view]);
 
   // Arrow keys and Home/End move through the game, unless typing in a form field
   useEffect(() => {
@@ -335,6 +367,22 @@ export function App() {
     setPaused(false);
   };
 
+  // A different link pasted into the address bar (changing just the fragment, so the page
+  // isn't reloaded) opens that game
+  hashChangeHandler.current = () => {
+    const hash = location.hash.slice(1);
+    if (!hash || hash === writtenHash.current) return;
+    try {
+      const shared = decodeGame(hash, engine.makeMove);
+      startGame(shared.game);
+      if (shared.view) setView(shared.view);
+      setPanel(null);
+      setError(null);
+    } catch (e) {
+      setError(`Couldn't open the game in this link: ${errorMessage(e)}`);
+    }
+  };
+
   const load = (position: PositionData, moves: CPosMove[] = [], newName = "position") =>
     attempt(() => {
       startGame(gameFrom(position, moves));
@@ -430,7 +478,7 @@ export function App() {
         />
       )}
       {panel === "import" && <ImportPanel onLoad={load} />}
-      {panel === "export" && <ExportPanel position={snap.position} name={name} />}
+      {panel === "export" && <ExportPanel position={snap.position} name={name} link={`${location.origin}${location.pathname}#${encodeGame(game, view)}`} />}
 
       <section class="status" aria-live="polite">
         <div class={`score player-A${!snap.gameOver && snap.toMove === "A" ? " active" : ""}`}>

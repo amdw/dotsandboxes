@@ -156,23 +156,28 @@ export function ImportPanel({ onLoad }: { onLoad: LoadPosition }) {
   );
 }
 
-export function ExportPanel({ position, name }: { position: PositionData; name: string }) {
+// Copy text to the clipboard, or if that isn't possible (the clipboard API needs a secure
+// context and permission), select it in the given field so the user can copy it themselves.
+// Returns a message saying which.
+async function copyText(text: string, field: HTMLInputElement | HTMLTextAreaElement | null): Promise<string> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return "Copied to the clipboard.";
+  } catch {
+    field?.select();
+    return "Couldn't copy automatically: the text is selected, so copy it with Ctrl+C (or ⌘C).";
+  }
+}
+
+export function ExportPanel({ position, name, link }: { position: PositionData; name: string; link: string }) {
   const text = engine.writePos(position);
+  const linkField = useRef<HTMLInputElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
+  const [linkStatus, setLinkStatus] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
+  useEffect(() => setLinkStatus(null), [link]);
   useEffect(() => setStatus(null), [text]);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setStatus("Copied to the clipboard.");
-    } catch {
-      // The clipboard API needs a secure context (HTTPS or localhost) and permission
-      area.current?.select();
-      setStatus("Couldn't copy automatically: the text is selected, so copy it with Ctrl+C (or ⌘C).");
-    }
-  };
 
   const download = () => {
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
@@ -185,13 +190,31 @@ export function ExportPanel({ position, name }: { position: PositionData; name: 
 
   return (
     <div class="panel export">
+      <h2>Link to this game</h2>
+      <p class="hint">
+        The whole game, from its starting position, including the moves played and the move shown. The address bar always
+        holds this link too.
+      </p>
+      <input ref={linkField} class="link" type="text" readOnly value={link} aria-label="Link to this game" onFocus={(e) => e.currentTarget.select()} />
+      <div class="panel-actions">
+        <button type="button" class="primary" onClick={async () => setLinkStatus(await copyText(link, linkField.current))}>
+          Copy link
+        </button>
+      </div>
+      {linkStatus && (
+        <p class="hint" role="status">
+          {linkStatus}
+        </p>
+      )}
+
+      <h2>Position file</h2>
       <p class="hint">
         The current position in the engine's <code>.pos</code> format, which can be imported again here or loaded by the
         command-line engine.
       </p>
       <textarea ref={area} rows={Math.min(10, text.split("\n").length)} readOnly spellcheck={false} value={text} aria-label="Exported position text" />
       <div class="panel-actions">
-        <button type="button" class="primary" onClick={copy}>
+        <button type="button" class="primary" onClick={async () => setStatus(await copyText(text, area.current))}>
           Copy
         </button>
         <button type="button" onClick={download}>

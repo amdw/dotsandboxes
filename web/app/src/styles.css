@@ -272,6 +272,16 @@ button.small {
   resize: vertical;
 }
 
+.panel input.link {
+  width: 100%;
+  font: 0.85rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
 .panel code {
   font-size: 0.85em;
 }

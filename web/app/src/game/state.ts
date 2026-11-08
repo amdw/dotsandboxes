@@ -127,7 +127,7 @@ export function startSplit(game: GameState, split: PositionData): GameState {
   const voids = split.parts.map((p) => Array.from({ length: p.height }, (_, y) => Array.from({ length: p.width }, (_, x) => isCoinCaptured(p, x, y))));
   return startFrom(
     { ...snapshot, position: split, owners, gameOver: isEndOfGame(split.parts) },
-    { baseScores: snapshot.scores, voids },
+    { baseScores: snapshot.scores, voids: voids.some((part) => part.some((row) => row.some((v) => v))) ? voids : null },
   );
 }
 
