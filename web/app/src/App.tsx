@@ -649,7 +649,6 @@ export function App() {
               view={view}
               toMove={snap.toMove}
               lastMove={last && last.part === i ? last : null}
-              lastCaptured={showLastMove ? snap.lastCaptured.filter((c) => c.part === i).map((c): [number, number] => [c.x, c.y]) : []}
               lastMark={last && last.part === i ? lastMark : null}
               interactive={!snap.gameOver && !engineActive}
               onPlay={play}
