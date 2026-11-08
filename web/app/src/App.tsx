@@ -3,7 +3,7 @@ import { Analyser, CancelledError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
 import { AnalysisPanel, AnalysisProgress, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
-import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
+import { Board, boardMargins, naturalWidth, type LastMoveBadge, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, judgeMove, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
@@ -196,8 +196,10 @@ export function App() {
   shownKeyRef.current = shownKey;
   const wantedRef = useRef(wanted);
   wantedRef.current = wanted;
-  // Cheap analyses in progress (as "positionKey kind"), so each is only requested once
+  // Cheap analyses in progress (as "positionKey kind"), so each is only requested once, and
+  // those which gave up because the analysis wasn't cheap
   const quickPending = useRef(new Set<string>());
+  const [notCheap, setNotCheap] = useState<Set<string>>(new Set());
 
   const storeResult = (key: string, kind: AnalysisKind, result: Evaluation | NimstringAnalysis, start: number) => {
     const timed = { result, seconds: (performance.now() - start) / 1000 };
@@ -217,7 +219,10 @@ export function App() {
     a.run(kind, position, CHEAP_ANALYSIS_POSITIONS)
       .then((result) => {
         if (result) storeResult(key, kind, result, start);
-        else if (stillWanted()) setBoardValues("off");
+        else {
+          setNotCheap((prev) => new Set(prev).add(id));
+          if (stillWanted()) setBoardValues("off");
+        }
       })
       .catch(() => {
         if (stillWanted()) setBoardValues("off");
@@ -416,6 +421,36 @@ export function App() {
     judgement?.mark && previousSnapshot
       ? { mark: judgement.mark, title: `Not the best move: ${previousSnapshot.toMove} ${outcome(judgement.played)} instead of ${outcome(judgement.best)}` }
       : null;
+  // The badge beside the last move: with evaluation values on the board, its value (in the
+  // same terms as the other values), coloured by how good it was; otherwise just "?" or "??"
+  let lastBadge: LastMoveBadge | null = null;
+  if (judgement && previousSnapshot && snap.lastMove && previousEvaluation) {
+    const kind = judgement.mark === "??" ? "blunder" : judgement.mark === "?" ? "inaccuracy" : "best";
+    const title = lastMark?.title ?? "The best move";
+    if (boardValues === "evaluation") {
+      const mover = previousSnapshot.toMove;
+      const label = evaluationLabels(
+        previousEvaluation.result,
+        previousSnapshot.scores[mover] - previousSnapshot.scores[other(mover)],
+        countScore ? "margin" : "engine",
+        perspective === "A" && mover === "B",
+      ).get(lineKeyOf(snap.lastMove));
+      if (label) lastBadge = { text: label.text, kind, title };
+    } else if (judgement.mark) {
+      lastBadge = { text: judgement.mark, kind, title };
+    }
+  }
+  // The last move can be checked on request when judging it wasn't cheap
+  const canCheckMove = showLastMove && !!previousKey && !previousEvaluation && notCheap.has(`${previousKey} evaluate`);
+  const checkingMove = !!running && running.key === previousKey && running.kind === "evaluate" && !engineActive;
+  const checkMove = () => {
+    if (previousSnapshot && previousKey) analyse("evaluate", previousSnapshot.position, previousKey);
+  };
+  // Stop checking the last move (leaving the values on the board as they were)
+  const cancelCheck = () => {
+    analyser.current?.cancel();
+    setRunning(null);
+  };
 
   // Canonical moves, when highlighted: the whole sequence of them which can be played from here
   const canonicalPlan = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : { moves: [], captured: [] };
@@ -649,7 +684,7 @@ export function App() {
               view={view}
               toMove={snap.toMove}
               lastMove={last && last.part === i ? last : null}
-              lastMark={last && last.part === i ? lastMark : null}
+              lastBadge={last && last.part === i ? lastBadge : null}
               interactive={!snap.gameOver && !engineActive}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
@@ -694,8 +729,21 @@ export function App() {
         <span class="move-count">
           Move {game.cursor} of {game.snapshots.length - 1}
           {lastMark && (
-            <span class="move-mark" title={lastMark.title}>
+            <span class={`move-mark ${lastMark.mark === "??" ? "blunder" : "inaccuracy"}`} title={lastMark.title}>
               {lastMark.mark}
+            </span>
+          )}
+          {canCheckMove && !running && (
+            <button type="button" class="quiet small" title="Evaluate the position before the last move, to judge it" onClick={checkMove}>
+              Check move
+            </button>
+          )}
+          {checkingMove && running && (
+            <span class="checking">
+              Checking… {(Math.max(0, now - running.start) / 1000).toFixed(1)} s
+              <button type="button" class="quiet small" onClick={cancelCheck}>
+                Cancel
+              </button>
             </span>
           )}
         </span>
@@ -764,6 +812,7 @@ export function App() {
         <AnalysisPanel
         running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000 }}
         engineThinking={engineActive}
+        checkingMove={checkingMove}
         boardValues={boardValues}
         onBoardValues={chooseBoardValues}
         countScore={countScore}

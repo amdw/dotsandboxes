@@ -17,6 +17,8 @@
   --accent: #b3261e;
   --best: #1e7a3c;
   --canonical: #7b4fd6;
+  --warn: #9a6a00;
+  --warn-soft: #fbefc8;
   --canonical-soft: #ebe2fb;
   --best-soft: #d8f0df;
   --error-bg: #fde8e6;
@@ -43,6 +45,8 @@
     --accent: #ff7a6e;
     --best: #5fd08a;
     --canonical: #b39cff;
+    --warn: #e8bf4a;
+    --warn-soft: #3d3216;
     --canonical-soft: #2f2645;
     --best-soft: #1c3b27;
     --error-bg: #4a1f1b;
@@ -69,6 +73,8 @@
   --accent: #ff7a6e;
   --best: #5fd08a;
   --canonical: #b39cff;
+  --warn: #e8bf4a;
+  --warn-soft: #3d3216;
   --canonical-soft: #2f2645;
   --best-soft: #1c3b27;
   --error-bg: #4a1f1b;
@@ -858,20 +864,37 @@ button.canonical-play {
   stroke-linejoin: round;
 }
 
-.board .move-mark rect {
-  fill: var(--surface);
-  stroke: var(--accent);
-  stroke-width: 1.5;
+.board .move-mark {
+  pointer-events: none;
 }
 
 .board .move-mark text {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  fill: var(--accent);
+}
+
+/* The last move's badge: green if it was the best move, amber for "?", red for "??" */
+.board .move-mark.best rect {
+  fill: var(--best-soft);
+  stroke: var(--best);
+}
+
+.board .move-mark.best text {
+  fill: var(--best);
+}
+
+.board .move-mark.inaccuracy rect {
+  fill: var(--warn-soft);
+  stroke: var(--warn);
+}
+
+.board .move-mark.inaccuracy text {
+  fill: var(--warn);
 }
 
 .board .move-mark.blunder rect {
   fill: var(--accent);
+  stroke: var(--accent);
 }
 
 .board .move-mark.blunder text {
@@ -882,4 +905,14 @@ button.canonical-play {
   margin-left: 6px;
   font-weight: 700;
   color: var(--accent);
+}
+
+.move-count .move-mark.inaccuracy {
+  color: var(--warn);
+}
+
+.move-count .checking {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }

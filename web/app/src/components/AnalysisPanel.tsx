@@ -17,8 +17,10 @@ export interface Timed<T> {
 
 interface AnalysisPanelProps {
   running: { kind: AnalysisKind; seconds: number } | null;
-  // Whether the analysis running is the engine thinking about its move
+  // Whether the analysis running is the engine thinking about its move, or checking the
+  // last move (both of which show their progress elsewhere)
   engineThinking: boolean;
+  checkingMove: boolean;
   boardValues: BoardValues;
   onBoardValues: (v: BoardValues) => void;
   // Whether evaluation values include the score so far (the final margin), or only
@@ -112,7 +114,7 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
         )}
 
       {/* (When the engine is thinking about its move, the progress is shown under "Engine plays" instead) */}
-      {running && !props.engineThinking && (
+      {running && !props.engineThinking && !props.checkingMove && (
         <AnalysisProgress label={running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"} seconds={running.seconds} onCancel={props.onCancel} />
       )}
     </>
