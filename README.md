@@ -147,7 +147,7 @@ Then, from the ```web/app``` directory:
 
 # Licensing
 
-All material in this repository is Copyright 2016-2019 Andrew Medworth
+All material in this repository is Copyright 2016-2020, 2022, 2026 Andrew Medworth
 (github@medworth.org.uk).
 
 The Dots-and-Boxes paper is licensed under a Creative Commons license
