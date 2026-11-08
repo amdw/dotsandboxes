@@ -30,6 +30,8 @@ with nothing to install. There you can:
   them on its own
 * Highlight and play canonical moves (captures which can be made
   without loss)
+* Share any game as a link (the address bar always holds one), which
+  reopens it exactly as it was
 
 I would be very grateful to learn of any errors in any of this
 material.

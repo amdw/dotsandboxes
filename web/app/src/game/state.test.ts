@@ -124,7 +124,7 @@ describe("game state", () => {
     expect(fresh.baseScores).toEqual({ A: 0, B: 1 });
     // The captured coin is gone; the rest of the top chain is a 4-coin part, with no voids
     expect(split.parts.map((p) => p.width).sort()).toEqual([4, 5]);
-    expect(fresh.voids!.flat(2).some((v) => v)).toBe(false);
+    expect(fresh.voids).toBeNull();
 
     // Scores carry on from the base, and survive starting again or changing the start
     // B takes the next coin of the opened chain (its left string is already cut)
