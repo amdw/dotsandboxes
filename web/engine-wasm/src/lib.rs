@@ -77,6 +77,12 @@ pub fn parse_pos(text: &str) -> Result<JsValue, JsError> {
     to_js(api::parse_pos(text))
 }
 
+#[wasm_bindgen]
+pub fn split(position: JsValue) -> Result<JsValue, JsError> {
+    let position: CompoundPositionData = from_js(position)?;
+    to_js(api::split(&position))
+}
+
 #[wasm_bindgen(js_name = writePos)]
 pub fn write_pos(position: JsValue) -> Result<String, JsError> {
     let position: CompoundPositionData = from_js(position)?;

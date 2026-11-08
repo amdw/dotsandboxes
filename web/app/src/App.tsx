@@ -7,7 +7,7 @@ import { Board, boardMargins, naturalWidth, type View } from "./components/Board
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, newGameState, nextOwner, other, playMove, startFrom, withStart, type GameState } from "./game/state";
+import { current, goTo, newGameState, nextOwner, other, playMove, startFromCurrent, startSplit, withStart, type GameState } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 const COUNT_SCORE_KEY = "dab-count-score";
@@ -204,7 +204,9 @@ export function App() {
     setBoardValues("off");
   };
 
-  const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y))));
+  const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
+  // The position split into its independent components, if that would give more parts
+  const split = engine.split(snap.position);
 
   const attempt = (f: () => void) => {
     try {
@@ -263,11 +265,22 @@ export function App() {
             disabled={atStart}
             title="Start a new game from the current position, keeping the scores"
             onClick={() => {
-              setGame(startFrom(snap));
+              setGame(startFromCurrent(game));
               setPanel(null);
             }}
           >
             Start from here
+          </button>
+          <button
+            type="button"
+            disabled={!split}
+            title="Start a new game from the current position, with each independent component as a separate part"
+            onClick={() => {
+              if (split) setGame(startSplit(game, split));
+              setPanel(null);
+            }}
+          >
+            Split
           </button>
           <button type="button" aria-expanded={panel === "import"} onClick={() => togglePanel("import")}>
             Import
@@ -343,6 +356,7 @@ export function App() {
               interactive={!snap.gameOver}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
+              voids={game.voids?.[i]}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}

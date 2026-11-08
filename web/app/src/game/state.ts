@@ -1,7 +1,7 @@
 // The state of a game being played through: a list of snapshots, one per move made
 // from the starting position, and a cursor into it for moving back and forward.
 import type { Coin, CPosMove, MoveResult, PositionData } from "../engine/types";
-import { isEndOfGame } from "./lines";
+import { isCoinCaptured, isEndOfGame } from "./lines";
 
 export type Player = "A" | "B";
 
@@ -20,7 +20,18 @@ export interface Snapshot {
 export interface GameState {
   snapshots: Snapshot[];
   cursor: number;
+  // Points scored before the starting position, other than for the coins on the board
+  // with owners (e.g. for coins dropped when the position was split)
+  baseScores: Record<Player, number>;
+  // voids[part][y][x]: cells which aren't coins at all, but just fill out a part to a
+  // rectangle (e.g. after splitting a position into its components), or null if none
+  voids: boolean[][][] | null;
 }
+
+// Settings of a game which apply from its starting position onwards
+type StartExtras = Pick<GameState, "baseScores" | "voids">;
+
+const NO_EXTRAS: StartExtras = { baseScores: { A: 0, B: 0 }, voids: null };
 
 export type MakeMove = (position: PositionData, move: CPosMove) => MoveResult;
 
@@ -39,6 +50,7 @@ export function newGameState(position: PositionData): GameState {
       },
     ],
     cursor: 0,
+    ...NO_EXTRAS,
   };
 }
 
@@ -64,7 +76,7 @@ export function playMove(game: GameState, move: CPosMove, makeMove: MakeMove): G
     lastCaptured: result.captured,
     gameOver: result.end_of_game,
   };
-  return { snapshots: [...game.snapshots.slice(0, game.cursor + 1), after], cursor: game.cursor + 1 };
+  return { ...game, snapshots: [...game.snapshots.slice(0, game.cursor + 1), after], cursor: game.cursor + 1 };
 }
 
 export function other(player: Player): Player {
@@ -90,11 +102,33 @@ export function nextOwner(owner: Player | null): Player | null {
 
 // A new game starting from a snapshot (e.g. the current position of another game),
 // keeping its coin owners, scores and player to move
-export function startFrom(snapshot: Snapshot): GameState {
+export function startFrom(snapshot: Snapshot, extras: StartExtras = NO_EXTRAS): GameState {
+  const owned = scoresOf(snapshot.owners);
+  const scores = { A: extras.baseScores.A + owned.A, B: extras.baseScores.B + owned.B };
   return {
-    snapshots: [{ ...snapshot, scores: scoresOf(snapshot.owners), lastMove: null, lastCaptured: [] }],
+    snapshots: [{ ...snapshot, scores, lastMove: null, lastCaptured: [] }],
     cursor: 0,
+    ...extras,
   };
+}
+
+// A new game starting from the current position of a game
+export function startFromCurrent(game: GameState): GameState {
+  return startFrom(current(game), { baseScores: game.baseScores, voids: game.voids });
+}
+
+// A new game starting from the current position of a game split into its independent
+// components (see engine.split), keeping the scores and player to move. Captured coins
+// aren't part of the split position, so the scores so far become base scores, and any
+// cells without strings are just padding, not coins.
+export function startSplit(game: GameState, split: PositionData): GameState {
+  const snapshot = current(game);
+  const owners = split.parts.map((p) => Array.from({ length: p.height }, () => Array<Player | null>(p.width).fill(null)));
+  const voids = split.parts.map((p) => Array.from({ length: p.height }, (_, y) => Array.from({ length: p.width }, (_, x) => isCoinCaptured(p, x, y))));
+  return startFrom(
+    { ...snapshot, position: split, owners, gameOver: isEndOfGame(split.parts) },
+    { baseScores: snapshot.scores, voids },
+  );
 }
 
 // Change the coin owners and/or player to move of the starting position, replaying
@@ -104,7 +138,7 @@ export function withStart(
   start: { owners?: (Player | null)[][][]; toMove?: Player },
   makeMove: MakeMove,
 ): GameState {
-  let result = startFrom({ ...game.snapshots[0], ...start });
+  let result = startFrom({ ...game.snapshots[0], ...start }, { baseScores: game.baseScores, voids: game.voids });
   for (const snapshot of game.snapshots.slice(1)) {
     result = playMove(result, snapshot.lastMove!, makeMove);
   }

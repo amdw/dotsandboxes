@@ -27,6 +27,8 @@ interface BoardProps {
   width: string;
   // Analysis results to show on the legal moves, keyed by lineKey
   labels?: MoveLabels;
+  // voids[y][x]: cells which aren't coins, just padding (see GameState.voids)
+  voids?: boolean[][] | null;
 }
 
 const CELL = 56;
@@ -131,7 +133,11 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids }: BoardProps) {
+  // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
+  const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
+  const lineBordersOnlyVoids = (line: Line) =>
+    line.orientation === "h" ? isVoid(line.x, line.y - 1) && isVoid(line.x, line.y) : isVoid(line.x - 1, line.y) && isVoid(line.x, line.y);
   const { dot, centre, dabEnds, sncEnds } = geometry(data, margins);
   const width = naturalWidth(data, margins);
   const height = margins.top + margins.bottom + data.height * CELL;
@@ -206,11 +212,11 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         })
     : [];
 
-  let content: JSX.Element[];
+  let content: (JSX.Element | null)[];
   if (view === "dab") {
     content = [
       ...coins
-        .filter(([x, y]) => isCoinCaptured(data, x, y))
+        .filter(([x, y]) => isCoinCaptured(data, x, y) && !isVoid(x, y))
         .map(([x, y]) => {
           const owner = owners[y][x];
           const [dx, dy] = dot(x, y);
@@ -231,11 +237,13 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         return <rect key={`p${x},${y}`} class="preview-box" x={dx} y={dy} width={CELL} height={CELL} />;
       }),
       ...lines
-        .filter((line) => !isStringPresent(data, line))
+        .filter((line) => !isStringPresent(data, line) && !lineBordersOnlyVoids(line))
         .map((line) => <Segment key={`l${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class={sameLine(line, lastMove) ? "drawn last" : "drawn"} />),
       ...moveTargets,
       ...Array.from({ length: (data.width + 1) * (data.height + 1) }, (_, i) => {
-        const [x, y] = dot(i % (data.width + 1), Math.floor(i / (data.width + 1)));
+        const [dx, dy] = [i % (data.width + 1), Math.floor(i / (data.width + 1))];
+        if (isVoid(dx - 1, dy - 1) && isVoid(dx, dy - 1) && isVoid(dx - 1, dy) && isVoid(dx, dy)) return null;
+        const [x, y] = dot(dx, dy);
         return <circle key={`d${i}`} class="dot" cx={x} cy={y} r={CELL * 0.07} />;
       }),
     ];
@@ -253,7 +261,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
           );
         }),
       ...moveTargets,
-      ...coins.map(([x, y]) => {
+      ...coins.filter(([x, y]) => !isVoid(x, y)).map(([x, y]) => {
         const [cx, cy] = centre(x, y);
         if (!isCoinCaptured(data, x, y)) {
           return <circle key={`c${x},${y}`} class={willCapture(x, y) ? "coin capture-preview" : "coin"} cx={cx} cy={cy} r={COIN_R} />;

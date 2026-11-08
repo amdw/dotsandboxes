@@ -24,6 +24,7 @@ use dabengine::examples;
 use dabengine::game::{CPosMove, CompoundPosition, CompoundPositionData, Position, SimplePosition};
 use dabengine::nimstring::{self, ComponentValue, Value};
 use dabengine::posfile;
+use dabengine::splitter::SplittablePosition;
 use serde::Serialize;
 
 // Largest board dimension accepted, to keep the interface (and the engine's
@@ -165,6 +166,17 @@ pub fn write_pos(data: &CompoundPositionData) -> Result<String, String> {
     Ok(posfile::write(&position_from(data)?))
 }
 
+// The position split into its independent components, one part each (cropped to the
+// component's bounding box), or None if that wouldn't give more parts than it has already
+pub fn split(data: &CompoundPositionData) -> Result<Option<CompoundPositionData>, String> {
+    let pos = position_from(data)?;
+    let parts = pos.split();
+    if parts.len() <= pos.parts().len() {
+        return Ok(None);
+    }
+    Ok(Some(CompoundPosition::new(parts).to_data()))
+}
+
 pub fn examples() -> Vec<Example> {
     examples::catalogue().into_iter().map(|e| Example{
         id: e.id,
@@ -263,6 +275,23 @@ mod tests {
         let text = write_pos(&pos).unwrap();
         assert_eq!(pos, parse_pos(&text).unwrap());
         assert!(parse_pos("21 1").is_err());
+    }
+
+    #[test]
+    fn split_components() {
+        // The page 50 example has three independent components
+        let p50 = CompoundPosition::from_single(examples::p50());
+        let parts = split(&p50.to_data()).unwrap().unwrap();
+        assert_eq!(3, parts.parts.len());
+        // Splitting doesn't change the Nimstring value
+        assert_eq!(nimstring_analysis(&p50.to_data()).unwrap().value, nimstring_analysis(&parts).unwrap().value);
+        // Already split, a single component, or nothing left: no split
+        assert!(split(&parts).unwrap().is_none());
+        assert!(split(&chain(3)).unwrap().is_none());
+        assert!(split(&CompoundPosition::from_single(SimplePosition::new_end_game(2, 2)).to_data()).unwrap().is_none());
+        // Two chains in one part split into two
+        let double = CompoundPosition::from_single(examples::double_chain(3)).to_data();
+        assert_eq!(Some(2), split(&double).unwrap().map(|s| s.parts.len()));
     }
 
     #[test]

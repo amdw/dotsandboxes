@@ -26,6 +26,8 @@ export const engine = {
   nimstringAnalysis: (position: PositionData): NimstringAnalysis => wasm.nimstringAnalysis(position),
   parsePos: (text: string): PositionData => wasm.parsePos(text),
   writePos: (position: PositionData): string => wasm.writePos(position),
+  // The position split into its independent components, or null if there is nothing to split
+  split: (position: PositionData): PositionData | null => wasm.split(position) ?? null,
   examples: (): Example[] => wasm.examples(),
 };
 
