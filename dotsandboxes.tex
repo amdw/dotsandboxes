@@ -186,19 +186,29 @@ coins. (In dots-and-boxes, there are no loops with fewer than four
 coins, and due to the symmetry, all loops have an even number of
 coins.)
 
-A \emph{(closed) chain} is a connected set of coins with valency 2
-which is not a loop. A chain has two ends, which can either be
-connected to the ground or to a joint. An \emph{open chain} is one
-which can be immediately captured, i.e.\ a chain where one or both
-ends has valency 1; in the special case where both ends have valency
-1, we may refer to it as an \emph{opened loop}. A \emph{$n$-chain} is
-a chain consisting of $n$ coins.
+A \emph{closed chain} is a connected set of coins with valency 2 which
+is not a loop. A chain has two ends, which can either be connected to
+the ground or to a joint. (Both ends of a chain may be connected to
+the same joint. This case can be confusing as it superficially
+resembles a loop, and would become one if the joint had its other
+strings cut; however, unless that happens it is a closed chain.)
+
+An \emph{open chain} is a set of connected coins of valency 2 plus at
+least one of valency 1; in the special case where both ends have
+valency 1, we may refer to it as an \emph{opened loop}. An open chain
+can be immediately captured.
+
+The term \emph{chain} should be interpreted as referring to a closed
+chain, unless the context indicates otherwise.
+
+An \emph{$n$-chain} is a chain consisting of $n$ coins.
 
 A chain is \emph{independent} if it is connected to the ground (rather
 than a joint) at both ends.
 
-The act of \emph{opening} a chain or loop is cutting it so that it
-becomes an open chain, which can then be captured.
+The act of \emph{opening} a closed chain or loop is cutting it so that
+it becomes an open chain (or a pair of open chains), which can then be
+captured.
 
 A \emph{double-cross move} (or \emph{double-crossed move}) is a move
 which wins two coins at once (because the string removed connected two
@@ -914,8 +924,8 @@ Having established some basic principles of endgame play, we now
 consider how to aim towards a winning endgame while still in the
 middlegame.
 
-We have seen that provided there are enough long chains and loops in 
-a position, the winner will be the player who establishes control by 
+We have seen that provided there are enough long chains and loops in
+a position, the winner will be the player who establishes control by
 forcing his opponent to play a loony move. This suggests the following
 general procedure for winning a game of strings-and-coins:
 
@@ -931,7 +941,7 @@ non-loony moves before we do?
 
 \subsection{How long is a game?}
 
-When we succeed in playing according to the above procedure, we will 
+When we succeed in playing according to the above procedure, we will
 generally play the last move of the game, having forced our opponent to
 open the last chain or loop for us. (The only exception will be if the
 position is dominated by not-very-long structures, as we saw in section
