@@ -286,18 +286,10 @@ impl Example {
 }
 
 // All the named example positions, from Berlekamp's book "The Dots-and-Boxes Game"
-// and from the paper in this repository
+// and from the paper in this repository, most fundamental first (double-dealing being
+// so central to endgame play), with the game records last
 pub fn catalogue() -> Vec<Example> {
     vec!(
-        Example::game("sample-game-2x2", "Sample 2×2 game",
-            "The sample game from the introduction of the paper, in both its dots-and-boxes and strings-and-coins figures",
-            2, 2, "0 0 r, 1 0 r, 0 0 b, 0 1 r, 1 1 b, 0 0 l, 0 0 t, 0 1 l, 0 1 b, 1 1 r, 1 1 t, 1 0 t"),
-        Example::new("p45", "P(4,5)",
-            "Four 3-chains and a 5-chain, from the paper's analysis of one long chain with multiple 3-chains",
-            one_long_multi_three(4, 5)),
-        Example::new("p34", "P(3,4)",
-            "Three 3-chains and a 4-chain (also in p3_4.pos)",
-            one_long_multi_three(3, 4)),
         Example::simple("double-deal", "Double-dealing on a chain",
             "Two 5-chains: the player to move must open one, and the opponent double-deals to win 8-2 (paper figure)",
             double_chain(5)),
@@ -307,6 +299,12 @@ pub fn catalogue() -> Vec<Example> {
         Example::simple("drawn-loony", "Drawn loony endgame",
             "Two 4-loops, a drawn endgame (paper figure)",
             double_loop(2)),
+        Example::new("p45", "P(4,5)",
+            "Four 3-chains and a 5-chain, from the paper's analysis of one long chain with multiple 3-chains",
+            one_long_multi_three(4, 5)),
+        Example::new("p34", "P(3,4)",
+            "Three 3-chains and a 4-chain (also in p3_4.pos)",
+            one_long_multi_three(3, 4)),
         Example::new("nimstring-examples", "Nimstring value examples",
             "The small positions used to illustrate Nimstring values in the paper, each as a separate part",
             nimstring_examples()),
@@ -320,10 +318,6 @@ pub fn catalogue() -> Vec<Example> {
                 }
                 pos
             }),
-        Example::game("3x3-sample-game", "Sample 3×3 game",
-            "A sample game played according to Berlekamp's winning 3×3 strategy (paper figure)",
-            3, 3, "1 2 b, 1 2 l, 1 1 t, 0 1 t, 2 1 t, 1 1 r, 1 0 t, 0 1 l, 0 0 t, 0 0 r, \
-                   0 0 l, 1 0 r, 0 2 l, 2 0 t, 2 0 r, 2 2 b, 2 2 r, 0 2 b, 0 2 t, 0 1 r"),
         Example::simple("berlekamp-p50", "Berlekamp p. 50",
             "Figure 25 from page 50 of Berlekamp's book, used in the paper to motivate Nimstring (also in p50.pos)",
             p50()),
@@ -345,6 +339,13 @@ pub fn catalogue() -> Vec<Example> {
             "A 2×2 board with the top and left edges already drawn", icelandic_game(2, 2)),
         Example::simple("icelandic-3x3", "Icelandic 3×3",
             "A 3×3 board with the top and left edges already drawn", icelandic_game(3, 3)),
+        Example::game("sample-game-2x2", "Sample 2×2 game",
+            "The sample game from the introduction of the paper, in both its dots-and-boxes and strings-and-coins figures",
+            2, 2, "0 0 r, 1 0 r, 0 0 b, 0 1 r, 1 1 b, 0 0 l, 0 0 t, 0 1 l, 0 1 b, 1 1 r, 1 1 t, 1 0 t"),
+        Example::game("3x3-sample-game", "Sample 3×3 game",
+            "A sample game played according to Berlekamp's winning 3×3 strategy (paper figure)",
+            3, 3, "1 2 b, 1 2 l, 1 1 t, 0 1 t, 2 1 t, 1 1 r, 1 0 t, 0 1 l, 0 0 t, 0 0 r, \
+                   0 0 l, 1 0 r, 0 2 l, 2 0 t, 2 0 r, 2 2 b, 2 2 r, 0 2 b, 0 2 t, 0 1 r"),
     )
 }
 

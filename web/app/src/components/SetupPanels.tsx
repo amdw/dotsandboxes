@@ -1,5 +1,5 @@
-// Panels for starting a new game (from an empty board or a named example), and for
-// importing and exporting positions in the engine's .pos text format
+// Panels for starting a new game (restarting the current one, or from an empty board or
+// a named example), and for importing and exporting positions in the engine's .pos text format
 import { useEffect, useRef, useState } from "preact/hooks";
 import { engine, errorMessage } from "../engine/engine";
 import type { CPosMove, Example, PositionData } from "../engine/types";
@@ -13,7 +13,32 @@ function clamp(n: number): number {
   return Number.isFinite(n) ? Math.max(1, Math.min(MAX_SIZE, Math.round(n))) : 1;
 }
 
-export function NewGamePanel({ initial, onLoad }: { initial: [number, number][]; onLoad: LoadPosition }) {
+interface NewGamePanelProps {
+  initial: [number, number][];
+  onLoad: LoadPosition;
+  // Restart the current game from its starting position, if any moves have been played
+  onRestart?: () => void;
+}
+
+function ExampleList({ examples, onLoad }: { examples: Example[]; onLoad: LoadPosition }) {
+  return (
+    <ul class="examples">
+      {examples.map((example) => (
+        <li key={example.id}>
+          <button type="button" class="example" onClick={() => onLoad(example.position, example.moves, example.id)}>
+            <span class="example-title">
+              {example.title}
+              {example.moves.length > 0 && <span class="tag">{example.moves.length} moves</span>}
+            </span>
+            <span class="example-description">{example.description}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function NewGamePanel({ initial, onLoad, onRestart }: NewGamePanelProps) {
   const [sizes, setSizes] = useState<[number, number][]>(initial);
   const [error, setError] = useState<string | null>(null);
   const examples: Example[] = engine.examples();
@@ -32,6 +57,15 @@ export function NewGamePanel({ initial, onLoad }: { initial: [number, number][];
 
   return (
     <div class="panel new-game">
+      {onRestart && (
+        <div class="restart">
+          <button type="button" class="primary" onClick={onRestart}>
+            Restart this game
+          </button>
+          <p class="hint">Back to its starting position, discarding the moves played since.</p>
+        </div>
+      )}
+
       <form onSubmit={start}>
         <h2>Empty board</h2>
         <p class="hint">Add more parts to play a compound position, with each part a separate board.</p>
@@ -64,20 +98,12 @@ export function NewGamePanel({ initial, onLoad }: { initial: [number, number][];
         {error && <p class="error">{error}</p>}
       </form>
 
-      <h2>Examples</h2>
-      <ul class="examples">
-        {examples.map((example) => (
-          <li key={example.id}>
-            <button type="button" class="example" onClick={() => onLoad(example.position, example.moves, example.id)}>
-              <span class="example-title">
-                {example.title}
-                {example.moves.length > 0 && <span class="tag">game, {example.moves.length} moves</span>}
-              </span>
-              <span class="example-description">{example.description}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <h2>Example positions</h2>
+      <ExampleList examples={examples.filter((e) => e.moves.length === 0)} onLoad={onLoad} />
+
+      <h2>Example games</h2>
+      <p class="hint">Games which load at the start, ready to step through.</p>
+      <ExampleList examples={examples.filter((e) => e.moves.length > 0)} onLoad={onLoad} />
     </div>
   );
 }

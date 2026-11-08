@@ -155,3 +155,9 @@ export function isolatePart(game: GameState, part: number): GameState {
     { baseScores: { A: 0, B: 0 }, voids: game.voids ? [game.voids[part]] : null },
   );
 }
+
+// The same game started again from its starting position, with the moves made since
+// discarded (keeping the starting owners, scores, player to move and voids)
+export function restart(game: GameState): GameState {
+  return startFrom(game.snapshots[0], { baseScores: game.baseScores, voids: game.voids });
+}

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
 import type { CPosMove } from "../engine/types";
-import { current, goTo, isolatePart, newGameState, nextOwner, playMove, startFrom, startFromCurrent, startSplit, withStart } from "./state";
+import { current, goTo, isolatePart, newGameState, nextOwner, playMove, restart, startFrom, startFromCurrent, startSplit, withStart } from "./state";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -186,6 +186,24 @@ describe("game state", () => {
       ],
     ]);
     expect(current(lShape).scores).toEqual({ A: 0, B: 0 });
+  });
+
+  it("restarts a game from its starting position", () => {
+    // A split game (with base scores) where B is to move, played on a little
+    let game = newGameState(engine.examples().find((e) => e.id === "double-deal")!.position);
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove);
+    game = playMove(game, mv(0, 0, "Right"), engine.makeMove);
+    game = startSplit(game, engine.split(current(game).position)!);
+    const start = current(game);
+    game = playMove(game, mv(0, 0, "Right", 0), engine.makeMove);
+    game = playMove(game, mv(1, 0, "Right", 0), engine.makeMove);
+    game = goTo(game, 1);
+
+    const restarted = restart(game);
+    expect(restarted.snapshots).toHaveLength(1);
+    expect(current(restarted)).toEqual(start);
+    expect(restarted.baseScores).toEqual(game.baseScores);
+    expect(restarted.voids).toBe(game.voids);
   });
 });
 
