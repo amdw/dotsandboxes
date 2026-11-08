@@ -262,10 +262,16 @@ export function App() {
     }
   };
 
+  // Start a new game: the engine stops playing, so it never starts on a game unasked
+  const startGame = (newGame: GameState) => {
+    setGame(newGame);
+    setEngineSides({ A: false, B: false });
+    setPaused(false);
+  };
+
   const load = (position: PositionData, moves: CPosMove[] = [], newName = "position") =>
     attempt(() => {
-      setGame(gameFrom(position, moves));
-      setPaused(false);
+      startGame(gameFrom(position, moves));
       setName(newName);
       setPanel(null);
     });
@@ -317,7 +323,7 @@ export function App() {
             disabled={atStart}
             title="Start a new game from the current position, keeping the scores"
             onClick={() => {
-              setGame(startFromCurrent(game));
+              startGame(startFromCurrent(game));
               setPanel(null);
             }}
           >
@@ -328,7 +334,7 @@ export function App() {
             disabled={!split}
             title="Start a new game from the current position, with each independent component as a separate part"
             onClick={() => {
-              if (split) setGame(startSplit(game, split));
+              if (split) startGame(startSplit(game, split));
               setPanel(null);
             }}
           >
@@ -415,7 +421,7 @@ export function App() {
                   confirmLabel="Play"
                   onConfirm={() => {
                     setIsolating(null);
-                    setGame(isolatePart(game, i));
+                    startGame(isolatePart(game, i));
                     setName(`${name}-part${i}`);
                     setPanel(null);
                   }}
