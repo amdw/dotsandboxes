@@ -6,14 +6,15 @@ import { AnalysisPanel, Segmented, type BoardValues, type Timed } from "./compon
 import { Board, boardMargins, naturalWidth, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
-import { chooseEngineMove, evaluationLabels, formatNimstring, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
+import { chooseEngineMove, evaluationLabels, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
-import { current, goTo, isolatePart, newGameState, nextOwner, other, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
+import { current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 // Pause before the engine plays a move it has chosen, so that playouts can be followed
 const ENGINE_DELAY_MS = 600;
 const COUNT_SCORE_KEY = "dab-count-score";
+const SHOW_CANONICAL_KEY = "dab-show-canonical";
 // Boards may be enlarged up to this much, since their natural size is small for small boards
 const MAX_ENLARGEMENT = 1.4;
 
@@ -39,6 +40,22 @@ function loadCountScore(): boolean {
 function saveCountScore(count: boolean) {
   try {
     localStorage.setItem(COUNT_SCORE_KEY, String(count));
+  } catch {
+    // Not important if the preference can't be saved
+  }
+}
+
+function loadShowCanonical(): boolean {
+  try {
+    return localStorage.getItem(SHOW_CANONICAL_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function saveShowCanonical(show: boolean) {
+  try {
+    localStorage.setItem(SHOW_CANONICAL_KEY, String(show));
   } catch {
     // Not important if the preference can't be saved
   }
@@ -82,6 +99,8 @@ export function App() {
   // through the game, so as not to overwrite the moves after the position shown)
   const [engineSides, setEngineSides] = useState<Record<Player, boolean>>({ A: false, B: false });
   const [paused, setPaused] = useState(false);
+  // Whether to highlight canonical moves (captures which can be made without loss)
+  const [showCanonical, setShowCanonical] = useState(loadShowCanonical);
   // The part whose "play on its own" confirmation is open, if any
   const [isolating, setIsolating] = useState<number | null>(null);
   const closeIsolating = useCallback(() => setIsolating(null), []);
@@ -250,6 +269,15 @@ export function App() {
   };
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
+  // Canonical moves, when highlighted
+  const canonicalMoves = showCanonical && !snap.gameOver ? engine.canonicalMoves(snap.position) : [];
+  const canonical = new Set(canonicalMoves.map(lineKeyOf));
+  const playCanonical = () =>
+    attempt(() => {
+      setGame(playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove));
+      setPaused(false);
+    });
+
   // The position split into its independent components, if that would give more parts
   const split = engine.split(snap.position);
 
@@ -455,6 +483,7 @@ export function App() {
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
               voids={game.voids?.[i]}
+              canonical={canonical}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}
@@ -501,7 +530,7 @@ export function App() {
         </button>
       </nav>
 
-      <section class="selectors players" aria-label="Players">
+      <section class="selectors players" aria-label="Play options">
         <Segmented
           label="Engine plays"
           options={[
@@ -513,6 +542,25 @@ export function App() {
           value={engineSides.A ? (engineSides.B ? "both" : "A") : engineSides.B ? "B" : "none"}
           onChange={(v) => chooseEngineSides({ A: v === "A" || v === "both", B: v === "B" || v === "both" })}
         />
+        <div class="selector-with-action">
+          <Segmented
+            label="Canonical moves"
+            options={[
+              [true, "Show"],
+              [false, "Hide"],
+            ]}
+            value={showCanonical}
+            onChange={(show) => {
+              setShowCanonical(show);
+              saveShowCanonical(show);
+            }}
+          />
+          {canonicalMoves.length > 0 && (
+            <button type="button" class="canonical-play" disabled={engineActive} onClick={playCanonical}>
+              Play canonical moves
+            </button>
+          )}
+        </div>
       </section>
 
       <AnalysisPanel

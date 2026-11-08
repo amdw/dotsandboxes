@@ -161,3 +161,16 @@ export function isolatePart(game: GameState, part: number): GameState {
 export function restart(game: GameState): GameState {
   return startFrom(game.snapshots[0], { baseScores: game.baseScores, voids: game.voids });
 }
+
+// Play canonical moves (given by canonicalMoves) one after another until there are none
+// left, each as a separate move in the history. They're all captures, so all by the
+// player to move.
+export function playCanonicalMoves(game: GameState, canonicalMoves: (position: PositionData) => CPosMove[], makeMove: MakeMove): GameState {
+  let result = game;
+  for (let i = 0; i < 10000 && !current(result).gameOver; i++) {
+    const moves = canonicalMoves(current(result).position);
+    if (moves.length === 0) break;
+    result = playMove(result, moves[0], makeMove);
+  }
+  return result;
+}

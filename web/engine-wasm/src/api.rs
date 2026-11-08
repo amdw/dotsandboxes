@@ -166,6 +166,11 @@ pub fn write_pos(data: &CompoundPositionData) -> Result<String, String> {
     Ok(posfile::write(&position_from(data)?))
 }
 
+// The canonical captures in a position: those which can be made without loss
+pub fn canonical_moves(data: &CompoundPositionData) -> Result<Vec<CPosMove>, String> {
+    Ok(eval::canonical_moves(&position_from(data)?))
+}
+
 // The position split into its independent components, one part each (cropped to the
 // component's bounding box), or None if that wouldn't give more parts than it has already
 pub fn split(data: &CompoundPositionData) -> Result<Option<CompoundPositionData>, String> {
@@ -275,6 +280,13 @@ mod tests {
         let text = write_pos(&pos).unwrap();
         assert_eq!(pos, parse_pos(&text).unwrap());
         assert!(parse_pos("21 1").is_err());
+    }
+
+    #[test]
+    fn canonical() {
+        let opened = make_move(&chain(3), CPosMove::new(0, 0, 0, Side::Left)).unwrap().position;
+        assert_eq!(vec![CPosMove::new(0, 0, 0, Side::Right)], canonical_moves(&opened).unwrap());
+        assert!(canonical_moves(&chain(3)).unwrap().is_empty());
     }
 
     #[test]

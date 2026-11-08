@@ -16,6 +16,7 @@
   --neutral-soft: #e6e6e1;
   --accent: #b3261e;
   --best: #1e7a3c;
+  --canonical: #7b4fd6;
   --best-soft: #d8f0df;
   --error-bg: #fde8e6;
   color-scheme: light;
@@ -40,6 +41,7 @@
     --neutral-soft: #2e2d2a;
     --accent: #ff7a6e;
     --best: #5fd08a;
+    --canonical: #b39cff;
     --best-soft: #1c3b27;
     --error-bg: #4a1f1b;
     color-scheme: dark;
@@ -64,6 +66,7 @@
   --neutral-soft: #2e2d2a;
   --accent: #ff7a6e;
   --best: #5fd08a;
+  --canonical: #b39cff;
   --best-soft: #1c3b27;
   --error-bg: #4a1f1b;
   color-scheme: dark;
@@ -756,6 +759,19 @@ button.part-chip {
   margin-top: 16px;
 }
 
+.selector-with-action {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+button.canonical-play {
+  border-color: var(--canonical);
+  color: var(--canonical);
+}
+
 .selectors {
   display: flex;
   flex-direction: column;
@@ -771,4 +787,13 @@ button.part-chip {
   gap: 8px;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+/* Canonical moves (captures which can be made without loss), when highlighted */
+.board .canonical {
+  stroke: var(--canonical);
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+  pointer-events: none;
 }

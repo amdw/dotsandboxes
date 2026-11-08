@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { engine } from "../engine/engine";
 import type { CPosMove } from "../engine/types";
-import { current, goTo, isolatePart, newGameState, nextOwner, playMove, restart, startFrom, startFromCurrent, startSplit, withStart } from "./state";
+import { current, goTo, isolatePart, newGameState, nextOwner, playCanonicalMoves, playMove, restart, startFrom, startFromCurrent, startSplit, withStart } from "./state";
 import { loadTestEngine } from "./testEngine";
 
 beforeAll(loadTestEngine);
@@ -204,6 +204,21 @@ describe("game state", () => {
     expect(current(restarted)).toEqual(start);
     expect(restarted.baseScores).toEqual(game.baseScores);
     expect(restarted.voids).toBe(game.voids);
+  });
+
+  it("plays canonical moves until the decision point", () => {
+    // A opens one of two 5-chains; B takes all but the last two coins, then must decide
+    // whether to take them too or double-deal
+    let game = newGameState(engine.examples().find((e) => e.id === "double-deal")!.position);
+    game = playMove(game, mv(0, 0, "Left"), engine.makeMove);
+    expect(engine.canonicalMoves(current(game).position)).toHaveLength(1);
+    game = playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove);
+    expect(game.snapshots).toHaveLength(5);
+    expect(current(game).scores).toEqual({ A: 0, B: 3 });
+    expect(current(game).toMove).toBe("B");
+    expect(engine.canonicalMoves(current(game).position)).toEqual([]);
+    // With nothing canonical, nothing happens
+    expect(playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove)).toBe(game);
   });
 });
 

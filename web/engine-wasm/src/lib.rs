@@ -77,6 +77,12 @@ pub fn parse_pos(text: &str) -> Result<JsValue, JsError> {
     to_js(api::parse_pos(text))
 }
 
+#[wasm_bindgen(js_name = canonicalMoves)]
+pub fn canonical_moves(position: JsValue) -> Result<JsValue, JsError> {
+    let position: CompoundPositionData = from_js(position)?;
+    to_js(api::canonical_moves(&position))
+}
+
 #[wasm_bindgen]
 pub fn split(position: JsValue) -> Result<JsValue, JsError> {
     let position: CompoundPositionData = from_js(position)?;

@@ -27,6 +27,8 @@ interface BoardProps {
   width: string;
   // Analysis results to show on the legal moves, keyed by lineKey
   labels?: MoveLabels;
+  // Canonical moves to highlight, keyed by lineKey
+  canonical?: Set<string>;
   // voids[y][x]: cells which aren't coins, just padding (see GameState.voids)
   voids?: boolean[][] | null;
 }
@@ -133,7 +135,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical }: BoardProps) {
   // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
   const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
   const lineBordersOnlyVoids = (line: Line) =>
@@ -192,6 +194,13 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
         })
     : [];
 
+  // Highlighted canonical moves, drawn under the move targets (and their hover previews)
+  const canonicalLines = canonical
+    ? lines
+        .filter((line) => isStringPresent(data, line) && canonical.has(lineKey(line)))
+        .map((line) => <Segment key={`k${line.orientation}${line.x},${line.y}`} ends={ends(line)} class="canonical" />)
+    : [];
+
   // Analysis values, at the middle of each legal move's line/string
   const valueLabels = labels
     ? lines
@@ -239,6 +248,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
       ...lines
         .filter((line) => !isStringPresent(data, line) && !lineBordersOnlyVoids(line))
         .map((line) => <Segment key={`l${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class={sameLine(line, lastMove) ? "drawn last" : "drawn"} />),
+      ...canonicalLines,
       ...moveTargets,
       ...Array.from({ length: (data.width + 1) * (data.height + 1) }, (_, i) => {
         const [dx, dy] = [i % (data.width + 1), Math.floor(i / (data.width + 1))];
@@ -260,6 +270,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, interactive,
             </g>
           );
         }),
+      ...canonicalLines,
       ...moveTargets,
       ...coins.filter(([x, y]) => !isVoid(x, y)).map(([x, y]) => {
         const [cx, cy] = centre(x, y);
