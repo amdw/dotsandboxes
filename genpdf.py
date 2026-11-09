@@ -20,17 +20,33 @@
 import subprocess
 import sys
 
+AUX_EXTENSIONS = ["aux", "toc", "lof", "lot", "out"]
+
+def read_aux_files():
+    """Return the contents of pdflatex's auxiliary files, keyed by extension"""
+    contents = {}
+    for ext in AUX_EXTENSIONS:
+        try:
+            with open("dotsandboxes." + ext, "rb") as aux_file:
+                contents[ext] = aux_file.read()
+        except FileNotFoundError:
+            contents[ext] = None
+    return contents
+
 def main():
     """Entry point"""
-    # Run pdflatex until it no longer gives "re-run to get cross references right" output,
-    # but no more than five times, to avoid an infinite loop. Earlier runs report undefined
-    # references which later runs resolve, so only show the output of the final run (or of
-    # a run which fails), which is also kept in pdflatex.log.
+    # Run pdflatex until it no longer gives "re-run to get cross references right" output
+    # and the auxiliary files (e.g. the table of contents) stop changing, but no more than
+    # five times, to avoid an infinite loop. Not all changes produce the re-run message
+    # (e.g. changing a section heading only changes the .toc file), hence the second check.
+    # Earlier runs report undefined references which later runs resolve, so only show the
+    # output of the final run (or of a run which fails), which is also kept in pdflatex.log.
     max_runs = 5
     command = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "dotsandboxes.tex"]
     search_text = "Rerun to get cross-references right"
     log_filename = "pdflatex.log"
     for runs in range(1, max_runs + 1):
+        aux_before = read_aux_files()
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 encoding="utf-8", errors="replace", check=False)
         with open(log_filename, "w", encoding="utf-8") as log_file:
@@ -38,14 +54,17 @@ def main():
         if result.returncode != 0:
             sys.stdout.write(result.stdout)
             raise Exception("pdflatex failed with status {0}".format(result.returncode))
-        if search_text not in result.stdout:
+        rerun_requested = search_text in result.stdout
+        aux_changed = read_aux_files() != aux_before
+        if not rerun_requested and not aux_changed:
             sys.stdout.write(result.stdout)
             print("pdflatex success in {0} runs".format(runs))
             return
-        print("pdflatex run {0} done, re-running to get cross-references right".format(runs))
+        reason = "cross-references" if rerun_requested else "auxiliary files"
+        print("pdflatex run {0} done, re-running to get {1} right".format(runs, reason))
 
     sys.stdout.write(result.stdout)
-    raise Exception("Still got cross-references warning after {0} runs".format(max_runs))
+    raise Exception("Output still not stable after {0} runs".format(max_runs))
 
 if __name__ == '__main__':
     main()
