@@ -546,9 +546,14 @@ button.part-chip {
   stroke-linecap: round;
 }
 
-/* The last move, in a neutral colour (red being for mistakes) */
-.board .drawn.last {
-  stroke: var(--last-move);
+/* The last move, in the colour of the player who made it, so it stands out as definitely
+   played (not grey, which would make it look tentative, like a suggestion) */
+.board .drawn.last.by-A {
+  stroke: var(--player-A);
+}
+
+.board .drawn.last.by-B {
+  stroke: var(--player-B);
 }
 
 .board .box rect {
@@ -787,6 +792,15 @@ button.canonical-play {
   stroke-linecap: round;
   opacity: 0.55;
   pointer-events: none;
+}
+
+/* In the dots-and-boxes view, thinner and dashed, so they look like suggestions rather than
+   lines already drawn */
+.board.view-dab .canonical {
+  stroke-width: 3;
+  stroke-dasharray: 6 6;
+  stroke-linecap: butt;
+  opacity: 0.8;
 }
 
 /* The options under the board: a grid of labels (right-aligned) and their controls, so

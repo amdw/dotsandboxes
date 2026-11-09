@@ -684,6 +684,7 @@ export function App() {
               toMove={snap.toMove}
               lastMove={last && last.part === i ? last : null}
               lastBadge={last && last.part === i ? lastBadge : null}
+              lastMover={previousSnapshot?.toMove ?? null}
               interactive={!snap.gameOver && !engineActive}
               onPlay={play}
               onCycleOwner={atStart ? (x, y) => cycleOwner(i, x, y) : undefined}
