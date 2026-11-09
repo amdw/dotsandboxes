@@ -12,8 +12,8 @@ if [ -e "$out" ]; then
   echo "$out already exists" >&2
   exit 1
 fi
-if [ ! -f "$root/dotsandboxes.pdf" ]; then
-  echo "Build the paper first (dotsandboxes.pdf is missing)" >&2
+if [ ! -f "$root/build/dotsandboxes.pdf" ]; then
+  echo "Build the paper first (build/dotsandboxes.pdf is missing)" >&2
   exit 1
 fi
 if [ ! -f "$root/web/app/dist/index.html" ]; then
@@ -23,5 +23,5 @@ fi
 
 mkdir -p "$out"
 find "$root/site" -maxdepth 1 -type f ! -name '*.sh' -exec cp {} "$out/" \;
-cp "$root/dotsandboxes.pdf" "$out/"
+cp "$root/build/dotsandboxes.pdf" "$out/"
 cp -R "$root/web/app/dist" "$out/engine"

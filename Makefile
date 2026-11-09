@@ -13,26 +13,35 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# All generated files go in this directory
+build := build
+
 figure_scripts := $(wildcard fig_*.py)
-generated_figpdfs := $(patsubst %.py,%.pdf,$(figure_scripts))
+generated_figpdfs := $(patsubst %.py,$(build)/%.pdf,$(figure_scripts))
 
-dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs) vc.tex
-	./genpdf.py
+.PHONY: all $(build)/vc.tex clean pylint
 
-fig_%.pdf: fig_%.svg
+all: $(build)/dotsandboxes.pdf
+
+$(build)/dotsandboxes.pdf: dotsandboxes.tex $(generated_figpdfs) $(build)/vc.tex genpdf.py
+	./genpdf.py $(build)
+
+$(build)/fig_%.pdf: $(build)/fig_%.svg
 	inkscape -D --export-type=pdf --export-latex --export-filename=$@ $<
 
-fig_%.svg: fig_%.py svg.py
-	python3 $< > $@
+$(build)/fig_%.svg: fig_%.py svg.py | $(build)
+	python3 -B $< > $@
 
-.PHONY: vc.tex clean pylint
-
-vc.tex:
+# vc always writes vc.tex in the current directory
+$(build)/vc.tex: | $(build)
 	bash vc -m
+	mv vc.tex $@
+
+$(build):
+	mkdir -p $@
 
 pylint:
 	pylint-3 *.py
 
 clean:
-	-rm -v *.pdf* *.svg *.pyc vc.tex *.log *.aux *.toc
-	-rm -rf __pycache__
+	-rm -rf $(build) __pycache__

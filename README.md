@@ -49,7 +49,8 @@ later) to generate the diagrams, `gawk` and Git for the version
 footnote, and `make` to coordinate the build. E.g. on Debian or
 Ubuntu, `apt-get install --no-install-recommends texlive-latex-base
 texlive-fonts-recommended inkscape gawk python3 make git`, `cd` into
-this repository, and run `make`.
+this repository, and run `make`. The PDF and all intermediate files
+are written to the `build` directory.
 
 To perform [Pylint](https://www.pylint.org/) checks on the Python
 scripts, run `make pylint` (requires `python3-pylint`). It
@@ -85,7 +86,7 @@ Docker on your system first.)
 * ```docker build -t dabbase -f docker/Dockerfile.base docker```
 * ```docker build -t dabbuild -f docker/Dockerfile.build .```
 * ```docker run --name dab dabbuild make```
-* ```docker cp dab:/dotsandboxes/dotsandboxes.pdf .```
+* ```docker cp dab:/dotsandboxes/build/dotsandboxes.pdf .```
 
 If you want to examine the results more closely, you can commit the
 ```dab``` container to a new image and run a shell in it:
