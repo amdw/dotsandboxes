@@ -26,6 +26,8 @@ interface BoardProps {
   // The last move, if it's to be shown, and any badge judging it ("?" or "??"), with an explanation
   lastMove: Line | null;
   lastBadge?: LastMoveBadge | null;
+  // Who made the last move: in the dots-and-boxes view, it's drawn in their colour
+  lastMover?: Player | null;
   interactive: boolean;
   onPlay: (line: Line) => void;
   // If given, captured squares/coins can be clicked to change their owner
@@ -146,7 +148,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = null, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = null, lastMover = null, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
   // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
   const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
   const lineBordersOnlyVoids = (line: Line) =>
@@ -307,7 +309,7 @@ export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = 
       }),
       ...lines
         .filter((line) => !isStringPresent(data, line) && !lineBordersOnlyVoids(line))
-        .map((line) => <Segment key={`l${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class={sameLine(line, lastMove) ? "drawn last" : "drawn"} />),
+        .map((line) => <Segment key={`l${line.orientation}${line.x},${line.y}`} ends={dabEnds(line)} class={sameLine(line, lastMove) ? `drawn last${lastMover ? ` by-${lastMover}` : ""}` : "drawn"} />),
       ...canonicalLines,
       ...moveTargets,
       ...Array.from({ length: (data.width + 1) * (data.height + 1) }, (_, i) => {
