@@ -35,18 +35,12 @@ pub enum Side {
 }
 
 impl Side {
-    pub fn all() -> Vec<Side> {
-        vec!(Side::Top, Side::Bottom, Side::Left, Side::Right)
+    pub fn all() -> [Side; 4] {
+        [Side::Top, Side::Bottom, Side::Left, Side::Right]
     }
 
-    pub fn all_except(side: Side) -> Vec<Side> {
-        let mut result = Vec::with_capacity(3);
-        for s in Side::all() {
-            if s != side {
-                result.push(s);
-            }
-        }
-        result
+    pub fn all_except(side: Side) -> impl Iterator<Item = Side> {
+        Side::all().into_iter().filter(move |&s| s != side)
     }
 
     pub fn opposite(self: &Side) -> Side {
@@ -1141,7 +1135,7 @@ mod tests {
     #[test]
     fn all_sides_except() {
         for side in Side::all() {
-            let sides = Side::all_except(side);
+            let sides: Vec<Side> = Side::all_except(side).collect();
             assert_eq!(3, sides.len());
             for other_side in Side::all() {
                 assert_eq!(side != other_side, sides.contains(&other_side));
