@@ -6,9 +6,11 @@ on:
       - master
     paths:
       - 'engine/**'
+      - '.github/workflows/engine.yml'
   pull_request:
     paths:
       - 'engine/**'
+      - '.github/workflows/engine.yml'
 
 permissions: {}
 
@@ -43,3 +45,72 @@ jobs:
         run: cargo test
       - name: Test with serde
         run: cargo test --features serde
+
+  benchmark:
+    # Warn (without failing the build) if a pull request makes the fast benchmarks
+    # significantly slower. Both versions are benchmarked in the same job, on the same
+    # runner, to keep noise between runners out of the comparison.
+    name: Benchmark against base branch
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Each version builds in its own target directory (sharing one lets Cargo reuse a
+      # build of the wrong version), but both store results here, so that the pull
+      # request's run can compare against the base's saved baseline
+      CRITERION_HOME: ${{ github.workspace }}/criterion
+      # Warn if even the lower bound of a benchmark's estimated slowdown exceeds this
+      # percentage. (Quick mode takes too few samples for Criterion's own verdict to
+      # report anything as significant.)
+      THRESHOLD_PERCENT: '10'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/target
+            base/engine/target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('engine/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-bench-
+      - name: Benchmark base branch
+        working-directory: base/engine
+        run: cargo bench --bench benchmarks -- --quick fast-evaluations --save-baseline base
+      - name: Benchmark pull request
+        working-directory: engine
+        run: |
+          cargo bench --bench benchmarks -- --quick fast-evaluations --baseline-lenient base \
+            | tee "$RUNNER_TEMP/bench.txt"
+      - name: Report regressions
+        run: |
+          # Criterion prints each benchmark's name, then its time and its change from the
+          # baseline as [lower bound, estimate, upper bound], with a Unicode minus sign
+          awk -v threshold="$THRESHOLD_PERCENT" '
+            /^[^ ]/ { name = $0; sub(/ +time:.*/, "", name) }
+            /change:/ {
+              change = $0; sub(/^ *change: */, "", change); sub(/ \(p = .*/, "", change)
+              lower = change; sub(/^\[/, "", lower); sub(/%.*/, "", lower); gsub(/−/, "-", lower)
+              if (lower + 0 > threshold + 0) print name "\t" change
+            }
+          ' "$RUNNER_TEMP/bench.txt" > "$RUNNER_TEMP/regressions.tsv"
+          {
+            echo "## Benchmarks against base branch"
+            echo
+            echo "Quick-mode \`fast-evaluations\` benchmarks; warning if the lower bound of a benchmark's estimated change is a slowdown of more than $THRESHOLD_PERCENT%."
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/bench.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS="$(printf '\t')" read -r name change; do
+            echo "::warning title=Benchmark regression::$name is slower: $change"
+          done < "$RUNNER_TEMP/regressions.tsv"
