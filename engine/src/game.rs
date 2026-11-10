@@ -35,18 +35,10 @@ pub enum Side {
 }
 
 impl Side {
-    pub fn all() -> Vec<Side> {
-        vec!(Side::Top, Side::Bottom, Side::Left, Side::Right)
-    }
+    pub const ALL: [Side; 4] = [Side::Top, Side::Bottom, Side::Left, Side::Right];
 
-    pub fn all_except(side: Side) -> Vec<Side> {
-        let mut result = Vec::with_capacity(3);
-        for s in Side::all() {
-            if s != side {
-                result.push(s);
-            }
-        }
-        result
+    pub fn all_except(side: Side) -> impl Iterator<Item = Side> {
+        Side::ALL.into_iter().filter(move |&s| s != side)
     }
 
     pub fn opposite(self: &Side) -> Side {
@@ -201,25 +193,25 @@ impl SimplePosition {
     }
 
     fn make_position(width: usize, height: usize, init_string: bool) -> SimplePosition {
-        let top_strings = iter::repeat(init_string).take(width).collect();
-        let left_strings = iter::repeat(init_string).take(height).collect();
-        let mut right_strings = Vec::with_capacity(width);
-        let mut down_strings = Vec::with_capacity(width);
+        let top_strings: Vec<bool> = iter::repeat(init_string).take(width).collect();
+        let left_strings: Vec<bool> = iter::repeat(init_string).take(height).collect();
+        let mut right_strings: Vec<Vec<bool>> = Vec::with_capacity(width);
+        let mut down_strings: Vec<Vec<bool>> = Vec::with_capacity(width);
         for _ in 0..width {
             right_strings.push(iter::repeat(init_string).take(height).collect());
             down_strings.push(iter::repeat(init_string).take(height).collect());
         }
-        let mut pos = SimplePosition {
+        let mut zhash = ZHash::new(width, height);
+        if !init_string {
+            zhash.toggle_cut_strings(&top_strings, &left_strings, &right_strings, &down_strings);
+        }
+        SimplePosition {
             top_strings: top_strings,
             left_strings: left_strings,
             down_strings: down_strings,
             right_strings: right_strings,
-            zhash: ZHash::new(width, height),
-        };
-        if !init_string {
-            pos.reset_zhash(0);
+            zhash: zhash,
         }
-        pos
     }
 
     // Every move on an empty board of the given dimensions, in the form used by legal_moves().
@@ -233,11 +225,7 @@ impl SimplePosition {
     // present, however the position was constructed.
     fn reset_zhash(self: &mut SimplePosition, extra_seed: usize) {
         self.zhash = ZHash::new_seeded(self.width(), self.height(), extra_seed);
-        for m in SimplePosition::all_moves(self.width(), self.height()) {
-            if !self.is_legal_move(m) {
-                self.zhash.toggle_element(m);
-            }
-        }
+        self.zhash.toggle_cut_strings(&self.top_strings, &self.left_strings, &self.right_strings, &self.down_strings);
     }
 
     pub fn width(self: &SimplePosition) -> usize {
@@ -317,12 +305,12 @@ impl SimplePosition {
 
     // Indicate whether a given square has been captured.
     pub fn is_captured(self: &SimplePosition, x: usize, y: usize) -> bool {
-        Side::all().iter().all(|&s| !self.is_legal_move(Move{x: x, y: y, side: s}))
+        Side::ALL.iter().all(|&s| !self.is_legal_move(Move{x: x, y: y, side: s}))
     }
 
     // Valency or degree of coin at a given position
     pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
-        Side::all().iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).count()
+        Side::ALL.iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).count()
     }
 
     // Move from the square indicated in the direction indicated by the side,
@@ -378,12 +366,16 @@ impl Position<Move> for SimplePosition {
     }
 
     fn would_capture(self: &SimplePosition, m: Move) -> usize {
+        // Stop counting a coin's strings at two, since only valency one matters here
+        let has_valency_one = |x, y| {
+            Side::ALL.iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).take(2).count() == 1
+        };
         let mut result = 0;
-        if self.valency(m.x, m.y) == 1 {
+        if has_valency_one(m.x, m.y) {
             result += 1;
         }
         if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
-            if self.valency(nx, ny) == 1 {
+            if has_valency_one(nx, ny) {
                 result += 1;
             }
         }
@@ -394,28 +386,10 @@ impl Position<Move> for SimplePosition {
         if !self.is_legal_move(m) {
             panic!("Illegal move {}, pos:\n{}", m, self);
         }
+        // Cutting the string reduces the valency of each coin it is attached to by one,
+        // so the coins it captures are exactly those whose valency is one beforehand
+        let captures = self.would_capture(m);
         self.set_string_value(m, false);
-        let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
-        if m.side == Side::Left && m.x > 0 {
-            if self.is_captured(m.x-1, m.y) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Right && m.x < self.width()-1 {
-            if self.is_captured(m.x+1, m.y) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Top && m.y > 0 {
-            if self.is_captured(m.x, m.y-1) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Bottom && m.y < self.height()-1 {
-            if self.is_captured(m.x, m.y+1) {
-                captures += 1
-            }
-        }
         let end_of_game = self.is_end_of_game();
         self.zhash.toggle_element(m);
         MoveOutcome {
@@ -495,7 +469,7 @@ impl PartialEq for SimplePosition {
         }
         for x in 0..self.width() {
             for y in 0..self.height() {
-                for s in Side::all() {
+                for s in Side::ALL {
                     let legal_here = self.is_legal_move(Move{x: x, y: y, side: s});
                     let legal_there = other.is_legal_move(Move{x: x, y: y, side: s});
                     if legal_here != legal_there {
@@ -582,6 +556,22 @@ impl ZHash {
             left_strings: left_strings,
             right_strings: right_strings,
             down_strings: down_strings,
+        }
+    }
+
+    // Toggle the element for each string which has been cut (is false) in a position's
+    // string arrays, which have the same shape as this hash's arrays
+    fn toggle_cut_strings(self: &mut ZHash, top: &[bool], left: &[bool], right: &[Vec<bool>], down: &[Vec<bool>]) {
+        fn xor_cut(vals: &[u64], present: &[bool]) -> u64 {
+            vals.iter().zip(present).filter(|&(_, &p)| !p).fold(0, |acc, (&v, _)| acc ^ v)
+        }
+        self.current_val ^= xor_cut(&self.top_strings, top);
+        self.current_val ^= xor_cut(&self.left_strings, left);
+        for (vals, present) in self.right_strings.iter().zip(right) {
+            self.current_val ^= xor_cut(vals, present);
+        }
+        for (vals, present) in self.down_strings.iter().zip(down) {
+            self.current_val ^= xor_cut(vals, present);
         }
     }
 
@@ -764,6 +754,14 @@ mod tests {
     use crate::examples::*;
     use std::collections::HashSet;
 
+    // Count captured coins directly, independently of would_capture
+    fn count_captured(pos: &CompoundPosition) -> usize {
+        pos.parts.iter().map(|p| {
+            (0..p.width()).flat_map(|x| (0..p.height()).map(move |y| (x, y)))
+                .filter(|&(x, y)| p.is_captured(x, y)).count()
+        }).sum()
+    }
+
     #[test]
     fn simple_capture() {
         let mut pos = SimplePosition::new_game(3, 3);
@@ -830,7 +828,7 @@ mod tests {
         let mut pos = SimplePosition::new_game(3, 3);
         for &(x, y) in [(0, 0), (0, 2), (2, 0), (2, 2)].iter() {
             let mut sides_captured = 0;
-            for s in Side::all() {
+            for s in Side::ALL {
                 let m = Move{x: x, y: y, side: s};
                 assert_eq!(true, pos.is_legal_move(m));
                 let outcome = pos.make_move(m);
@@ -889,7 +887,7 @@ mod tests {
         pos.undo_move(Move{x: 0, y: 1, side: Side::Right});
         for i in 0..2 {
             for j in 0..2 {
-                for s in Side::all() {
+                for s in Side::ALL {
                     assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: s}));
                 }
             }
@@ -1113,7 +1111,7 @@ mod tests {
         let pos = SimplePosition::new_end_game(width, height);
         for i in 0..width {
             for j in 0..height {
-                for s in Side::all() {
+                for s in Side::ALL {
                     assert_eq!(false, pos.is_legal_move(Move{x: i, y: j, side: s}));
                 }
             }
@@ -1122,7 +1120,7 @@ mod tests {
 
     #[test]
     fn all_sides() {
-        let sides = Side::all();
+        let sides = Side::ALL;
         assert_eq!(4, sides.len());
         assert!(sides.contains(&Side::Top));
         assert!(sides.contains(&Side::Bottom));
@@ -1140,10 +1138,10 @@ mod tests {
 
     #[test]
     fn all_sides_except() {
-        for side in Side::all() {
-            let sides = Side::all_except(side);
+        for side in Side::ALL {
+            let sides: Vec<Side> = Side::all_except(side).collect();
             assert_eq!(3, sides.len());
-            for other_side in Side::all() {
+            for other_side in Side::ALL {
                 assert_eq!(side != other_side, sides.contains(&other_side));
             }
         }
@@ -1166,9 +1164,9 @@ mod tests {
         assert_eq!(17, legal_moves.len());
         for &m in legal_moves.iter() {
             assert_eq!(false, pos.is_end_of_game());
-            let wc = pos.would_capture(m);
+            let captured_before = count_captured(&pos);
             let outcome = pos.make_move(m);
-            assert_eq!(wc, outcome.coins_captured);
+            assert_eq!(count_captured(&pos) - captured_before, outcome.coins_captured);
             assert!(init_hash != pos.zhash());
         }
         assert_eq!(true, pos.is_end_of_game());

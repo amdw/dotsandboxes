@@ -79,7 +79,7 @@ fn search(pos: &SimplePosition, x: usize, y: usize,
           visited: &mut Vec<Vec<bool>>, frag_coords: &mut Vec<(usize, usize)>) {
     visited[x][y] = true;
     frag_coords.push((x, y));
-    for side in Side::all() {
+    for side in Side::ALL {
         if pos.is_legal_move(Move{x: x, y: y, side: side}) {
             if let Some((next_x, next_y)) = pos.offset(x, y, side) {
                 if !visited[next_x][next_y] {
@@ -99,7 +99,7 @@ fn make_fragment(pos: &SimplePosition, coords: &Vec<(usize, usize)>) -> SimplePo
     let mut frag_pos = SimplePosition::new_end_game(x_right - x_left + 1, y_bottom - y_top + 1);
     for &(x, y) in coords {
         let (frag_x, frag_y) = (x - x_left, y - y_top);
-        for side in Side::all() {
+        for side in Side::ALL {
             let frag_move = Move{x: frag_x, y: frag_y, side: side};
             let legal_in_pos = pos.is_legal_move(Move{x: x, y: y, side: side});
             let legal_in_frag = frag_pos.is_legal_move(frag_move);
