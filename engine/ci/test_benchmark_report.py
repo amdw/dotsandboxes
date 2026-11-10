@@ -192,6 +192,26 @@ class MainTest(CriterionDirTest):
         self.assertEqual("", output)
         self.assertIn("| group/a |", summary)
 
+    def test_fail_on_regression(self):
+        self.add_benchmark("group/slower", change=(0.266, 0.305, 0.345))
+        self.add_benchmark("group/same", change=(-0.01, 0.0, 0.01))
+        status, output, summary = self.run_main("--fail-on-regression")
+        self.assertEqual(2, status)
+        self.assertIn("::warning", output)
+        self.assertIn("1 of 2 benchmarks regressed", output)
+        # The summary is still written, to show what regressed
+        self.assertIn("| group/slower | +30.5% |", summary)
+
+    def test_fail_on_regression_without_regressions(self):
+        self.add_benchmark("group/a", change=(0.05, 0.07, 0.09))
+        status, output, _ = self.run_main("--fail-on-regression")
+        self.assertEqual(0, status)
+        self.assertEqual("", output)
+
+    def test_without_fail_on_regression_succeeds(self):
+        self.add_benchmark("group/slower", change=(0.266, 0.305, 0.345))
+        self.assertEqual(0, self.run_main()[0])
+
     def test_no_results_is_error(self):
         status, output, summary = self.run_main()
         self.assertEqual(1, status)

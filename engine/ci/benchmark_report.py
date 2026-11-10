@@ -22,7 +22,8 @@
 Reads the results Criterion saved after a run with --baseline (or --baseline-lenient),
 prints a GitHub Actions warning for each benchmark which is slower by more than a
 threshold, even at the lower bound of its 95% confidence interval, and writes a table of
-every benchmark's change as Markdown, to the job summary if there is one.
+every benchmark's change as Markdown, to the job summary if there is one. With
+--fail-on-regression, it then exits with status 2 if any benchmark has regressed.
 
 Criterion saves each benchmark's change from the baseline in change/estimates.json, as
 fractions, and the benchmark's name in new/benchmark.json. These files aren't a
@@ -131,6 +132,8 @@ def main(argv=None):
     parser.add_argument("criterion_home", help="Criterion's output directory")
     parser.add_argument("--threshold-percent", type=float, default=10,
                         help="warn about slowdowns larger than this (default: %(default)s)")
+    parser.add_argument("--fail-on-regression", action="store_true",
+                        help="exit with status 2 if any benchmark has regressed")
     parser.add_argument("--summary",
                         default=os.environ.get("GITHUB_STEP_SUMMARY"),
                         help="file to append the summary table to "
@@ -143,7 +146,8 @@ def main(argv=None):
         print("::error::" + escape_command_data(str(e)))
         return 1
 
-    for warning in warnings(changes, args.threshold_percent):
+    regression_warnings = warnings(changes, args.threshold_percent)
+    for warning in regression_warnings:
         print(warning)
     table = summary(changes, args.threshold_percent)
     if args.summary:
@@ -151,6 +155,9 @@ def main(argv=None):
             f.write(table)
     else:
         print(table, end="")
+    if args.fail_on_regression and regression_warnings:
+        print(f"{len(regression_warnings)} of {len(changes)} benchmarks regressed")
+        return 2
     return 0
 
 

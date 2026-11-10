@@ -49,9 +49,11 @@ jobs:
         run: python3 -m unittest discover -s ci -v
 
   benchmark:
-    # Warn (without failing the build) if a pull request makes the fast benchmarks
-    # significantly slower. Both versions are benchmarked in the same job, on the same
-    # runner, to keep noise between runners out of the comparison.
+    # Fail if a pull request makes the fast benchmarks significantly slower, so that the
+    # pull request shows a failed check. Don't make this check required: a slowdown can be
+    # worth it (such as the cost of a correctness fix), and runner noise could cause a false
+    # alarm. Both versions are benchmarked in the same job, on the same runner, to keep
+    # noise between runners out of the comparison.
     name: Benchmark against base branch
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -62,7 +64,7 @@ jobs:
       # build of the wrong version), but both store results here, so that the pull
       # request's run can compare against the base's saved baseline
       CRITERION_HOME: ${{ github.workspace }}/criterion
-      # Warn if even the lower bound of a benchmark's estimated slowdown exceeds this
+      # Fail if even the lower bound of a benchmark's estimated slowdown exceeds this
       # percentage. (Quick mode takes too few samples for Criterion's own verdict to
       # report anything as significant.)
       THRESHOLD_PERCENT: '10'
@@ -91,4 +93,6 @@ jobs:
         working-directory: engine
         run: cargo bench --bench benchmarks -- --quick fast-evaluations --baseline-lenient base
       - name: Report regressions
-        run: python3 engine/ci/benchmark_report.py "$CRITERION_HOME" --threshold-percent "$THRESHOLD_PERCENT"
+        run: >
+          python3 engine/ci/benchmark_report.py "$CRITERION_HOME"
+          --threshold-percent "$THRESHOLD_PERCENT" --fail-on-regression
