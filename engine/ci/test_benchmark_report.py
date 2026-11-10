@@ -47,7 +47,7 @@ class CriterionDirTest(unittest.TestCase):
     """Tests which build a Criterion output directory"""
 
     def setUp(self):
-        tmp = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
+        tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
 
@@ -148,8 +148,8 @@ class ReportTest(unittest.TestCase):
         # GitHub shows %25 in a workflow command's message as %
         changes = [Change("slower", 26.6, 30.5, 34.5), Change("same", -1, 0, 1)]
         self.assertEqual(
-            ["::warning title=Benchmark regression::"
-             "slower is 30.5%25 slower (95%25 interval +26.6%25 to +34.5%25)"],
+            [("::warning title=Benchmark regression::"
+              "slower is 30.5%25 slower (95%25 interval +26.6%25 to +34.5%25)")],
             benchmark_report.warnings(changes, 10))
 
     def test_warning_escapes_name(self):

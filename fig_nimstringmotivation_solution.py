@@ -19,6 +19,7 @@
 
 import fig_nimstringmotivation
 
+
 def main():
     """Entry point"""
     (pos, grid) = fig_nimstringmotivation.make_position()

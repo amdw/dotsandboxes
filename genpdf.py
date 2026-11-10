@@ -38,7 +38,7 @@ def main():
     """Entry point: build dotsandboxes.pdf in the directory given as the only argument, which
     must already contain the generated figures and vc.tex"""
     if len(sys.argv) != 2:
-        sys.exit("Usage: {0} BUILD_DIR".format(sys.argv[0]))
+        sys.exit(f"Usage: {sys.argv[0]} BUILD_DIR")
     build_dir = sys.argv[1]
     # Run pdflatex until it no longer gives "re-run to get cross references right" output
     # and the auxiliary files (e.g. the table of contents) stop changing, but no more than
@@ -61,18 +61,18 @@ def main():
             log_file.write(result.stdout)
         if result.returncode != 0:
             sys.stdout.write(result.stdout)
-            raise Exception("pdflatex failed with status {0}".format(result.returncode))
+            sys.exit(f"pdflatex failed with status {result.returncode}")
         rerun_requested = search_text in result.stdout
         aux_changed = read_aux_files(build_dir) != aux_before
         if not rerun_requested and not aux_changed:
             sys.stdout.write(result.stdout)
-            print("pdflatex success in {0} runs".format(runs))
+            print(f"pdflatex success in {runs} runs")
             return
         reason = "cross-references" if rerun_requested else "auxiliary files"
-        print("pdflatex run {0} done, re-running to get {1} right".format(runs, reason))
+        print(f"pdflatex run {runs} done, re-running to get {reason} right")
 
     sys.stdout.write(result.stdout)
-    raise Exception("Output still not stable after {0} runs".format(max_runs))
+    sys.exit(f"Output still not stable after {max_runs} runs")
 
 if __name__ == '__main__':
     main()

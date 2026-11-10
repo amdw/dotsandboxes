@@ -19,6 +19,7 @@
 
 import svg
 
+
 def main():
     """Entry point"""
     layout = svg.Layout(default_thickness=3)

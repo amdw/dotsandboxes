@@ -19,6 +19,7 @@
 
 import svg
 
+
 def make_position():
     """Build the position - separate function for reuse in the solution"""
     pos = svg.StringsAndCoinsPosition()
