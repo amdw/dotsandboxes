@@ -201,25 +201,25 @@ impl SimplePosition {
     }
 
     fn make_position(width: usize, height: usize, init_string: bool) -> SimplePosition {
-        let top_strings = iter::repeat(init_string).take(width).collect();
-        let left_strings = iter::repeat(init_string).take(height).collect();
-        let mut right_strings = Vec::with_capacity(width);
-        let mut down_strings = Vec::with_capacity(width);
+        let top_strings: Vec<bool> = iter::repeat(init_string).take(width).collect();
+        let left_strings: Vec<bool> = iter::repeat(init_string).take(height).collect();
+        let mut right_strings: Vec<Vec<bool>> = Vec::with_capacity(width);
+        let mut down_strings: Vec<Vec<bool>> = Vec::with_capacity(width);
         for _ in 0..width {
             right_strings.push(iter::repeat(init_string).take(height).collect());
             down_strings.push(iter::repeat(init_string).take(height).collect());
         }
-        let mut pos = SimplePosition {
+        let mut zhash = ZHash::new(width, height);
+        if !init_string {
+            zhash.toggle_cut_strings(&top_strings, &left_strings, &right_strings, &down_strings);
+        }
+        SimplePosition {
             top_strings: top_strings,
             left_strings: left_strings,
             down_strings: down_strings,
             right_strings: right_strings,
-            zhash: ZHash::new(width, height),
-        };
-        if !init_string {
-            pos.reset_zhash(0);
+            zhash: zhash,
         }
-        pos
     }
 
     // Every move on an empty board of the given dimensions, in the form used by legal_moves().
@@ -233,11 +233,7 @@ impl SimplePosition {
     // present, however the position was constructed.
     fn reset_zhash(self: &mut SimplePosition, extra_seed: usize) {
         self.zhash = ZHash::new_seeded(self.width(), self.height(), extra_seed);
-        for m in SimplePosition::all_moves(self.width(), self.height()) {
-            if !self.is_legal_move(m) {
-                self.zhash.toggle_element(m);
-            }
-        }
+        self.zhash.toggle_cut_strings(&self.top_strings, &self.left_strings, &self.right_strings, &self.down_strings);
     }
 
     pub fn width(self: &SimplePosition) -> usize {
@@ -582,6 +578,22 @@ impl ZHash {
             left_strings: left_strings,
             right_strings: right_strings,
             down_strings: down_strings,
+        }
+    }
+
+    // Toggle the element for each string which has been cut (is false) in a position's
+    // string arrays, which have the same shape as this hash's arrays
+    fn toggle_cut_strings(self: &mut ZHash, top: &[bool], left: &[bool], right: &[Vec<bool>], down: &[Vec<bool>]) {
+        fn xor_cut(vals: &[u64], present: &[bool]) -> u64 {
+            vals.iter().zip(present).filter(|&(_, &p)| !p).fold(0, |acc, (&v, _)| acc ^ v)
+        }
+        self.current_val ^= xor_cut(&self.top_strings, top);
+        self.current_val ^= xor_cut(&self.left_strings, left);
+        for (vals, present) in self.right_strings.iter().zip(right) {
+            self.current_val ^= xor_cut(vals, present);
+        }
+        for (vals, present) in self.down_strings.iter().zip(down) {
+            self.current_val ^= xor_cut(vals, present);
         }
     }
 
