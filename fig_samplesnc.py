@@ -19,6 +19,7 @@
 
 import svg
 
+
 def main():
     """Entry point"""
     layout = svg.Layout(grid_width=4)

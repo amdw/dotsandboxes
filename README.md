@@ -52,10 +52,9 @@ texlive-fonts-recommended inkscape gawk python3 make git`, `cd` into
 this repository, and run `make`. The PDF and all intermediate files
 are written to the `build` directory.
 
-To perform [Pylint](https://www.pylint.org/) checks on the Python
-scripts, run `make pylint` (requires `python3-pylint`). It
-produces quite a bit of output so you may want to pipe it through
-`less`.
+To check the Python scripts with [Ruff](https://docs.astral.sh/ruff/),
+run `make lint` (requires [uv](https://docs.astral.sh/uv/), which
+installs the version of Ruff locked in `uv.lock`).
 
 ## Using Docker
 

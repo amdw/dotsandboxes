@@ -19,7 +19,7 @@ build := build
 figure_scripts := $(wildcard fig_*.py)
 generated_figpdfs := $(patsubst %.py,$(build)/%.pdf,$(figure_scripts))
 
-.PHONY: all $(build)/vc.tex clean pylint
+.PHONY: all $(build)/vc.tex clean lint
 
 all: $(build)/dotsandboxes.pdf
 
@@ -40,8 +40,8 @@ $(build)/vc.tex: | $(build)
 $(build):
 	mkdir -p $@
 
-pylint:
-	pylint-3 *.py
+lint:
+	uv run --locked ruff check .
 
 clean:
 	-rm -rf $(build) __pycache__

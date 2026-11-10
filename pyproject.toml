@@ -1,0 +1,14 @@
+# Python tooling for the figure scripts, the paper build and the engine's CI scripts. This
+# isn't a package: it only pins the development tools, which uv.lock locks with hashes.
+# Run them with "uv run", e.g. "uv run ruff check".
+
+[project]
+name = "dotsandboxes"
+version = "0"
+requires-python = ">=3.10"
+
+[dependency-groups]
+dev = ["ruff==0.17.4"]
+
+[tool.ruff]
+line-length = 100

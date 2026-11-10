@@ -22,6 +22,7 @@ to Berlekamp's winning 3x3 strategy
 
 import svg
 
+
 def main():
     """Entry point"""
     layout = svg.Layout(grid_width=4, grid_margin=100)

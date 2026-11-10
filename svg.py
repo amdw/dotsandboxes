@@ -1,4 +1,4 @@
-# Copyright 2016 Andrew Medworth (github@medworth.org.uk)
+# Copyright 2016-2026 Andrew Medworth (github@medworth.org.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -21,9 +21,10 @@ files representing strings-and-coins positions.
 import copy
 import sys
 
+
 def render_tag(tag, attribs, to, content=None):
     """Print an XML tag"""
-    attrib_text = ' '.join(['{0}="{1}"'.format(k, attribs[k]) for k in sorted(attribs)])
+    attrib_text = ' '.join([f'{k}="{attribs[k]}"' for k in sorted(attribs)])
     out = '<' + tag + ' ' + attrib_text
     if content:
         out += '>' + content + '</' + tag + '>'
@@ -66,7 +67,6 @@ class TwoCoinLink:
         match2 = (self.coin2 == coin1 and self.coin1 == coin2)
         return match1 or match2
 
-    # pylint: disable=R0201
     def is_link_to_ground(self, _coin):
         """Two-coin links never link to ground"""
         return False
@@ -103,7 +103,6 @@ class GroundLink:
         """Indicate whether this is a link to a coin"""
         return self.coin == coin
 
-    # pylint: disable=R0201
     def is_link_between(self, _coin1, _coin2):
         """Ground links never link two coins"""
         return False
@@ -135,7 +134,7 @@ class GroundLink:
         elif direction == 'down':
             y = 1
         else:
-            raise ValueError('Illegal direction "{0}"'.format(self.direction))
+            raise ValueError(f'Illegal direction "{self.direction}"')
         return [x, y]
 
     def arrow_points(self):
@@ -439,7 +438,7 @@ class StringsAndCoinsPosition:
     def add_horizontal_loop(self, num_coins):
         """Add a horizontal loop with a specified number of coins"""
         if num_coins % 2 != 0:
-            raise ValueError("Only even coin counts are currently supported: {0}".format(num_coins))
+            raise ValueError(f"Only even coin counts are currently supported: {num_coins}")
         row_length = int(num_coins / 2)
         row1_coins = self.add_horizontal_row(row_length)
         row2_coins = self.add_horizontal_row(row_length, y_offset=self.layout.default_gap)
@@ -533,7 +532,7 @@ class StringsAndCoinsPosition:
         """
         links = [l for l in self.links if l.is_link_between(coin1, coin2)]
         if not links:
-            raise ValueError("Position contains no link between {0} and {1}".format(coin1, coin2))
+            raise ValueError(f"Position contains no link between {coin1} and {coin2}")
         self.pending_moves.append(links[0])
 
     def cut_ground_string(self, coin, direction=None):
@@ -545,7 +544,7 @@ class StringsAndCoinsPosition:
         links = [l for l in self.links if l.is_link_to_ground(coin)
                  and (direction is None or l.direction.lower() == direction.lower())]
         if not links:
-            raise ValueError("Position contains no such link from {0} to ground".format(coin))
+            raise ValueError(f"Position contains no such link from {coin} to ground")
         self.pending_moves.append(links[0])
 
     def add_to_layout(self):
@@ -567,7 +566,7 @@ class StringsAndCoinsPosition:
         self.add_to_layout()
         player_label = self.player_to_move
         self.make_pending_moves()
-        score_text = "${0}$, {1}--{2}".format(player_label, self.a_score, self.b_score)
+        score_text = f"${player_label}$, {self.a_score}--{self.b_score}"
         self.layout.add_default_text(score_text, y=self.y_pos)
         self.layout.next_grid_position()
 
@@ -673,7 +672,7 @@ class DotsAndBoxesPosition:
         elif direction == "right":
             return [self.dots[x+1][y], self.dots[x+1][y+1]]
         else:
-            raise ValueError("Illegal direction [{0}]".format(direction))
+            raise ValueError(f"Illegal direction [{direction}]")
 
     def _affected_boxes(self, x, y, direction):
         """The one or two boxes affected by a given move"""
@@ -692,7 +691,7 @@ class DotsAndBoxesPosition:
             if x < len(self.valencies) - 1:
                 affected_boxes.append([x+1, y])
         else:
-            raise ValueError("Illegal direction [{0}]".format(direction))
+            raise ValueError(f"Illegal direction [{direction}]")
 
         return affected_boxes
 
@@ -753,7 +752,7 @@ class DotsAndBoxesPosition:
         line.thickness = old_thickness
         lowest_y = self.dots[0][-1].y
         caption_y = lowest_y + int(self.layout.default_gap * 0.7)
-        self.layout.add_default_text("${0}$".format(player_moving), y=caption_y)
+        self.layout.add_default_text(f"${player_moving}$", y=caption_y)
         self.layout.next_grid_position()
 
     def render(self, to=sys.stdout):

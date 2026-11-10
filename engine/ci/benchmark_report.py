@@ -112,8 +112,11 @@ def summary(changes, threshold_percent):
     lines = [
         "## Benchmarks against base branch",
         "",
-        "Quick-mode `fast-evaluations` benchmarks. A warning is given if the lower bound of "
-        f"a benchmark's 95% confidence interval is a slowdown of more than {threshold_percent:g}%.",
+        (
+            "Quick-mode `fast-evaluations` benchmarks. A warning is given if the lower bound of "
+            f"a benchmark's 95% confidence interval is a slowdown of more than "
+            f"{threshold_percent:g}%."
+        ),
         "",
         "| Benchmark | Change in mean time | 95% confidence interval | |",
         "|---|---|---|---|",

@@ -19,6 +19,7 @@
 
 import svg
 
+
 def make_original_position(layout):
     """Create original position with coins"""
     pos = svg.StringsAndCoinsPosition(layout)

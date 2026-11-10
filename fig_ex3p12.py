@@ -19,6 +19,7 @@
 
 import svg
 
+
 def main():
     """Entry point"""
     pos = svg.StringsAndCoinsPosition()
