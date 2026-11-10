@@ -378,12 +378,16 @@ impl Position<Move> for SimplePosition {
     }
 
     fn would_capture(self: &SimplePosition, m: Move) -> usize {
+        // Stop counting a coin's strings at two, since only valency one matters here
+        let has_valency_one = |x, y| {
+            Side::all().iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).take(2).count() == 1
+        };
         let mut result = 0;
-        if self.valency(m.x, m.y) == 1 {
+        if has_valency_one(m.x, m.y) {
             result += 1;
         }
         if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
-            if self.valency(nx, ny) == 1 {
+            if has_valency_one(nx, ny) {
                 result += 1;
             }
         }
@@ -394,28 +398,10 @@ impl Position<Move> for SimplePosition {
         if !self.is_legal_move(m) {
             panic!("Illegal move {}, pos:\n{}", m, self);
         }
+        // Cutting the string reduces the valency of each coin it is attached to by one,
+        // so the coins it captures are exactly those whose valency is one beforehand
+        let captures = self.would_capture(m);
         self.set_string_value(m, false);
-        let mut captures = if self.is_captured(m.x, m.y) { 1 } else { 0 };
-        if m.side == Side::Left && m.x > 0 {
-            if self.is_captured(m.x-1, m.y) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Right && m.x < self.width()-1 {
-            if self.is_captured(m.x+1, m.y) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Top && m.y > 0 {
-            if self.is_captured(m.x, m.y-1) {
-                captures += 1
-            }
-        }
-        if m.side == Side::Bottom && m.y < self.height()-1 {
-            if self.is_captured(m.x, m.y+1) {
-                captures += 1
-            }
-        }
         let end_of_game = self.is_end_of_game();
         self.zhash.toggle_element(m);
         MoveOutcome {
@@ -763,6 +749,14 @@ mod tests {
     use crate::game::*;
     use crate::examples::*;
     use std::collections::HashSet;
+
+    // Count captured coins directly, independently of would_capture
+    fn count_captured(pos: &CompoundPosition) -> usize {
+        pos.parts.iter().map(|p| {
+            (0..p.width()).flat_map(|x| (0..p.height()).map(move |y| (x, y)))
+                .filter(|&(x, y)| p.is_captured(x, y)).count()
+        }).sum()
+    }
 
     #[test]
     fn simple_capture() {
@@ -1166,9 +1160,9 @@ mod tests {
         assert_eq!(17, legal_moves.len());
         for &m in legal_moves.iter() {
             assert_eq!(false, pos.is_end_of_game());
-            let wc = pos.would_capture(m);
+            let captured_before = count_captured(&pos);
             let outcome = pos.make_move(m);
-            assert_eq!(wc, outcome.coins_captured);
+            assert_eq!(count_captured(&pos) - captured_before, outcome.coins_captured);
             assert!(init_hash != pos.zhash());
         }
         assert_eq!(true, pos.is_end_of_game());
