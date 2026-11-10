@@ -183,8 +183,7 @@ where M: Copy, P: EvaluablePosition<M> + Clone {
 fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
 where M: Copy, P: EvaluablePosition<M> {
     let legal_moves = pos.legal_moves();
-    let captures: Vec<M> = legal_moves.iter().copied().filter(|&m| pos.would_capture(m) > 0).collect();
-    let Some(&capture) = captures.first() else {
+    let Some(capture) = legal_moves.iter().copied().find(|&m| pos.would_capture(m) > 0) else {
         // A position with no captures can't be loony
         return legal_moves;
     };
@@ -193,7 +192,8 @@ where M: Copy, P: EvaluablePosition<M> {
     if !pos.is_loony() {
         return vec!(capture);
     }
-    if let Some(&m) = captures.iter().find(|&&m| nimstring::would_be_loony(pos, m)) {
+    if let Some(m) = legal_moves.iter().copied()
+        .find(|&m| pos.would_capture(m) > 0 && nimstring::would_be_loony(pos, m)) {
         return vec!(m);
     }
     if pos.can_capture_all() {
