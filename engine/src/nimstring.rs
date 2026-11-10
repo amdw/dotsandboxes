@@ -66,7 +66,7 @@ impl NimstringPosition<Move> for SimplePosition {
                 if self.valency(x, y) != 1 {
                     continue
                 }
-                if let Some((neighbour_x, neighbour_y, side)) = connected_coin(self, x, y, Side::all()) {
+                if let Some((neighbour_x, neighbour_y, side)) = connected_coin(self, x, y, Side::ALL) {
                     if self.valency(neighbour_x, neighbour_y) != 2 {
                         continue
                     }

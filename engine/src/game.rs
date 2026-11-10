@@ -35,12 +35,10 @@ pub enum Side {
 }
 
 impl Side {
-    pub fn all() -> [Side; 4] {
-        [Side::Top, Side::Bottom, Side::Left, Side::Right]
-    }
+    pub const ALL: [Side; 4] = [Side::Top, Side::Bottom, Side::Left, Side::Right];
 
     pub fn all_except(side: Side) -> impl Iterator<Item = Side> {
-        Side::all().into_iter().filter(move |&s| s != side)
+        Side::ALL.into_iter().filter(move |&s| s != side)
     }
 
     pub fn opposite(self: &Side) -> Side {
@@ -311,12 +309,12 @@ impl SimplePosition {
 
     // Indicate whether a given square has been captured.
     pub fn is_captured(self: &SimplePosition, x: usize, y: usize) -> bool {
-        Side::all().iter().all(|&s| !self.is_legal_move(Move{x: x, y: y, side: s}))
+        Side::ALL.iter().all(|&s| !self.is_legal_move(Move{x: x, y: y, side: s}))
     }
 
     // Valency or degree of coin at a given position
     pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
-        Side::all().iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).count()
+        Side::ALL.iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).count()
     }
 
     // Move from the square indicated in the direction indicated by the side,
@@ -374,7 +372,7 @@ impl Position<Move> for SimplePosition {
     fn would_capture(self: &SimplePosition, m: Move) -> usize {
         // Stop counting a coin's strings at two, since only valency one matters here
         let has_valency_one = |x, y| {
-            Side::all().iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).take(2).count() == 1
+            Side::ALL.iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).take(2).count() == 1
         };
         let mut result = 0;
         if has_valency_one(m.x, m.y) {
@@ -475,7 +473,7 @@ impl PartialEq for SimplePosition {
         }
         for x in 0..self.width() {
             for y in 0..self.height() {
-                for s in Side::all() {
+                for s in Side::ALL {
                     let legal_here = self.is_legal_move(Move{x: x, y: y, side: s});
                     let legal_there = other.is_legal_move(Move{x: x, y: y, side: s});
                     if legal_here != legal_there {
@@ -818,7 +816,7 @@ mod tests {
         let mut pos = SimplePosition::new_game(3, 3);
         for &(x, y) in [(0, 0), (0, 2), (2, 0), (2, 2)].iter() {
             let mut sides_captured = 0;
-            for s in Side::all() {
+            for s in Side::ALL {
                 let m = Move{x: x, y: y, side: s};
                 assert_eq!(true, pos.is_legal_move(m));
                 let outcome = pos.make_move(m);
@@ -877,7 +875,7 @@ mod tests {
         pos.undo_move(Move{x: 0, y: 1, side: Side::Right});
         for i in 0..2 {
             for j in 0..2 {
-                for s in Side::all() {
+                for s in Side::ALL {
                     assert_eq!(true, pos.is_legal_move(Move{x: i, y: j, side: s}));
                 }
             }
@@ -1101,7 +1099,7 @@ mod tests {
         let pos = SimplePosition::new_end_game(width, height);
         for i in 0..width {
             for j in 0..height {
-                for s in Side::all() {
+                for s in Side::ALL {
                     assert_eq!(false, pos.is_legal_move(Move{x: i, y: j, side: s}));
                 }
             }
@@ -1110,7 +1108,7 @@ mod tests {
 
     #[test]
     fn all_sides() {
-        let sides = Side::all();
+        let sides = Side::ALL;
         assert_eq!(4, sides.len());
         assert!(sides.contains(&Side::Top));
         assert!(sides.contains(&Side::Bottom));
@@ -1128,10 +1126,10 @@ mod tests {
 
     #[test]
     fn all_sides_except() {
-        for side in Side::all() {
+        for side in Side::ALL {
             let sides: Vec<Side> = Side::all_except(side).collect();
             assert_eq!(3, sides.len());
-            for other_side in Side::all() {
+            for other_side in Side::ALL {
                 assert_eq!(side != other_side, sides.contains(&other_side));
             }
         }
