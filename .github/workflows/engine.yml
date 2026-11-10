@@ -87,30 +87,39 @@ jobs:
         run: cargo bench --bench benchmarks -- --quick fast-evaluations --save-baseline base
       - name: Benchmark pull request
         working-directory: engine
-        run: |
-          cargo bench --bench benchmarks -- --quick fast-evaluations --baseline-lenient base \
-            | tee "$RUNNER_TEMP/bench.txt"
+        run: cargo bench --bench benchmarks -- --quick fast-evaluations --baseline-lenient base
       - name: Report regressions
         run: |
-          # Criterion prints each benchmark's name, then its time and its change from the
-          # baseline as [lower bound, estimate, upper bound], with a Unicode minus sign
-          awk -v threshold="$THRESHOLD_PERCENT" '
-            /^[^ ]/ { name = $0; sub(/ +time:.*/, "", name) }
-            /change:/ {
-              change = $0; sub(/^ *change: */, "", change); sub(/ \(p = .*/, "", change)
-              lower = change; sub(/^\[/, "", lower); sub(/%.*/, "", lower); gsub(/−/, "-", lower)
-              if (lower + 0 > threshold + 0) print name "\t" change
-            }
-          ' "$RUNNER_TEMP/bench.txt" > "$RUNNER_TEMP/regressions.tsv"
+          # Criterion saves each benchmark's change from the baseline in change/estimates.json,
+          # as fractions, and the benchmark's name in new/benchmark.json. These files aren't a
+          # documented interface, so fail rather than silently report nothing if there are none.
+          results=$(find "$CRITERION_HOME" -path '*/change/estimates.json' | sort)
+          if [ -z "$results" ]; then
+            echo "::error::No Criterion comparison results found; has its output format changed?"
+            exit 1
+          fi
           {
             echo "## Benchmarks against base branch"
             echo
-            echo "Quick-mode \`fast-evaluations\` benchmarks; warning if the lower bound of a benchmark's estimated change is a slowdown of more than $THRESHOLD_PERCENT%."
+            echo "Quick-mode \`fast-evaluations\` benchmarks. A warning is given if the lower bound of"
+            echo "a benchmark's 95% confidence interval is a slowdown of more than $THRESHOLD_PERCENT%."
             echo
-            echo '```'
-            cat "$RUNNER_TEMP/bench.txt"
-            echo '```'
+            echo "| Benchmark | Change in mean time | 95% confidence interval | |"
+            echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
-          while IFS="$(printf '\t')" read -r name change; do
-            echo "::warning title=Benchmark regression::$name is slower: $change"
-          done < "$RUNNER_TEMP/regressions.tsv"
+          while read -r result; do
+            name=$(jq -r '.title' "$(dirname "$(dirname "$result")")/new/benchmark.json")
+            # Lower bound, estimate and upper bound as percentages, and whether it's a regression
+            row=$(jq -r --argjson threshold "$THRESHOLD_PERCENT" '
+              .mean | [.confidence_interval.lower_bound, .point_estimate, .confidence_interval.upper_bound]
+              | map(. * 1000 | round / 10)
+              | . + [.[0] > $threshold] | @tsv
+            ' "$result")
+            IFS="$(printf '\t')" read -r lower estimate upper regressed <<< "$row"
+            mark=""
+            if [ "$regressed" = true ]; then
+              mark="Slower"
+              echo "::warning title=Benchmark regression::$name is $estimate% slower (95% interval $lower% to $upper%)"
+            fi
+            echo "| $name | $estimate% | $lower% to $upper% | $mark |" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$results"
