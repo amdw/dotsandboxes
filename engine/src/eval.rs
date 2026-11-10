@@ -25,6 +25,10 @@ pub trait EvaluablePosition<M> : NimstringPosition<M> {
     // Given a loony position and the capture, find the corresponding double-dealing move.
     // Behaviour on a non-loony position is undefined.
     fn find_ddeal_move(&self, m: M) -> M;
+
+    // Whether captures alone can take every remaining coin, ending the game. (Capturing only
+    // makes other coins easier to capture, so the order the captures are made in doesn't matter.)
+    fn can_capture_all(&self) -> bool;
 }
 
 impl EvaluablePosition<Move> for SimplePosition {
@@ -50,11 +54,59 @@ impl EvaluablePosition<Move> for SimplePosition {
 
         panic!("Could not find double-dealing move corresponding to {} in {}", capture, self);
     }
+
+    fn can_capture_all(self: &SimplePosition) -> bool {
+        // Simulate the captures on the coins' valencies rather than making them, starting from
+        // the coins capturable now. Capturing a coin cuts its last string, which reduces the
+        // valency of the coin at its far end, if any, making that coin capturable at valency 1
+        // (or capturing it too, at valency 0).
+        let height = self.height();
+        let idx = |x: usize, y: usize| x * height + y;
+        let mut valency = Vec::with_capacity(self.width() * height);
+        let mut capturable = Vec::new();
+        for x in 0..self.width() {
+            for y in 0..height {
+                let v = self.valency(x, y);
+                valency.push(v);
+                if v == 1 {
+                    capturable.push((x, y));
+                }
+            }
+        }
+        let mut captured: Vec<bool> = valency.iter().map(|&v| v == 0).collect();
+        while let Some((x, y)) = capturable.pop() {
+            if captured[idx(x, y)] {
+                // Captured along with a neighbour
+                continue;
+            }
+            // The coin's last string is the one whose far end, if any, hasn't been captured
+            // (capturing a coin cuts all its strings)
+            let far_end = Side::all().into_iter()
+                .filter(|&s| self.is_legal_move(Move{x: x, y: y, side: s}))
+                .map(|s| self.offset(x, y, s))
+                .find(|&far| far.map_or(true, |(fx, fy)| !captured[idx(fx, fy)]))
+                .expect("Capturable coin should have a string left");
+            captured[idx(x, y)] = true;
+            if let Some((fx, fy)) = far_end {
+                valency[idx(fx, fy)] -= 1;
+                match valency[idx(fx, fy)] {
+                    0 => captured[idx(fx, fy)] = true,
+                    1 => capturable.push((fx, fy)),
+                    _ => (),
+                }
+            }
+        }
+        captured.iter().all(|&c| c)
+    }
 }
 
 impl EvaluablePosition<CPosMove> for CompoundPosition {
     fn find_ddeal_move(self: &CompoundPosition, capture: CPosMove) -> CPosMove {
         CPosMove{part: capture.part, m: self.parts[capture.part].find_ddeal_move(capture.m)}
+    }
+
+    fn can_capture_all(self: &CompoundPosition) -> bool {
+        self.parts.iter().all(|p| p.can_capture_all())
     }
 }
 
@@ -100,77 +152,57 @@ where M: Copy, P: EvaluablePosition<M> {
     (outcome.coins_captured as isize) + sign * next_val
 }
 
-// Whether a move is a canonical capture: one which can be made without loss, so there's
-// no need to consider alternatives. In a position which isn't loony, any capture is
-// canonical (taking a free coin never costs anything); in a loony position, a capture is
-// canonical if the position stays loony (so it doesn't affect the option of double-dealing),
-// or if after it every remaining coin can be captured (so there's nothing left to gain by
-// double-dealing, e.g. when taking the last chain of the game).
-fn is_canonical_capture<M, P>(pos: &mut P, m: M, is_loony: bool) -> bool
-where M: Copy, P: EvaluablePosition<M> {
-    if pos.would_capture(m) == 0 {
-        return false;
-    }
-    if !is_loony || nimstring::would_be_loony(pos, m) {
-        return true;
-    }
-    pos.make_move(m);
-    let result = can_capture_all(pos);
-    pos.undo_move(m);
-    result
-}
-
-// Whether captures alone can take every remaining coin, ending the game. (Capturing only
-// makes other coins easier to capture, so the order the captures are made in doesn't matter.)
-fn can_capture_all<M, P>(pos: &mut P) -> bool
-where M: Copy, P: EvaluablePosition<M> {
-    let mut made = Vec::new();
-    while let Some(m) = pos.legal_moves().into_iter().find(|&m| pos.would_capture(m) > 0) {
-        pos.make_move(m);
-        made.push(m);
-    }
-    let result = pos.is_end_of_game();
-    for &m in made.iter().rev() {
-        pos.undo_move(m);
-    }
-    result
-}
-
-// All the canonical captures available in a position (see is_canonical_capture)
+// A canonical capture is one which can be made without loss, so there's no need to consider
+// alternatives. In a position which isn't loony, any capture is canonical (taking a free coin
+// never costs anything); in a loony position, a capture is canonical if the position stays
+// loony (so it doesn't affect the option of double-dealing), or if after it every remaining
+// coin can be captured (so there's nothing left to gain by double-dealing, e.g. when taking
+// the last chain of the game).
+//
+// Captures only make other coins easier to capture, so every coin can be captured after one
+// capture iff it can before it. So that condition is checked on the position itself, at most
+// once per position, and only if a capture fails the cheaper conditions.
+//
+// This returns all the canonical captures available in a position.
 pub fn canonical_moves<M, P>(pos: &P) -> Vec<M>
 where M: Copy, P: EvaluablePosition<M> + Clone {
     let mut pos = pos.clone();
-    let is_loony = pos.is_loony();
-    pos.legal_moves().into_iter().filter(|&m| is_canonical_capture(&mut pos, m, is_loony)).collect()
+    let captures: Vec<M> = pos.legal_moves().into_iter().filter(|&m| pos.would_capture(m) > 0).collect();
+    if !pos.is_loony() {
+        return captures;
+    }
+    let keeping_loony: Vec<M> = captures.iter().copied().filter(|&m| nimstring::would_be_loony(&mut pos, m)).collect();
+    if keeping_loony.len() < captures.len() && pos.can_capture_all() {
+        return captures;
+    }
+    keeping_loony
 }
 
 // Determine what moves deserve consideration in a given position
 fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
 where M: Copy, P: EvaluablePosition<M> {
     let legal_moves = pos.legal_moves();
+    let captures: Vec<M> = legal_moves.iter().copied().filter(|&m| pos.would_capture(m) > 0).collect();
+    let Some(&capture) = captures.first() else {
+        // A position with no captures can't be loony
+        return legal_moves;
+    };
 
     // If there are any canonical captures, just go ahead and make one
-    let is_loony = pos.is_loony();
-    let mut capture: Option<M> = None;
-    for &m in &legal_moves {
-        if pos.would_capture(m) == 0 {
-            continue;
-        }
-        capture = Some(m);
-        if is_canonical_capture(pos, m, is_loony) {
-            return vec!(m);
-        }
+    if !pos.is_loony() {
+        return vec!(capture);
+    }
+    if let Some(&m) = captures.iter().find(|&&m| nimstring::would_be_loony(pos, m)) {
+        return vec!(m);
+    }
+    if pos.can_capture_all() {
+        return vec!(capture);
     }
 
     // Consider only capturing all and double-dealing in the loony case
     // TODO: Use other canonical play results to further reduce the set of moves considered
-    if is_loony {
-        let capture = capture.unwrap();
-        let ddeal_move = pos.find_ddeal_move(capture);
-        vec!(capture, ddeal_move)
-    } else {
-        legal_moves
-    }
+    let ddeal_move = pos.find_ddeal_move(capture);
+    vec!(capture, ddeal_move)
 }
 
 fn eval_cache<M, P>(pos: &mut P, search: &mut Search<M>) -> (isize, Option<M>)
@@ -610,6 +642,50 @@ mod test {
         let mut chain = make_chain(1);
         chain.make_move(Move::new(0, 0, Side::Left));
         assert_eq!(vec![Move::new(0, 0, Side::Right)], canonical_moves(&chain));
+    }
+
+    // Whether captures alone can take every remaining coin, found by making them: an
+    // independent check of EvaluablePosition::can_capture_all
+    fn can_capture_all_by_play<M, P>(pos: &mut P) -> bool
+    where M: Copy, P: EvaluablePosition<M> {
+        // Making a move never makes another one illegal, so list the legal moves once, and
+        // make and remove the captures among them, pass by pass, until a pass finds none.
+        let mut remaining = pos.legal_moves();
+        let mut made = Vec::new();
+        loop {
+            let made_before = made.len();
+            remaining.retain(|&m| {
+                if pos.would_capture(m) == 0 {
+                    return true;
+                }
+                pos.make_move(m);
+                made.push(m);
+                false
+            });
+            if remaining.is_empty() || made.len() == made_before {
+                break;
+            }
+        }
+        let result = remaining.is_empty();
+        for &m in made.iter().rev() {
+            pos.undo_move(m);
+        }
+        result
+    }
+
+    #[test]
+    fn can_capture_all_matches_play() {
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 7;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let (mut can, mut cannot) = (0, 0);
+        for _ in 0..1000 {
+            let mut pos = make_random_pos(&mut r);
+            let expected = can_capture_all_by_play(&mut pos);
+            assert_eq!(expected, pos.can_capture_all(), "{}", pos);
+            if expected { can += 1 } else { cannot += 1 }
+        }
+        assert!(can > 0 && cannot > 0, "can {}, cannot {}", can, cannot);
     }
 
     #[test]
