@@ -60,43 +60,44 @@ impl EvaluablePosition<Move> for SimplePosition {
         // the coins capturable now. Capturing a coin cuts its last string, which reduces the
         // valency of the coin at its far end, if any, making that coin capturable at valency 1
         // (or capturing it too, at valency 0).
-        let height = self.height();
-        let idx = |x: usize, y: usize| x * height + y;
-        let mut valency = Vec::with_capacity(self.width() * height);
+        let mut valency: Vec<Vec<usize>> = Vec::with_capacity(self.width());
         let mut capturable = Vec::new();
         for x in 0..self.width() {
-            for y in 0..height {
+            valency.push(Vec::with_capacity(self.height()));
+            for y in 0..self.height() {
                 let v = self.valency(x, y);
-                valency.push(v);
+                valency[x].push(v);
                 if v == 1 {
                     capturable.push((x, y));
                 }
             }
         }
-        let mut captured: Vec<bool> = valency.iter().map(|&v| v == 0).collect();
+        let mut captured: Vec<Vec<bool>> = valency.iter()
+            .map(|col| col.iter().map(|&v| v == 0).collect())
+            .collect();
         while let Some((x, y)) = capturable.pop() {
-            if captured[idx(x, y)] {
+            if captured[x][y] {
                 // Captured along with a neighbour
                 continue;
             }
             // The coin's last string is the one whose far end, if any, hasn't been captured
             // (capturing a coin cuts all its strings)
-            let far_end = Side::all().into_iter()
+            let far_end = Side::ALL.into_iter()
                 .filter(|&s| self.is_legal_move(Move{x: x, y: y, side: s}))
                 .map(|s| self.offset(x, y, s))
-                .find(|&far| far.map_or(true, |(fx, fy)| !captured[idx(fx, fy)]))
+                .find(|&far| far.map_or(true, |(fx, fy)| !captured[fx][fy]))
                 .expect("Capturable coin should have a string left");
-            captured[idx(x, y)] = true;
+            captured[x][y] = true;
             if let Some((fx, fy)) = far_end {
-                valency[idx(fx, fy)] -= 1;
-                match valency[idx(fx, fy)] {
-                    0 => captured[idx(fx, fy)] = true,
+                valency[fx][fy] -= 1;
+                match valency[fx][fy] {
+                    0 => captured[fx][fy] = true,
                     1 => capturable.push((fx, fy)),
                     _ => (),
                 }
             }
         }
-        captured.iter().all(|&c| c)
+        captured.iter().all(|col| col.iter().all(|&c| c))
     }
 }
 
