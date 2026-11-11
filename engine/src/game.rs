@@ -111,6 +111,10 @@ pub trait Position<M> {
     fn is_end_of_game(&self) -> bool;
     // Compute all possible legal moves in the position.
     fn legal_moves(&self) -> Vec<M>;
+    // The legal moves, leaving out any which would give the same position as another one
+    // (up to which string is which), so that searches needn't consider them both. The
+    // value of each one left out is the same as the value of one which is kept.
+    fn distinct_moves(&self) -> Vec<M>;
     // Indicate whether two moves are equivalent in the current position,
     // i.e. they refer to the same "logical" move on the board.
     // For example in a SimplePosition, (0,0) Right is equivalent to (1,0) Left
@@ -339,6 +343,17 @@ impl SimplePosition {
         }
     }
 
+    // Whether a move cuts a string between a coin and the ground when the coin has another
+    // such string on an earlier side (in Side::ALL order). Cutting any of a coin's ground
+    // strings gives the same position up to which string is which, so only the first of
+    // them is a distinct move.
+    fn is_later_ground_string(self: &SimplePosition, m: Move) -> bool {
+        let is_ground = |s| self.offset(m.x, m.y, s).is_none();
+        is_ground(m.side) && Side::ALL.into_iter()
+            .take_while(|&s| s != m.side)
+            .any(|s| is_ground(s) && self.is_legal_move(Move{x: m.x, y: m.y, side: s}))
+    }
+
     fn legal_move_count(self: &SimplePosition) -> usize {
         self.left_strings.iter().filter(|&&b| b).count() +
         self.top_strings.iter().filter(|&&b| b).count() +
@@ -442,6 +457,12 @@ impl Position<Move> for SimplePosition {
                 }
             }
         }
+        result
+    }
+
+    fn distinct_moves(self: &SimplePosition) -> Vec<Move> {
+        let mut result = self.legal_moves();
+        result.retain(|&m| !self.is_later_ground_string(m));
         result
     }
 
@@ -708,6 +729,12 @@ impl Position<CPosMove> for CompoundPosition {
         result
     }
 
+    fn distinct_moves(self: &CompoundPosition) -> Vec<CPosMove> {
+        self.parts.iter().enumerate()
+            .flat_map(|(i, p)| p.distinct_moves().into_iter().map(move |m| CPosMove{ part: i, m: m }))
+            .collect()
+    }
+
     fn moves_equivalent(self: &CompoundPosition, move1: CPosMove, move2: CPosMove) -> bool {
         move1.part == move2.part && self.parts[move1.part].moves_equivalent(move1.m, move2.m)
     }
@@ -961,6 +988,37 @@ mod tests {
         let moves = pos.legal_moves();
         assert!(!moves.contains(&Move{ x: 0, y: 0, side: Side::Bottom }) &&
                 !moves.contains(&Move{ x: 0, y: 1, side: Side::Top }));
+    }
+
+    #[test]
+    fn distinct_moves() {
+        // Each corner coin of a new 2x2 game has two ground strings, only one of which counts
+        let mut pos = SimplePosition::new_game(2, 2);
+        let moves = pos.distinct_moves();
+        assert_eq!(8, moves.len());
+        for (x, y) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+            let ground: Vec<&Move> = moves.iter()
+                .filter(|m| m.x == x && m.y == y && pos.offset(x, y, m.side).is_none()).collect();
+            assert_eq!(1, ground.len(), "({}, {}): {:?}", x, y, ground);
+        }
+        assert!(moves.iter().all(|&m| pos.is_legal_move(m)));
+
+        // Once one of a coin's ground strings is cut, the other is distinct (so of the 11
+        // legal moves, only one ground string at each of the other three corners is left out)
+        pos.make_move(Move{x: 0, y: 0, side: Side::Top});
+        assert!(pos.distinct_moves().contains(&Move{x: 0, y: 0, side: Side::Left}));
+        assert_eq!(8, pos.distinct_moves().len());
+
+        // A lone coin has four ground strings, but only one distinct move
+        assert_eq!(1, SimplePosition::new_game(1, 1).distinct_moves().len());
+        // Each end coin of a 1x3 chain of coins has three, the middle one two
+        assert_eq!(2 + 1 + 2, SimplePosition::new_game(3, 1).distinct_moves().len());
+
+        // In a compound position, each part's distinct moves
+        let cpos = CompoundPosition::new(vec![SimplePosition::new_game(1, 1), SimplePosition::new_game(2, 2)]);
+        let cmoves = cpos.distinct_moves();
+        assert_eq!(1 + 8, cmoves.len());
+        assert_eq!(1, cmoves.iter().filter(|m| m.part == 0).count());
     }
 
     #[test]

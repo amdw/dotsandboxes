@@ -187,8 +187,9 @@ where M: Copy, P: NimstringPosition<M> {
         return result;
     }
 
+    // Moves which give the same position as another have the same value, so needn't be tried
     let mut options = HashSet::new();
-    for &m in &legal_moves {
+    for m in pos.distinct_moves() {
         pos.make_move(m);
         let value = calc_value(pos, search);
         pos.undo_move(m);

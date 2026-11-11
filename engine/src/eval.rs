@@ -185,7 +185,7 @@ where M: Copy, P: EvaluablePosition<M> {
     let legal_moves = pos.legal_moves();
     let Some(capture) = legal_moves.iter().copied().find(|&m| pos.would_capture(m) > 0) else {
         // A position with no captures can't be loony
-        return legal_moves;
+        return pos.distinct_moves();
     };
 
     // If there are any canonical captures, just go ahead and make one
@@ -776,6 +776,35 @@ mod test {
         let mut fresh = Evaluator::new();
         fresh.eval_with_moves(&pos);
         assert!(added * 2 < fresh.cached_positions(), "added {} vs fresh {}", added, fresh.cached_positions());
+    }
+
+    #[test]
+    fn moves_left_out_as_not_distinct_have_same_values() {
+        // Each legal move which isn't a distinct move cuts a ground string of a coin whose
+        // first ground string is a distinct move, and has the same value as that move, both
+        // in Dots-and-Boxes and in Nimstring
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 31;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut checked = 0;
+        for _ in 0..300 {
+            let pos = make_random_pos(&mut r);
+            let distinct = pos.distinct_moves();
+            let (_, values) = eval_with_moves(&pos);
+            let (_, nim_values) = nimstring::calc_value_with_moves(&pos);
+            for m in pos.legal_moves() {
+                if distinct.contains(&m) {
+                    continue;
+                }
+                let kept = *distinct.iter()
+                    .find(|k| k.x == m.x && k.y == m.y && pos.offset(k.x, k.y, k.side).is_none())
+                    .unwrap_or_else(|| panic!("No distinct ground string for {} in {}", m, pos));
+                assert_eq!(values[&kept], values[&m], "{} vs {} in {}", kept, m, pos);
+                assert_eq!(nim_values[&kept], nim_values[&m], "{} vs {} in {}", kept, m, pos);
+                checked += 1;
+            }
+        }
+        assert!(checked > 0);
     }
 
     // TODO: Test that rotations and reflections do not affect the evaluation
