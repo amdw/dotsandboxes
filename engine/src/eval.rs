@@ -18,6 +18,7 @@
 */
 use crate::game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
 use crate::nimstring::{self, NimstringPosition};
+use std::cmp;
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -111,25 +112,53 @@ impl EvaluablePosition<CPosMove> for CompoundPosition {
     }
 }
 
+// Values are relative to the player to move, and searches are given a window (alpha, beta):
+// a value at or below alpha, or at or above beta, needn't be found exactly, since the player
+// (or the opponent) already has a better alternative elsewhere. So a cached value may be just
+// a bound on the position's value, which is enough when it is outside a later window.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Bound {
+    Exact,
+    Lower,
+    Upper,
+}
+
+// What the cache records about a position: its value (or a bound on it, if the search which
+// found it was cut short by its window), and the best move found
+#[derive(Clone, Copy)]
+struct CachedEvaluation<M> {
+    value: isize,
+    best_move: M,
+    bound: Bound,
+}
+
+// Greater than the absolute value of any position, so the window (-INFINITY, INFINITY) gives
+// exact values, and shifting it by the coins captured doesn't overflow (even where isize is
+// only 32 bits wide, as in WebAssembly)
+const INFINITY: isize = isize::MAX / 2;
+
 // The state of an evaluation: the cache of position values, and a limit on its size, beyond
 // which the evaluation is abandoned (aborted). Once aborted, the search unwinds without
-// caching anything more, so every cached value is still exact.
+// caching anything more, so every cached value (or bound) is still correct.
 struct Search<'a, M> {
-    cache: &'a mut HashMap<u64, (isize, M)>,
+    cache: &'a mut HashMap<u64, CachedEvaluation<M>>,
     limit: usize,
     aborted: bool,
 }
 
-// Evaluate a position given a set of moves to consider
-fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, search: &mut Search<M>) -> (isize, Option<M>)
-where M: Copy, P: EvaluablePosition<M> {
+// Evaluate a position given a set of moves to consider, and the window (alpha, beta). The
+// result is exact if it is strictly inside the window; otherwise it is an upper bound (at or
+// below alpha) or a lower bound (at or above beta) on the value.
+fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, mut alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
+where M: Copy + PartialEq, P: EvaluablePosition<M> {
     if moves.is_empty() {
         return (0, None);
     }
-    let mut value = isize::MIN;
+    let alpha_orig = alpha;
+    let mut value = -INFINITY;
     let mut best_move = moves[0];
     for &m in moves {
-        let sub_val = eval_move(pos, m, search);
+        let sub_val = eval_move(pos, m, alpha, beta, search);
         if search.aborted {
             return (0, None);
         }
@@ -137,20 +166,34 @@ where M: Copy, P: EvaluablePosition<M> {
             value = sub_val;
             best_move = m;
         }
+        alpha = cmp::max(alpha, sub_val);
+        if alpha >= beta {
+            break;
+        }
     }
-    search.cache.insert(pos.zhash(), (value, best_move));
+    let bound = if value <= alpha_orig {
+        Bound::Upper
+    } else if value >= beta {
+        Bound::Lower
+    } else {
+        Bound::Exact
+    };
+    search.cache.insert(pos.zhash(), CachedEvaluation{ value: value, best_move: best_move, bound: bound });
     (value, Some(best_move))
 }
 
-// Evaluate a single move: the coins it captures, plus or minus the value of the resulting
-// position depending on whether the same player moves again
-fn eval_move<M, P>(pos: &mut P, m: M, search: &mut Search<M>) -> isize
-where M: Copy, P: EvaluablePosition<M> {
-    let outcome = pos.make_move(m);
-    let sign = if outcome.coins_captured > 0 { 1 } else { -1 };
-    let (next_val, _) = eval_cache(pos, search);
+// Evaluate a single move within the window (alpha, beta): the coins it captures, plus or
+// minus the value of the resulting position depending on whether the same player moves again
+fn eval_move<M, P>(pos: &mut P, m: M, alpha: isize, beta: isize, search: &mut Search<M>) -> isize
+where M: Copy + PartialEq, P: EvaluablePosition<M> {
+    let captures = pos.make_move(m).coins_captured as isize;
+    let value = if captures > 0 {
+        captures + eval_cache(pos, alpha - captures, beta - captures, search).0
+    } else {
+        -eval_cache(pos, -beta, -alpha, search).0
+    };
     pos.undo_move(m);
-    (outcome.coins_captured as isize) + sign * next_val
+    value
 }
 
 // A canonical capture is one which can be made without loss, so there's no need to consider
@@ -181,7 +224,7 @@ where M: Copy, P: EvaluablePosition<M> + Clone {
 
 // Determine what moves deserve consideration in a given position
 fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
-where M: Copy, P: EvaluablePosition<M> {
+where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let legal_moves = pos.legal_moves();
     let Some(capture) = legal_moves.iter().copied().find(|&m| pos.would_capture(m) > 0) else {
         // A position with no captures can't be loony
@@ -206,18 +249,33 @@ where M: Copy, P: EvaluablePosition<M> {
     vec!(capture, ddeal_move)
 }
 
-fn eval_cache<M, P>(pos: &mut P, search: &mut Search<M>) -> (isize, Option<M>)
-where M: Copy, P: EvaluablePosition<M> {
-    if let Some(&(val, best_move)) = search.cache.get(&pos.zhash()) {
-        return (val, Some(best_move));
+// Evaluate a position within the window (alpha, beta) (see eval_moves), using the cache
+fn eval_cache<M, P>(pos: &mut P, alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
+where M: Copy + PartialEq, P: EvaluablePosition<M> {
+    let mut cached_move = None;
+    if let Some(&e) = search.cache.get(&pos.zhash()) {
+        let enough = match e.bound {
+            Bound::Exact => true,
+            Bound::Lower => e.value >= beta,
+            Bound::Upper => e.value <= alpha,
+        };
+        if enough {
+            return (e.value, Some(e.best_move));
+        }
+        cached_move = Some(e.best_move);
     }
 
-    let moves = moves_to_consider(pos);
+    let mut moves = moves_to_consider(pos);
     if !moves.is_empty() && search.cache.len() >= search.limit {
         search.aborted = true;
         return (0, None);
     }
-    eval_moves(pos, &moves, search)
+    // The best move found by an earlier search of this position is likely to be good, and
+    // trying good moves first narrows the window soonest
+    if let Some(i) = cached_move.and_then(|cm| moves.iter().position(|&m| m == cm)) {
+        moves.swap(0, i);
+    }
+    eval_moves(pos, &moves, alpha, beta, search)
 }
 
 // An evaluator which keeps the values of the positions it has evaluated, so that later
@@ -225,10 +283,10 @@ where M: Copy, P: EvaluablePosition<M> {
 // reachable from the next position were already explored when evaluating the previous one.
 // The value of a position depends only on the position, so the cache never goes stale.
 pub struct Evaluator<M> {
-    cache: HashMap<u64, (isize, M)>,
+    cache: HashMap<u64, CachedEvaluation<M>>,
 }
 
-impl<M: Copy> Evaluator<M> {
+impl<M: Copy + PartialEq> Evaluator<M> {
     pub fn new() -> Evaluator<M> {
         Evaluator{ cache: HashMap::new() }
     }
@@ -248,7 +306,7 @@ impl<M: Copy> Evaluator<M> {
     where P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
         let mut search = Search{ cache: &mut self.cache, limit: usize::MAX, aborted: false };
-        eval_cache(&mut pos, &mut search)
+        eval_cache(&mut pos, -INFINITY, INFINITY, &mut search)
     }
 
     // Calculate the value function of a given position, along with the value achieved by
@@ -267,13 +325,13 @@ impl<M: Copy> Evaluator<M> {
         let mut pos = pos.clone();
         let limit = self.cache.len().saturating_add(max_new);
         let mut search = Search{ cache: &mut self.cache, limit: limit, aborted: false };
-        let (value, _) = eval_cache(&mut pos, &mut search);
+        let (value, _) = eval_cache(&mut pos, -INFINITY, INFINITY, &mut search);
         let mut per_move = HashMap::new();
         for m in pos.legal_moves() {
             if search.aborted {
                 break;
             }
-            per_move.insert(m, eval_move(&mut pos, m, &mut search));
+            per_move.insert(m, eval_move(&mut pos, m, -INFINITY, INFINITY, &mut search));
         }
         if search.aborted { None } else { Some((value, per_move)) }
     }
@@ -281,7 +339,7 @@ impl<M: Copy> Evaluator<M> {
 
 // Calculate the value function of a given position and a move which achieves that value
 pub fn eval<M, P>(pos: &P) -> (isize, Option<M>)
-where M: Copy, P: EvaluablePosition<M> + Clone {
+where M: Copy + PartialEq, P: EvaluablePosition<M> + Clone {
     Evaluator::new().eval(pos)
 }
 
@@ -776,6 +834,38 @@ mod test {
         let mut fresh = Evaluator::new();
         fresh.eval_with_moves(&pos);
         assert!(added * 2 < fresh.cached_positions(), "added {} vs fresh {}", added, fresh.cached_positions());
+    }
+
+    #[test]
+    fn window_results_are_bounds() {
+        // A search with a window (alpha, beta) gives the exact value if it is strictly inside
+        // the window, an upper bound if at or below alpha, and a lower bound if at or above
+        // beta. Searching many positions with one cache also checks that cached bounds are
+        // only used where they are enough.
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 13;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut cache = HashMap::new();
+        let (mut exact, mut upper, mut lower) = (0, 0, 0);
+        for _ in 0..1000 {
+            let mut pos = make_random_pos(&mut r);
+            let true_val = naive_minimax(&mut pos);
+            let alpha = r.random_range(-6i32..6) as isize;
+            let beta = alpha + r.random_range(1i32..4) as isize;
+            let mut search = Search{ cache: &mut cache, limit: usize::MAX, aborted: false };
+            let (val, _) = eval_cache(&mut pos, alpha, beta, &mut search);
+            if val <= alpha {
+                assert!(true_val <= val, "{} not an upper bound on {} in ({}, {}): {}", val, true_val, alpha, beta, pos);
+                upper += 1;
+            } else if val >= beta {
+                assert!(true_val >= val, "{} not a lower bound on {} in ({}, {}): {}", val, true_val, alpha, beta, pos);
+                lower += 1;
+            } else {
+                assert_eq!(true_val, val, "in ({}, {}): {}", alpha, beta, pos);
+                exact += 1;
+            }
+        }
+        assert!(exact > 0 && upper > 0 && lower > 0, "exact {}, upper {}, lower {}", exact, upper, lower);
     }
 
     #[test]
