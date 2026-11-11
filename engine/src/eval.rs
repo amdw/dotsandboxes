@@ -133,8 +133,9 @@ struct CachedEvaluation<M> {
 }
 
 // Greater than the absolute value of any position, so the window (-INFINITY, INFINITY) gives
-// exact values, and shifting it by the coins captured doesn't overflow
-const INFINITY: isize = 1 << 32;
+// exact values, and shifting it by the coins captured doesn't overflow (even where isize is
+// only 32 bits wide, as in WebAssembly)
+const INFINITY: isize = isize::MAX / 2;
 
 // The state of an evaluation: the cache of position values, and a limit on its size, beyond
 // which the evaluation is abandoned (aborted). Once aborted, the search unwinds without
