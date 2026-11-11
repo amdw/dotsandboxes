@@ -159,17 +159,14 @@ where M: Copy, P: NimstringPosition<M> {
         return Value::Loony;
     }
 
-    let legal_moves = pos.legal_moves();
-    for &m in &legal_moves {
-        if pos.would_capture(m) > 0 {
-            pos.make_move(m);
-            let result = calc_value(pos, search);
-            pos.undo_move(m);
-            if !search.aborted {
-                search.cache.insert(pos.zhash(), result);
-            }
-            return result
+    if let Some(&m) = pos.captures().first() {
+        pos.make_move(m);
+        let result = calc_value(pos, search);
+        pos.undo_move(m);
+        if !search.aborted {
+            search.cache.insert(pos.zhash(), result);
         }
+        return result
     }
 
     // Try to split the position into independent parts which can be evaluated separately

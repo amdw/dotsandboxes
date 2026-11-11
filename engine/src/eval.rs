@@ -225,8 +225,8 @@ where M: Copy, P: EvaluablePosition<M> + Clone {
 // Determine what moves deserve consideration in a given position
 fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
-    let legal_moves = pos.legal_moves();
-    let Some(capture) = legal_moves.iter().copied().find(|&m| pos.would_capture(m) > 0) else {
+    let captures = pos.captures();
+    let Some(&capture) = captures.first() else {
         // A position with no captures can't be loony
         return pos.distinct_moves();
     };
@@ -235,8 +235,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     if !pos.is_loony() {
         return vec!(capture);
     }
-    if let Some(m) = legal_moves.iter().copied()
-        .find(|&m| pos.would_capture(m) > 0 && nimstring::would_be_loony(pos, m)) {
+    if let Some(m) = captures.iter().copied().find(|&m| nimstring::would_be_loony(pos, m)) {
         return vec!(m);
     }
     if pos.can_capture_all() {
@@ -834,6 +833,33 @@ mod test {
         let mut fresh = Evaluator::new();
         fresh.eval_with_moves(&pos);
         assert!(added * 2 < fresh.cached_positions(), "added {} vs fresh {}", added, fresh.cached_positions());
+    }
+
+    #[test]
+    fn captures_are_the_capturing_moves() {
+        // captures lists each legal move which captures, once (in either of its forms)
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 17;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut double = 0;
+        for _ in 0..1000 {
+            let pos = make_random_pos(&mut r);
+            let captures = pos.captures();
+            let expected: Vec<Move> = pos.legal_moves().into_iter().filter(|&m| pos.would_capture(m) > 0).collect();
+            assert_eq!(expected.len(), captures.len(), "{:?} vs {:?} in {}", captures, expected, pos);
+            for &m in &expected {
+                assert_eq!(1, captures.iter().filter(|&&c| pos.moves_equivalent(m, c)).count(), "{} in {}", m, pos);
+                if pos.would_capture(m) == 2 {
+                    double += 1;
+                }
+            }
+        }
+        assert!(double > 0);
+
+        let mut cpos = CompoundPosition::new(vec![make_chain(2), make_chain(3)]);
+        assert!(cpos.captures().is_empty());
+        cpos.make_move(CPosMove::new(1, 0, 0, Side::Left));
+        assert_eq!(vec![CPosMove::new(1, 0, 0, Side::Right)], cpos.captures());
     }
 
     #[test]
