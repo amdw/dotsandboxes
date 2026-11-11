@@ -123,8 +123,10 @@ enum Bound {
     Upper,
 }
 
+// What the cache records about a position: its value (or a bound on it, if the search which
+// found it was cut short by its window), and the best move found
 #[derive(Clone, Copy)]
-struct Entry<M> {
+struct CachedEvaluation<M> {
     value: isize,
     best_move: M,
     bound: Bound,
@@ -138,7 +140,7 @@ const INFINITY: isize = 1 << 32;
 // which the evaluation is abandoned (aborted). Once aborted, the search unwinds without
 // caching anything more, so every cached value (or bound) is still correct.
 struct Search<'a, M> {
-    cache: &'a mut HashMap<u64, Entry<M>>,
+    cache: &'a mut HashMap<u64, CachedEvaluation<M>>,
     limit: usize,
     aborted: bool,
 }
@@ -175,7 +177,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     } else {
         Bound::Exact
     };
-    search.cache.insert(pos.zhash(), Entry{ value: value, best_move: best_move, bound: bound });
+    search.cache.insert(pos.zhash(), CachedEvaluation{ value: value, best_move: best_move, bound: bound });
     (value, Some(best_move))
 }
 
@@ -280,7 +282,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 // reachable from the next position were already explored when evaluating the previous one.
 // The value of a position depends only on the position, so the cache never goes stale.
 pub struct Evaluator<M> {
-    cache: HashMap<u64, Entry<M>>,
+    cache: HashMap<u64, CachedEvaluation<M>>,
 }
 
 impl<M: Copy + PartialEq> Evaluator<M> {
