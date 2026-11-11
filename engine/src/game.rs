@@ -102,6 +102,9 @@ pub trait Position<M> {
     fn is_legal_move(&self, m: M) -> bool;
     // Indicate how many coins a given move would capture (either 0, 1 or 2)
     fn would_capture(&self, m: M) -> usize;
+    // The moves which capture coins: one for each coin with a single string left, except
+    // that a string joining two such coins (capturing both) is listed only once
+    fn captures(&self) -> Vec<M>;
     // Make a given move on the board, and indicate the outcome.
     fn make_move(&mut self, m: M) -> MoveOutcome;
     // Undo a given move by putting the line back on the board.
@@ -182,6 +185,9 @@ pub struct SimplePosition {
     left_strings: Vec<bool>,
     down_strings: Vec<Vec<bool>>,
     right_strings: Vec<Vec<bool>>,
+    // The valency of each coin (x, y), at index x * height + y: derived from the strings,
+    // but kept up to date as strings are cut and restored, since it is needed so often
+    valencies: Vec<u8>,
     zhash: ZHash,
 }
 
@@ -209,11 +215,13 @@ impl SimplePosition {
         if !init_string {
             zhash.toggle_cut_strings(&top_strings, &left_strings, &right_strings, &down_strings);
         }
+        let valency = if init_string { 4 } else { 0 };
         SimplePosition {
             top_strings: top_strings,
             left_strings: left_strings,
             down_strings: down_strings,
             right_strings: right_strings,
+            valencies: vec![valency; width * height],
             zhash: zhash,
         }
     }
@@ -314,7 +322,7 @@ impl SimplePosition {
 
     // Valency or degree of coin at a given position
     pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
-        Side::ALL.iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).count()
+        self.valencies[x * self.height() + y] as usize
     }
 
     // Move from the square indicated in the direction indicated by the side,
@@ -333,6 +341,14 @@ impl SimplePosition {
     }
 
     fn set_string_value(self: &mut SimplePosition, m: Move, val: bool) {
+        if self.is_legal_move(m) != val {
+            let height = self.height();
+            let change = |v: &mut u8| if val { *v += 1 } else { *v -= 1 };
+            change(&mut self.valencies[m.x * height + m.y]);
+            if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
+                change(&mut self.valencies[nx * height + ny]);
+            }
+        }
         match (m.x, m.y, m.side) {
             (0, y, Side::Left) => self.left_strings[y] = val,
             (x, 0, Side::Top) => self.top_strings[x] = val,
@@ -392,6 +408,28 @@ impl Position<Move> for SimplePosition {
         if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
             if has_valency_one(nx, ny) {
                 result += 1;
+            }
+        }
+        result
+    }
+
+    fn captures(self: &SimplePosition) -> Vec<Move> {
+        let mut result = Vec::new();
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                if self.valency(x, y) != 1 {
+                    continue;
+                }
+                let side = Side::ALL.into_iter()
+                    .find(|&s| self.is_legal_move(Move{x: x, y: y, side: s}))
+                    .expect("Coin of valency 1 should have a string");
+                // A string to another capturable coin is listed from the first of the two
+                if let Some((nx, ny)) = self.offset(x, y, side) {
+                    if self.valency(nx, ny) == 1 && (nx, ny) < (x, y) {
+                        continue;
+                    }
+                }
+                result.push(Move{x: x, y: y, side: side});
             }
         }
         result
@@ -696,6 +734,12 @@ impl Position<CPosMove> for CompoundPosition {
 
     fn would_capture(self: &CompoundPosition, m: CPosMove) -> usize {
         self.parts[m.part].would_capture(m.m)
+    }
+
+    fn captures(self: &CompoundPosition) -> Vec<CPosMove> {
+        self.parts.iter().enumerate()
+            .flat_map(|(i, p)| p.captures().into_iter().map(move |m| CPosMove{ part: i, m: m }))
+            .collect()
     }
 
     fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
@@ -1387,6 +1431,59 @@ mod tests {
             r#"{"parts":[{"width":2,"height":1,"h_strings":[[false,false],[false,false]],"v_strings":[[true,true,true]]}]}"#,
             json);
         assert_eq!(data, serde_json::from_str(&json).unwrap());
+    }
+
+    // Count a coin's strings directly, independently of the valencies kept by the position
+    fn count_strings(pos: &SimplePosition, x: usize, y: usize) -> usize {
+        Side::ALL.iter().filter(|&&s| pos.is_legal_move(Move{x: x, y: y, side: s})).count()
+    }
+
+    fn assert_valencies(pos: &SimplePosition) {
+        for x in 0..pos.width() {
+            for y in 0..pos.height() {
+                assert_eq!(count_strings(pos, x, y), pos.valency(x, y), "({}, {}) in {}", x, y, pos);
+            }
+        }
+    }
+
+    #[test]
+    fn valencies_kept_up_to_date() {
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 5;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        for (w, h) in [(1, 1), (1, 3), (3, 1), (2, 2), (3, 4)] {
+            assert_valencies(&SimplePosition::new_end_game(w, h));
+            let mut pos = SimplePosition::new_game(w, h);
+            assert_valencies(&pos);
+            let mut made = Vec::new();
+            while !pos.is_end_of_game() {
+                let moves = pos.legal_moves();
+                // Make each move in either of its forms
+                let mut m = moves[r.random_range(0..moves.len())];
+                if let Some((nx, ny)) = pos.offset(m.x, m.y, m.side) {
+                    if r.random_bool(0.5) {
+                        m = Move{x: nx, y: ny, side: m.side.opposite()};
+                    }
+                }
+                pos.make_move(m);
+                made.push(m);
+                assert_valencies(&pos);
+                // Positions built in other ways
+                assert_valencies(&SimplePosition::from_data(&pos.to_data()).unwrap());
+                for frag in crate::splitter::fragments(&pos) {
+                    assert_valencies(&frag.position);
+                }
+            }
+            while let Some(m) = made.pop() {
+                pos.undo_move(m);
+                assert_valencies(&pos);
+            }
+        }
+        // A position whose parts are reseeded keeps its valencies
+        let cpos = CompoundPosition::new(vec![ex3p1(), p50()]);
+        for part in &cpos.parts {
+            assert_valencies(part);
+        }
     }
 
     #[test]
