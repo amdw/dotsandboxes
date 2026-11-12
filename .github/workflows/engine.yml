@@ -37,13 +37,15 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             engine/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('engine/Cargo.lock') }}
+          # Cargo.toml too, since its profiles change what is built (an exact match restores
+          # the cache without saving it again, so would keep restoring outdated builds)
+          key: ${{ runner.os }}-cargo-${{ hashFiles('engine/Cargo.lock', 'engine/Cargo.toml') }}
           restore-keys: ${{ runner.os }}-cargo-
+      # Build every target without serde, then run the tests once with it: the feature only
+      # adds serialisation (and tests of it), so the other tests behave the same either way
       - name: Build
-        run: cargo build
+        run: cargo build --all-targets
       - name: Test
-        run: cargo test
-      - name: Test with serde
         run: cargo test --features serde
       - name: Test benchmark report script
         run: python3 -m unittest discover -s ci -v
