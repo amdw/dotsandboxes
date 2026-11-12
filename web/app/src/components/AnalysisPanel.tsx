@@ -61,7 +61,7 @@ export function Segmented<T extends string | boolean>({ label, options, value, o
   );
 }
 
-// How long an analysis has taken, and how many positions the engine has cached, e.g.
+// How long an analysis has taken, and how many positions it has analysed, e.g.
 // "3.2 s · 1.4M positions"
 export function progressText(seconds: number, positions?: number): string {
   const time = `${seconds.toFixed(1)} s`;

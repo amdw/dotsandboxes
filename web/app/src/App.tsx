@@ -175,7 +175,7 @@ export function App() {
   // Engine analysis: results are cached per position (keyed by positionKey)
   const analyser = useRef<Analyser | null>(null);
   const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
-  // The full analysis running, if any, and its progress (the number of positions cached)
+  // The full analysis running, if any, and its progress (the number of positions analysed)
   const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number; positions?: number } | null>(null);
   const [now, setNow] = useState(0);
   // Values are only calculated when chosen, since analysing larger positions takes a long
@@ -264,8 +264,10 @@ export function App() {
     }
   }, [previousKey, judgeLastMove]);
 
-  // A full analysis, however long it takes (shown in progress, with Cancel)
+  // A full analysis, however long it takes (shown in progress, with Cancel). If it fails,
+  // the engine pauses if it was waiting for it, rather than trying again (and again).
   const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
+    const forEngine = engineActive;
     const a = (analyser.current ??= new Analyser());
     const start = performance.now();
     setRunning({ kind, key, start });
@@ -282,6 +284,7 @@ export function App() {
           setError(errorMessage(e));
           setRunning(null);
           setBoardValues("off");
+          if (forEngine) setPaused(true);
         }
       });
   };

@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
+use crate::cache::{self, Cache, CacheValue};
 use crate::game::{Move, Position, SimplePosition, CompoundPosition, Side, CPosMove};
 use crate::nimstring::{self, NimstringPosition};
 use std::cmp;
@@ -124,12 +125,20 @@ enum Bound {
 }
 
 // What the cache records about a position: its value (or a bound on it, if the search which
-// found it was cut short by its window), and the best move found
+// found it was cut short by its window), the best move found, and how much work finding them
+// took (see cache::work_class)
 #[derive(Clone, Copy)]
 struct CachedEvaluation<M> {
     value: isize,
     best_move: M,
     bound: Bound,
+    work: u8,
+}
+
+impl<M: Copy> CacheValue for CachedEvaluation<M> {
+    fn work_class(&self) -> u8 {
+        self.work
+    }
 }
 
 // Greater than the absolute value of any position, so the window (-INFINITY, INFINITY) gives
@@ -137,13 +146,22 @@ struct CachedEvaluation<M> {
 // only 32 bits wide, as in WebAssembly)
 const INFINITY: isize = isize::MAX / 2;
 
-// The state of an evaluation: the cache of position values, and a limit on its size, beyond
-// which the evaluation is abandoned (aborted). Once aborted, the search unwinds without
-// caching anything more, so every cached value (or bound) is still correct.
+// The state of an evaluation: the cache of position values, and a limit on the number of
+// values added to it (see Cache::added), beyond which the evaluation is abandoned (aborted).
+// Once aborted, the search unwinds without caching anything more, so every cached value (or
+// bound) is still correct.
 struct Search<'a, M> {
-    cache: &'a mut HashMap<u64, CachedEvaluation<M>>,
-    limit: usize,
+    cache: &'a mut Cache<CachedEvaluation<M>>,
+    limit: u64,
     aborted: bool,
+}
+
+impl<'a, M> Search<'a, M> {
+    fn new(cache: &'a mut Cache<CachedEvaluation<M>>, max_new: usize) -> Search<'a, M>
+    where M: Copy {
+        let limit = cache.added().saturating_add(max_new as u64);
+        Search{ cache: cache, limit: limit, aborted: false }
+    }
 }
 
 // Evaluate a position given a set of moves to consider, and the window (alpha, beta). The
@@ -155,6 +173,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
         return (0, None);
     }
     let alpha_orig = alpha;
+    let added_before = search.cache.added();
     let mut value = -INFINITY;
     let mut best_move = moves[0];
     for &m in moves {
@@ -178,7 +197,8 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     } else {
         Bound::Exact
     };
-    search.cache.insert(pos.zhash(), CachedEvaluation{ value: value, best_move: best_move, bound: bound });
+    let work = cache::work_class(search.cache.added() - added_before + 1);
+    search.cache.insert(pos.zhash(), CachedEvaluation{ value: value, best_move: best_move, bound: bound, work: work });
     (value, Some(best_move))
 }
 
@@ -252,7 +272,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 fn eval_cache<M, P>(pos: &mut P, alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let mut cached_move = None;
-    if let Some(&e) = search.cache.get(&pos.zhash()) {
+    if let Some(e) = search.cache.get(pos.zhash()) {
         let enough = match e.bound {
             Bound::Exact => true,
             Bound::Lower => e.value >= beta,
@@ -265,7 +285,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     }
 
     let mut moves = moves_to_consider(pos);
-    if !moves.is_empty() && search.cache.len() >= search.limit {
+    if !moves.is_empty() && search.cache.added() >= search.limit {
         search.aborted = true;
         return (0, None);
     }
@@ -282,12 +302,19 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 // reachable from the next position were already explored when evaluating the previous one.
 // The value of a position depends only on the position, so the cache never goes stale.
 pub struct Evaluator<M> {
-    cache: HashMap<u64, CachedEvaluation<M>>,
+    cache: Cache<CachedEvaluation<M>>,
 }
 
 impl<M: Copy + PartialEq> Evaluator<M> {
     pub fn new() -> Evaluator<M> {
-        Evaluator{ cache: HashMap::new() }
+        Evaluator{ cache: Cache::unbounded() }
+    }
+
+    // An evaluator caching the values of at most max_cached positions (see Cache::new). When
+    // full, it forgets the values cheapest to calculate again, so evaluations still complete
+    // however many positions they need, but take longer if they need many more than this.
+    pub fn with_max_cached(max_cached: usize) -> Evaluator<M> {
+        Evaluator{ cache: Cache::new(max_cached) }
     }
 
     // Number of positions whose values are cached
@@ -295,16 +322,22 @@ impl<M: Copy + PartialEq> Evaluator<M> {
         self.cache.len()
     }
 
+    // Number of positions evaluated (and cached) since the evaluator was created, including
+    // any evaluated again after being forgotten, e.g. to show the progress of an evaluation
+    pub fn positions_evaluated(&self) -> u64 {
+        self.cache.added()
+    }
+
     // Forget all cached values, freeing their memory
     pub fn clear(&mut self) {
-        self.cache = HashMap::new();
+        self.cache.clear();
     }
 
     // Calculate the value function of a given position and a move which achieves that value
     pub fn eval<P>(&mut self, pos: &P) -> (isize, Option<M>)
     where P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
-        let mut search = Search{ cache: &mut self.cache, limit: usize::MAX, aborted: false };
+        let mut search = Search::new(&mut self.cache, usize::MAX);
         eval_cache(&mut pos, -INFINITY, INFINITY, &mut search)
     }
 
@@ -322,8 +355,7 @@ impl<M: Copy + PartialEq> Evaluator<M> {
     pub fn eval_with_moves_limited<P>(&mut self, pos: &P, max_new: usize) -> Option<(isize, HashMap<M, isize>)>
     where M: Hash + Eq, P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
-        let limit = self.cache.len().saturating_add(max_new);
-        let mut search = Search{ cache: &mut self.cache, limit: limit, aborted: false };
+        let mut search = Search::new(&mut self.cache, max_new);
         let (value, _) = eval_cache(&mut pos, -INFINITY, INFINITY, &mut search);
         let mut per_move = HashMap::new();
         for m in pos.legal_moves() {
@@ -836,6 +868,40 @@ mod test {
     }
 
     #[test]
+    fn bounded_evaluator_matches_fresh_evaluation() {
+        // An evaluator caching far fewer positions than it needs still gives the right
+        // results, whether shared across many positions or evaluating one in small chunks
+        let mut seed: [u8; 32] = [0; 32];
+        seed[0] = 41;
+        let mut r: StdRng = SeedableRng::from_seed(seed);
+        let mut evaluator = Evaluator::with_max_cached(50);
+        for _ in 0..100 {
+            let pos = CompoundPosition::from_single(make_random_pos(&mut r));
+            assert_eq!(eval_with_moves(&pos), evaluator.eval_with_moves(&pos), "{}", pos);
+            assert!(evaluator.cached_positions() <= 50);
+        }
+
+        // With chunks so small and a cache this small, each chunk can forget the values found
+        // by earlier ones as fast as it finds new ones, so the evaluation never finishes.
+        // Growing the chunks in proportion to the work done so far ensures it finishes.
+        let pos = CompoundPosition::from_single(ex3p12());
+        let expected = eval_with_moves(&pos);
+        let mut evaluator = Evaluator::with_max_cached(1000);
+        let mut chunks = 0;
+        let result = loop {
+            chunks += 1;
+            assert!(chunks < 1000, "Chunked evaluation not finishing");
+            let chunk = cmp::max(100, evaluator.positions_evaluated() as usize / 16);
+            if let Some(result) = evaluator.eval_with_moves_limited(&pos, chunk) {
+                break result;
+            }
+        };
+        assert_eq!(expected, result);
+        assert!(chunks > 1);
+        assert!(evaluator.positions_evaluated() > evaluator.cached_positions() as u64);
+    }
+
+    #[test]
     fn captures_are_the_capturing_moves() {
         // captures lists each legal move which captures, once (in either of its forms)
         let mut seed: [u8; 32] = [0; 32];
@@ -871,14 +937,14 @@ mod test {
         let mut seed: [u8; 32] = [0; 32];
         seed[0] = 13;
         let mut r: StdRng = SeedableRng::from_seed(seed);
-        let mut cache = HashMap::new();
+        let mut cache = Cache::unbounded();
         let (mut exact, mut upper, mut lower) = (0, 0, 0);
         for _ in 0..1000 {
             let mut pos = make_random_pos(&mut r);
             let true_val = naive_minimax(&mut pos);
             let alpha = r.random_range(-6i32..6) as isize;
             let beta = alpha + r.random_range(1i32..4) as isize;
-            let mut search = Search{ cache: &mut cache, limit: usize::MAX, aborted: false };
+            let mut search = Search::new(&mut cache, usize::MAX);
             let (val, _) = eval_cache(&mut pos, alpha, beta, &mut search);
             if val <= alpha {
                 assert!(true_val <= val, "{} not an upper bound on {} in ({}, {}): {}", val, true_val, alpha, beta, pos);

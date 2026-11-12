@@ -140,21 +140,20 @@ pub fn make_move(data: &CompoundPositionData, m: CPosMove) -> Result<MoveResult,
     })
 }
 
-// Most positions cached by an evaluator or Nimstring calculator kept between calculations
-// before it is cleared, to bound memory use (an empty 3x3 board's evaluation caches about
-// 8 million positions)
-pub const MAX_CACHED_POSITIONS: usize = 10_000_000;
+// Most positions cached by the evaluator and the Nimstring calculator kept between
+// calculations (see Evaluator::with_max_cached), to bound their memory use. Beyond this, they
+// forget the values cheapest to calculate again. This fills a hash table of 2^24 entries,
+// about 550MB for the evaluator in WebAssembly, the next size up being too big to allocate
+// there (and too big for many phones).
+pub const MAX_CACHED_POSITIONS: usize = (1 << 24) / 8 * 7;
 
 // Evaluate a position with an evaluator kept between evaluations, so later evaluations
 // (e.g. of the positions reached as a game is played on) can reuse its cached values.
 // With max_new, give up (returning None) if that would need more than that many positions
 // which aren't already cached: i.e. only evaluate it if that's cheap, or evaluate a long
-// calculation in chunks, continuing (without clearing the cache, however large) until done.
-pub fn evaluate_with(evaluator: &mut Evaluator<CPosMove>, data: &CompoundPositionData, max_new: Option<usize>, continuing: bool) -> Result<Option<Evaluation>, String> {
+// calculation in chunks, each carrying on from what earlier ones cached, until done.
+pub fn evaluate_with(evaluator: &mut Evaluator<CPosMove>, data: &CompoundPositionData, max_new: Option<usize>) -> Result<Option<Evaluation>, String> {
     let pos = position_from(data)?;
-    if !continuing && evaluator.cached_positions() > MAX_CACHED_POSITIONS {
-        evaluator.clear();
-    }
     let Some((value, per_move)) = evaluator.eval_with_moves_limited(&pos, max_new.unwrap_or(usize::MAX)) else {
         return Ok(None);
     };
@@ -163,15 +162,12 @@ pub fn evaluate_with(evaluator: &mut Evaluator<CPosMove>, data: &CompoundPositio
 }
 
 pub fn evaluate(data: &CompoundPositionData) -> Result<Evaluation, String> {
-    Ok(evaluate_with(&mut Evaluator::new(), data, None, false)?.unwrap())
+    Ok(evaluate_with(&mut Evaluator::new(), data, None)?.unwrap())
 }
 
 // Calculate Nimstring values with a calculator kept between calculations (see evaluate_with)
-pub fn nimstring_analysis_with(calculator: &mut NimstringCalculator, data: &CompoundPositionData, max_new: Option<usize>, continuing: bool) -> Result<Option<NimstringAnalysis>, String> {
+pub fn nimstring_analysis_with(calculator: &mut NimstringCalculator, data: &CompoundPositionData, max_new: Option<usize>) -> Result<Option<NimstringAnalysis>, String> {
     let pos = position_from(data)?;
-    if !continuing && calculator.cached_positions() > MAX_CACHED_POSITIONS {
-        calculator.clear();
-    }
     let Some(analysis) = calculator.analysis_limited(&pos, max_new.unwrap_or(usize::MAX)) else {
         return Ok(None);
     };
@@ -180,7 +176,7 @@ pub fn nimstring_analysis_with(calculator: &mut NimstringCalculator, data: &Comp
 }
 
 pub fn nimstring_analysis(data: &CompoundPositionData) -> Result<NimstringAnalysis, String> {
-    Ok(nimstring_analysis_with(&mut NimstringCalculator::new(), data, None, false)?.unwrap())
+    Ok(nimstring_analysis_with(&mut NimstringCalculator::new(), data, None)?.unwrap())
 }
 
 pub fn parse_pos(text: &str) -> Result<CompoundPositionData, String> {
@@ -300,7 +296,7 @@ mod tests {
         let mut evaluator = Evaluator::new();
         let mut pos = CompoundPosition::from_single(examples::ex3p12()).to_data();
         for _ in 0..5 {
-            let kept = evaluate_with(&mut evaluator, &pos, None, false).unwrap().unwrap();
+            let kept = evaluate_with(&mut evaluator, &pos, None).unwrap().unwrap();
             let fresh = evaluate(&pos).unwrap();
             assert_eq!(fresh.value, kept.value);
             assert_eq!(fresh.moves, kept.moves);
@@ -314,15 +310,15 @@ mod tests {
     fn limited_calculations() {
         let pos = CompoundPosition::from_single(examples::ex3p12()).to_data();
         // Too expensive with a small budget...
-        assert!(evaluate_with(&mut Evaluator::new(), &pos, Some(10), false).unwrap().is_none());
-        assert!(nimstring_analysis_with(&mut NimstringCalculator::new(), &pos, Some(10), false).unwrap().is_none());
+        assert!(evaluate_with(&mut Evaluator::new(), &pos, Some(10)).unwrap().is_none());
+        assert!(nimstring_analysis_with(&mut NimstringCalculator::new(), &pos, Some(10)).unwrap().is_none());
         // ...but cheap once cached
         let mut evaluator = Evaluator::new();
-        let full = evaluate_with(&mut evaluator, &pos, None, false).unwrap().unwrap();
-        assert_eq!(full.moves, evaluate_with(&mut evaluator, &pos, Some(0), false).unwrap().unwrap().moves);
+        let full = evaluate_with(&mut evaluator, &pos, None).unwrap().unwrap();
+        assert_eq!(full.moves, evaluate_with(&mut evaluator, &pos, Some(0)).unwrap().unwrap().moves);
         let mut calculator = NimstringCalculator::new();
-        let full = nimstring_analysis_with(&mut calculator, &pos, None, false).unwrap().unwrap();
-        let again = nimstring_analysis_with(&mut calculator, &pos, Some(0), false).unwrap().unwrap();
+        let full = nimstring_analysis_with(&mut calculator, &pos, None).unwrap().unwrap();
+        let again = nimstring_analysis_with(&mut calculator, &pos, Some(0)).unwrap().unwrap();
         assert_eq!((full.value, full.moves, full.components), (again.value, again.moves, again.components));
     }
 
@@ -336,7 +332,7 @@ mod tests {
         let mut chunks = 0;
         let chunked = loop {
             chunks += 1;
-            if let Some(result) = evaluate_with(&mut evaluator, &pos, Some(200), chunks > 1).unwrap() {
+            if let Some(result) = evaluate_with(&mut evaluator, &pos, Some(200)).unwrap() {
                 break result;
             }
         };
@@ -348,12 +344,23 @@ mod tests {
         let mut chunks = 0;
         let chunked = loop {
             chunks += 1;
-            if let Some(result) = nimstring_analysis_with(&mut calculator, &pos, Some(50), chunks > 1).unwrap() {
+            if let Some(result) = nimstring_analysis_with(&mut calculator, &pos, Some(50)).unwrap() {
                 break result;
             }
         };
         assert!(chunks > 1);
         assert_eq!((full.value, full.moves, full.components), (chunked.value, chunked.moves, chunked.components));
+
+        // Likewise with too small a cache to keep everything, so values are forgotten
+        let full = evaluate(&pos).unwrap();
+        let mut evaluator = Evaluator::with_max_cached(2000);
+        let chunked = loop {
+            if let Some(result) = evaluate_with(&mut evaluator, &pos, Some(200)).unwrap() {
+                break result;
+            }
+        };
+        assert!(evaluator.positions_evaluated() > 2000);
+        assert_eq!((full.value, full.moves), (chunked.value, chunked.moves));
     }
 
     #[test]
