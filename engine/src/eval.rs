@@ -62,23 +62,20 @@ impl EvaluablePosition<Move> for SimplePosition {
         // the coins capturable now. Capturing a coin cuts its last string, which reduces the
         // valency of the coin at its far end, if any, making that coin capturable at valency 1
         // (or capturing it too, at valency 0).
-        let mut valency: Vec<Vec<usize>> = Vec::with_capacity(self.width());
+        let mut valency = vec![0; self.width() * self.height()];
         let mut capturable = Vec::new();
         for x in 0..self.width() {
-            valency.push(Vec::with_capacity(self.height()));
             for y in 0..self.height() {
                 let v = self.valency(x, y);
-                valency[x].push(v);
+                valency[self.coin_index(x, y)] = v;
                 if v == 1 {
                     capturable.push((x, y));
                 }
             }
         }
-        let mut captured: Vec<Vec<bool>> = valency.iter()
-            .map(|col| col.iter().map(|&v| v == 0).collect())
-            .collect();
+        let mut captured: Vec<bool> = valency.iter().map(|&v| v == 0).collect();
         while let Some((x, y)) = capturable.pop() {
-            if captured[x][y] {
+            if captured[self.coin_index(x, y)] {
                 // Captured along with a neighbour
                 continue;
             }
@@ -87,19 +84,20 @@ impl EvaluablePosition<Move> for SimplePosition {
             let far_end = Side::ALL.into_iter()
                 .filter(|&s| self.is_legal_move(Move{x: x, y: y, side: s}))
                 .map(|s| self.offset(x, y, s))
-                .find(|&far| far.map_or(true, |(fx, fy)| !captured[fx][fy]))
+                .find(|&far| far.map_or(true, |(fx, fy)| !captured[self.coin_index(fx, fy)]))
                 .expect("Capturable coin should have a string left");
-            captured[x][y] = true;
+            captured[self.coin_index(x, y)] = true;
             if let Some((fx, fy)) = far_end {
-                valency[fx][fy] -= 1;
-                match valency[fx][fy] {
-                    0 => captured[fx][fy] = true,
+                let f = self.coin_index(fx, fy);
+                valency[f] -= 1;
+                match valency[f] {
+                    0 => captured[f] = true,
                     1 => capturable.push((fx, fy)),
                     _ => (),
                 }
             }
         }
-        captured.iter().all(|col| col.iter().all(|&c| c))
+        captured.iter().all(|&c| c)
     }
 }
 

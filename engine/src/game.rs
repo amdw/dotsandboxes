@@ -185,7 +185,7 @@ pub struct SimplePosition {
     left_strings: Vec<bool>,
     down_strings: Vec<Vec<bool>>,
     right_strings: Vec<Vec<bool>>,
-    // The valency of each coin (x, y), at index x * height + y: derived from the strings,
+    // The valency of each coin, at its coin_index: derived from the strings,
     // but kept up to date as strings are cut and restored, since it is needed so often
     valencies: Vec<u8>,
     zhash: ZHash,
@@ -320,9 +320,14 @@ impl SimplePosition {
         Side::ALL.iter().all(|&s| !self.is_legal_move(Move{x: x, y: y, side: s}))
     }
 
+    // Index of coin (x, y) in per-coin arrays such as the valencies
+    pub(crate) fn coin_index(self: &SimplePosition, x: usize, y: usize) -> usize {
+        x * self.height() + y
+    }
+
     // Valency or degree of coin at a given position
     pub fn valency(self: &SimplePosition, x: usize, y: usize) -> usize {
-        self.valencies[x * self.height() + y] as usize
+        self.valencies[self.coin_index(x, y)] as usize
     }
 
     // Move from the square indicated in the direction indicated by the side,
@@ -342,11 +347,12 @@ impl SimplePosition {
 
     fn set_string_value(self: &mut SimplePosition, m: Move, val: bool) {
         if self.is_legal_move(m) != val {
-            let height = self.height();
             let change = |v: &mut u8| if val { *v += 1 } else { *v -= 1 };
-            change(&mut self.valencies[m.x * height + m.y]);
+            let i = self.coin_index(m.x, m.y);
+            change(&mut self.valencies[i]);
             if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
-                change(&mut self.valencies[nx * height + ny]);
+                let i = self.coin_index(nx, ny);
+                change(&mut self.valencies[i]);
             }
         }
         match (m.x, m.y, m.side) {
