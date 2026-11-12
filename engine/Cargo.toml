@@ -15,6 +15,12 @@ serde = { version = "1", features = ["derive"], optional = true }
 criterion = "0.8"
 serde_json = "1"
 
+# Optimise the tests a little, which makes them several times faster: the generative tests
+# compare against a deliberately naive minimax, which is very slow unoptimised. Debug
+# assertions and overflow checks stay on.
+[profile.test]
+opt-level = 1
+
 [[bench]]
 name = "benchmarks"
 harness = false
