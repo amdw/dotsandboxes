@@ -21,6 +21,7 @@
 // values which took least work to calculate, so are cheapest to calculate again. Forgetting a
 // value only costs time: the searches using a cache never depend on a value being kept.
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 
 pub trait CacheValue: Copy {
     // How much work calculating the value took (see work_class)
@@ -33,8 +34,29 @@ pub fn work_class(positions: u64) -> u8 {
     (u64::BITS - positions.leading_zeros()) as u8
 }
 
+// The cache's keys are Zobrist hashes, which are already uniformly random, so its table uses
+// them as they are, rather than hashing them again.
+#[derive(Default)]
+struct ZHashHasher(u64);
+
+impl Hasher for ZHashHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, _bytes: &[u8]) {
+        unreachable!("ZHashHasher only hashes u64 keys");
+    }
+
+    fn write_u64(&mut self, n: u64) {
+        self.0 = n;
+    }
+}
+
+type ZHashMap<V> = HashMap<u64, V, BuildHasherDefault<ZHashHasher>>;
+
 pub struct Cache<V> {
-    map: HashMap<u64, V>,
+    map: ZHashMap<V>,
     max_len: usize,
     // The capacity of the table once it first held max_len values (see needs_room)
     full_capacity: Option<usize>,
@@ -47,7 +69,7 @@ impl<V: CacheValue> Cache<V> {
     // table of some size holds: 7/8 of a power of 2 (at least 8).
     pub fn new(max_len: usize) -> Cache<V> {
         assert!(max_len > 0, "A cache must be able to hold at least one value");
-        Cache{ map: HashMap::new(), max_len: max_len, full_capacity: None, added: 0 }
+        Cache{ map: ZHashMap::default(), max_len: max_len, full_capacity: None, added: 0 }
     }
 
     // A cache with no limit on its size
@@ -99,7 +121,7 @@ impl<V: CacheValue> Cache<V> {
 
     // Forget all values, freeing their memory
     pub fn clear(&mut self) {
-        self.map = HashMap::new();
+        self.map = ZHashMap::default();
     }
 
     // Forget more than half the values, keeping those which took most work. Leaving the table
