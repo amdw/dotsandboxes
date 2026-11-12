@@ -837,6 +837,36 @@ button.canonical-play {
   font-size: 0.9rem;
 }
 
+/* The toggle for the rarely-changed settings, aligned with the controls, which open below it */
+.controls .more-settings {
+  grid-column: 2;
+}
+
+button.disclosure {
+  border: none;
+  background: none;
+  min-height: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 4px 0;
+}
+
+/* (Overriding the usual hover highlight, since it has no border or background) */
+@media (hover: hover) {
+  button.disclosure:not(:disabled):hover {
+    background: none;
+    color: var(--fg);
+  }
+}
+
+button.disclosure::before {
+  content: "▸ ";
+}
+
+button.disclosure[aria-expanded="true"]::before {
+  content: "▾ ";
+}
+
 /* On narrow screens, each label goes above its control */
 @media (max-width: 600px) {
   .controls {
@@ -856,6 +886,12 @@ button.canonical-play {
   .controls .running {
     grid-column: 1;
     text-align: center;
+  }
+
+  .controls .more-settings {
+    grid-column: 1;
+    text-align: center;
+    margin-top: 6px;
   }
 
   /* More compact options, so the longest ("Including score so far") fit on one line */

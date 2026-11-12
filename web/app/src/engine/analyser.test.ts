@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Analyser, CancelledError, type AnalysisRequest, type AnalysisResponse, type WorkerMessage } from "./analyser";
+import { Analyser, CancelledError, TimeLimitError, type AnalysisRequest, type AnalysisResponse, type WorkerMessage } from "./analyser";
 import type { PositionData } from "./types";
 
 // A stand-in for the analysis worker, recording the messages sent to it, and replying as told
@@ -50,6 +50,19 @@ describe("Analyser", () => {
     worker.reply({ type: "result", id, ok: true, result: null });
     await expect(result).resolves.toBeNull();
     expect(progress).toEqual([1000]);
+  });
+
+  it("passes on the time limit, and reports running out of time", async () => {
+    const analyser = new Analyser();
+    const result = analyser.run("evaluate", position, { timeLimit: 60 });
+    const worker = FakeWorker.created[0];
+    const [request] = worker.requests();
+    expect(request.timeLimit).toBe(60);
+    worker.reply({ type: "result", id: request.id, ok: false, error: "time limit" });
+    const error = await result.catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(TimeLimitError);
+    expect((error as TimeLimitError).seconds).toBe(60);
+    expect(worker.terminated).toBe(false);
   });
 
   it("replaces the worker when the engine crashes", async () => {
