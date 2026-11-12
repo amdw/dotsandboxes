@@ -1,6 +1,7 @@
 // Runs engine analyses in a Web Worker (see worker.ts), which keeps the engine's caches
 // between them. Long analyses report their progress, and cancelling one stops it at the end
-// of its current chunk, keeping everything it has calculated so far.
+// of its current chunk, keeping everything it has calculated so far. If the engine crashes,
+// every analysis waiting for it fails, and a new worker is started for the next.
 import type { AnalysisKind } from "../game/analysis";
 import type { Evaluation, NimstringAnalysis, PositionData } from "./types";
 
@@ -20,8 +21,9 @@ type Result = Evaluation | NimstringAnalysis | null;
 
 export type AnalysisResponse =
   | { type: "result"; id: number; ok: true; result: Result }
-  | { type: "result"; id: number; ok: false; error: string }
-  // A full analysis's progress: the number of positions the engine has cached
+  // fatal if the engine crashed, so the worker can't be used again
+  | { type: "result"; id: number; ok: false; error: string; fatal?: boolean }
+  // A full analysis's progress: the number of positions it has analysed so far
   | { type: "progress"; id: number; positions: number };
 
 export class CancelledError extends Error {
@@ -47,6 +49,11 @@ export class Analyser {
       this.worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
       this.worker.onmessage = (event: MessageEvent<AnalysisResponse>) => {
         const response = event.data;
+        // (Even if the analysis was cancelled, the worker can't be used again)
+        if (response.type === "result" && !response.ok && response.fatal) {
+          this.fail(response.error);
+          return;
+        }
         const pending = this.pending.get(response.id);
         if (!pending) return;
         if (response.type === "progress") {
@@ -57,16 +64,19 @@ export class Analyser {
         if (response.ok) pending.resolve(response.result);
         else pending.reject(response.error === "cancelled" ? new CancelledError() : new Error(response.error));
       };
-      this.worker.onerror = (event) => {
-        // The worker may be unusable (e.g. out of memory), so start a fresh one next time
-        this.worker?.terminate();
-        this.worker = null;
-        const pending = [...this.pending.values()];
-        this.pending.clear();
-        for (const p of pending) p.reject(new Error(event.message || "The engine stopped unexpectedly"));
-      };
+      this.worker.onerror = (event) => this.fail(event.message || "The engine stopped unexpectedly");
     }
     return this.worker;
+  }
+
+  // The worker is unusable (e.g. out of memory), so fail everything waiting for it, and
+  // start a fresh one next time
+  private fail(message: string): void {
+    this.worker?.terminate();
+    this.worker = null;
+    const pending = [...this.pending.values()];
+    this.pending.clear();
+    for (const p of pending) p.reject(new Error(message));
   }
 
   run(kind: AnalysisKind, position: PositionData, options: { maxNew?: number; onProgress?: (positions: number) => void } = {}): Promise<Result> {

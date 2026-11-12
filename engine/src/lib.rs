@@ -1,5 +1,5 @@
 /*
-    Copyright 2017, 2020 Andrew Medworth <github@medworth.org.uk>
+    Copyright 2017, 2020, 2026 Andrew Medworth <github@medworth.org.uk>
 
     This file is part of Dots-and-Boxes Engine.
 
@@ -22,4 +22,5 @@ pub mod cli;
 pub mod splitter;
 pub mod examples;
 pub mod eval;
+pub mod cache;
 pub mod posfile;

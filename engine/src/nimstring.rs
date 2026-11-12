@@ -17,6 +17,7 @@
     along with Dots-and-Boxes Engine.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::game::{Position, SimplePosition, CompoundPosition, Side, Move, CPosMove};
+use crate::cache::{self, Cache, CacheValue};
 use crate::splitter::{self, SplittablePosition};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -135,27 +136,56 @@ fn mex(s: HashSet<usize>) -> usize {
     }
 }
 
-// The state of a Nimstring calculation: the cache of position values, and a limit on its
-// size, beyond which the calculation is abandoned (aborted). Once aborted, the search unwinds
-// without caching anything more, so every cached value is still exact.
+// What the cache records about a position: its value, and how much work calculating it took
+// (see cache::work_class)
+#[derive(Clone, Copy)]
+struct CachedValue {
+    value: Value,
+    work: u8,
+}
+
+impl CacheValue for CachedValue {
+    fn work_class(&self) -> u8 {
+        self.work
+    }
+}
+
+// The state of a Nimstring calculation: the cache of position values, and a limit on the
+// number of values added to it (see Cache::added), beyond which the calculation is abandoned
+// (aborted). Once aborted, the search unwinds without caching anything more, so every cached
+// value is still exact.
 struct NimSearch<'a> {
-    cache: &'a mut HashMap<u64, Value>,
-    limit: usize,
+    cache: &'a mut Cache<CachedValue>,
+    limit: u64,
     aborted: bool,
+}
+
+impl<'a> NimSearch<'a> {
+    fn new(cache: &'a mut Cache<CachedValue>, max_new: usize) -> NimSearch<'a> {
+        let limit = cache.added().saturating_add(max_new as u64);
+        NimSearch{ cache: cache, limit: limit, aborted: false }
+    }
+
+    // Cache the value of a position, calculated since added_before values had been added
+    fn insert(&mut self, key: u64, value: Value, added_before: u64) {
+        let work = cache::work_class(self.cache.added() - added_before + 1);
+        self.cache.insert(key, CachedValue{ value: value, work: work });
+    }
 }
 
 fn calc_value<M, P>(pos: &mut P, search: &mut NimSearch) -> Value
 where M: Copy, P: NimstringPosition<M> {
     // TODO: Optimise by iterating over a tighter set of moves than all legal moves
-    if let Some(&v) = search.cache.get(&pos.zhash()) {
-        return v;
+    if let Some(cached) = search.cache.get(pos.zhash()) {
+        return cached.value;
     }
-    if search.cache.len() >= search.limit {
+    if search.cache.added() >= search.limit {
         search.aborted = true;
         return Value::Nimber(0);
     }
+    let added_before = search.cache.added();
     if pos.is_loony() {
-        search.cache.insert(pos.zhash(), Value::Loony);
+        search.insert(pos.zhash(), Value::Loony, added_before);
         return Value::Loony;
     }
 
@@ -164,7 +194,7 @@ where M: Copy, P: NimstringPosition<M> {
         let result = calc_value(pos, search);
         pos.undo_move(m);
         if !search.aborted {
-            search.cache.insert(pos.zhash(), result);
+            search.insert(pos.zhash(), result, added_before);
         }
         return result
     }
@@ -180,7 +210,7 @@ where M: Copy, P: NimstringPosition<M> {
             }
             result = result + part_value;
         }
-        search.cache.insert(pos.zhash(), result);
+        search.insert(pos.zhash(), result, added_before);
         return result;
     }
 
@@ -198,7 +228,7 @@ where M: Copy, P: NimstringPosition<M> {
         }
     }
     let result = Value::Nimber(mex(options));
-    search.cache.insert(pos.zhash(), result);
+    search.insert(pos.zhash(), result, added_before);
     result
 }
 
@@ -229,12 +259,18 @@ pub struct NimstringAnalysis<M: Hash + Eq> {
 // later calculations (e.g. of the positions reached as a game goes on) can reuse them. The
 // value of a position depends only on the position, so the cache never goes stale.
 pub struct NimstringCalculator {
-    cache: HashMap<u64, Value>,
+    cache: Cache<CachedValue>,
 }
 
 impl NimstringCalculator {
     pub fn new() -> NimstringCalculator {
-        NimstringCalculator{ cache: HashMap::new() }
+        NimstringCalculator{ cache: Cache::unbounded() }
+    }
+
+    // A calculator caching the values of at most max_cached positions (see
+    // Evaluator::with_max_cached)
+    pub fn with_max_cached(max_cached: usize) -> NimstringCalculator {
+        NimstringCalculator{ cache: Cache::new(max_cached) }
     }
 
     // Number of positions whose values are cached
@@ -242,14 +278,19 @@ impl NimstringCalculator {
         self.cache.len()
     }
 
+    // Number of positions whose values have been calculated (see
+    // Evaluator::positions_evaluated)
+    pub fn positions_calculated(&self) -> u64 {
+        self.cache.added()
+    }
+
     // Forget all cached values, freeing their memory
     pub fn clear(&mut self) {
-        self.cache = HashMap::new();
+        self.cache.clear();
     }
 
     fn search(&mut self, max_new: usize) -> NimSearch<'_> {
-        let limit = self.cache.len().saturating_add(max_new);
-        NimSearch{ cache: &mut self.cache, limit: limit, aborted: false }
+        NimSearch::new(&mut self.cache, max_new)
     }
 
     // Calculate the Nimstring value of a position, along with the values attained
@@ -366,8 +407,8 @@ mod tests {
     fn basic_values() {
         let mut pos = make_chain(3);
         assert!(!pos.is_loony());
-        let mut cache = HashMap::new();
-        let mut search = NimSearch{ cache: &mut cache, limit: usize::MAX, aborted: false };
+        let mut cache = Cache::unbounded();
+        let mut search = NimSearch::new(&mut cache, usize::MAX);
         assert_eq!(Value::Nimber(0), calc_value(&mut pos, &mut search));
         pos.make_move(Move{x: 0, y: 0, side: Side::Left});
         assert!(pos.is_loony());
@@ -557,6 +598,21 @@ mod tests {
             assert_eq!(calc_value_with_moves(&pos), (full.value, full.per_move), "{}", pos);
             assert_eq!(component_values(&pos), full.components);
         }
+    }
+
+    #[test]
+    fn bounded_calculator_matches_fresh() {
+        // A calculator caching far fewer positions than it needs still gives the right values
+        let mut calculator = NimstringCalculator::with_max_cached(20);
+        let positions = vec!(p50(), p50_top(), ex3p1(), ex3p12(), ex6p2(), ex7p2(), icelandic_game(2, 2), double_chain(4));
+        for pos in positions {
+            let pos = CompoundPosition::from_single(pos);
+            let full = calculator.analysis_limited(&pos, usize::MAX).unwrap();
+            assert_eq!(calc_value_with_moves(&pos), (full.value, full.per_move), "{}", pos);
+            assert_eq!(component_values(&pos), full.components);
+            assert!(calculator.cached_positions() <= 20);
+        }
+        assert!(calculator.positions_calculated() > 20);
     }
 
     #[test]
