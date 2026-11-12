@@ -19,7 +19,6 @@
 use rand::{RngExt, SeedableRng};
 use rand::rngs::StdRng;
 use std::fmt;
-use std::iter;
 
 #[derive(Clone)]
 #[derive(Copy)]
@@ -172,19 +171,15 @@ fn v_line_move(x: usize, y: usize) -> Move {
     if x == 0 { Move::new(0, y, Side::Left) } else { Move::new(x - 1, y, Side::Right) }
 }
 
-// An m*n dots-and-boxes position is represented as:
-// * a row of top ground links
-// * a column of left ground links
-// * an m*n array of downward-pointing links
-// * an m*n array of rightward-pointing links
+// An m*n dots-and-boxes position is represented as an array with one entry per string,
+// at the string's edge_index: true if the string is still present.
 // Position coordinates originate at the top left and are 0-based,
 // so x=1,y=2 is the second square in the third row.
 #[derive(Clone)]
 pub struct SimplePosition {
-    top_strings: Vec<bool>,
-    left_strings: Vec<bool>,
-    down_strings: Vec<Vec<bool>>,
-    right_strings: Vec<Vec<bool>>,
+    width: usize,
+    height: usize,
+    strings: Vec<bool>,
     // The valency of each coin, at its coin_index: derived from the strings,
     // but kept up to date as strings are cut and restored, since it is needed so often
     valencies: Vec<u8>,
@@ -203,24 +198,16 @@ impl SimplePosition {
     }
 
     fn make_position(width: usize, height: usize, init_string: bool) -> SimplePosition {
-        let top_strings: Vec<bool> = iter::repeat(init_string).take(width).collect();
-        let left_strings: Vec<bool> = iter::repeat(init_string).take(height).collect();
-        let mut right_strings: Vec<Vec<bool>> = Vec::with_capacity(width);
-        let mut down_strings: Vec<Vec<bool>> = Vec::with_capacity(width);
-        for _ in 0..width {
-            right_strings.push(iter::repeat(init_string).take(height).collect());
-            down_strings.push(iter::repeat(init_string).take(height).collect());
-        }
+        let strings = vec![init_string; edge_count(width, height)];
         let mut zhash = ZHash::new(width, height);
         if !init_string {
-            zhash.toggle_cut_strings(&top_strings, &left_strings, &right_strings, &down_strings);
+            zhash.toggle_cut_strings(&strings);
         }
         let valency = if init_string { 4 } else { 0 };
         SimplePosition {
-            top_strings: top_strings,
-            left_strings: left_strings,
-            down_strings: down_strings,
-            right_strings: right_strings,
+            width: width,
+            height: height,
+            strings: strings,
             valencies: vec![valency; width * height],
             zhash: zhash,
         }
@@ -237,15 +224,20 @@ impl SimplePosition {
     // present, however the position was constructed.
     fn reset_zhash(self: &mut SimplePosition, extra_seed: usize) {
         self.zhash = ZHash::new_seeded(self.width(), self.height(), extra_seed);
-        self.zhash.toggle_cut_strings(&self.top_strings, &self.left_strings, &self.right_strings, &self.down_strings);
+        self.zhash.toggle_cut_strings(&self.strings);
     }
 
     pub fn width(self: &SimplePosition) -> usize {
-        self.top_strings.len()
+        self.width
     }
 
     pub fn height(self: &SimplePosition) -> usize {
-        self.left_strings.len()
+        self.height
+    }
+
+    // Index of the string cut by a move (on the board) in per-string arrays
+    fn edge_index(self: &SimplePosition, m: Move) -> usize {
+        edge_index(self.width, self.height, m)
     }
 
     // Build a position from its plain-data description.
@@ -311,7 +303,7 @@ impl SimplePosition {
     fn cut_string(self: &mut SimplePosition, m: Move) {
         if self.is_legal_move(m) {
             self.set_string_value(m, false);
-            self.zhash.toggle_element(m);
+            self.zhash.toggle_element(self.edge_index(m));
         }
     }
 
@@ -355,14 +347,8 @@ impl SimplePosition {
                 change(&mut self.valencies[i]);
             }
         }
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y] = val,
-            (x, 0, Side::Top) => self.top_strings[x] = val,
-            (x, y, Side::Top) => self.down_strings[x][y-1] = val,
-            (x, y, Side::Bottom) => self.down_strings[x][y] = val,
-            (x, y, Side::Left) => self.right_strings[x-1][y] = val,
-            (x, y, Side::Right) => self.right_strings[x][y] = val,
-        }
+        let i = self.edge_index(m);
+        self.strings[i] = val;
     }
 
     // Whether a move cuts a string between a coin and the ground when the coin has another
@@ -377,10 +363,7 @@ impl SimplePosition {
     }
 
     fn legal_move_count(self: &SimplePosition) -> usize {
-        self.left_strings.iter().filter(|&&b| b).count() +
-        self.top_strings.iter().filter(|&&b| b).count() +
-        self.down_strings.iter().flat_map(|r| r.iter().filter(|&&b| b)).count() +
-        self.right_strings.iter().flat_map(|r| r.iter().filter(|&&b| b)).count()
+        self.strings.iter().filter(|&&b| b).count()
     }
 }
 
@@ -392,14 +375,7 @@ impl Position<Move> for SimplePosition {
         if m.y >= self.height() {
             return false;
         }
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.left_strings[y],
-            (x, 0, Side::Top) => self.top_strings[x],
-            (x, y, Side::Top) => self.down_strings[x][y-1],
-            (x, y, Side::Bottom) => self.down_strings[x][y],
-            (x, y, Side::Left) => self.right_strings[x-1][y],
-            (x, y, Side::Right) => self.right_strings[x][y],
-        }
+        self.strings[self.edge_index(m)]
     }
 
     fn would_capture(self: &SimplePosition, m: Move) -> usize {
@@ -450,7 +426,7 @@ impl Position<Move> for SimplePosition {
         let captures = self.would_capture(m);
         self.set_string_value(m, false);
         let end_of_game = self.is_end_of_game();
-        self.zhash.toggle_element(m);
+        self.zhash.toggle_element(self.edge_index(m));
         MoveOutcome {
             coins_captured: captures,
             end_of_turn: captures == 0 || end_of_game,
@@ -460,45 +436,26 @@ impl Position<Move> for SimplePosition {
 
     fn undo_move(self: &mut SimplePosition, m: Move) {
         self.set_string_value(m, true);
-        self.zhash.toggle_element(m);
+        self.zhash.toggle_element(self.edge_index(m));
     }
 
     fn is_end_of_game(self: &SimplePosition) -> bool {
-        if self.left_strings.iter().any(|&b| b) {
-            return false;
-        }
-        if self.top_strings.iter().any(|&b| b) {
-            return false;
-        }
-        if self.down_strings.iter().any(|col| col.iter().any(|&b| b)) {
-            return false;
-        }
-        if self.right_strings.iter().any(|col| col.iter().any(|&b| b)) {
-            return false;
-        }
-        true
+        !self.strings.iter().any(|&b| b)
     }
 
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
         let mut result: Vec<Move> = Vec::with_capacity(self.legal_move_count());
-        for (x, &b) in self.top_strings.iter().enumerate() {
-            if b {
-                result.push(Move{ x: x, y: 0, side: Side::Top });
-            }
+        let mut push_if_legal = |m| if self.is_legal_move(m) { result.push(m) };
+        for x in 0..self.width() {
+            push_if_legal(Move{ x: x, y: 0, side: Side::Top });
         }
-        for (y, &b) in self.left_strings.iter().enumerate() {
-            if b {
-                result.push(Move{ x: 0, y: y, side: Side::Left });
-            }
+        for y in 0..self.height() {
+            push_if_legal(Move{ x: 0, y: y, side: Side::Left });
         }
         for x in 0..self.width() {
             for y in 0..self.height() {
-                if self.down_strings[x][y] {
-                    result.push(Move{ x: x, y: y, side: Side::Bottom });
-                }
-                if self.right_strings[x][y] {
-                    result.push(Move{ x: x, y: y, side: Side::Right })
-                }
+                push_if_legal(Move{ x: x, y: y, side: Side::Bottom });
+                push_if_legal(Move{ x: x, y: y, side: Side::Right });
             }
         }
         result
@@ -556,18 +513,19 @@ impl fmt::Display for SimplePosition {
             write!(f, " {}", i % 10)?;
         }
         write!(f, "\n  ")?;
-        for &b in self.top_strings.iter() {
-            write!(f, "+{}", if b { " " } else { "-" })?;
+        let present = |x, y, side| self.is_legal_move(Move{x: x, y: y, side: side});
+        for i in 0..self.width() {
+            write!(f, "+{}", if present(i, 0, Side::Top) { " " } else { "-" })?;
         }
         write!(f, "+\n")?;
         for j in 0..self.height() {
-            write!(f, "{} {}", j % 10, if self.left_strings[j] { " " } else { "|" })?;
+            write!(f, "{} {}", j % 10, if present(0, j, Side::Left) { " " } else { "|" })?;
             for i in 0..self.width() {
-                write!(f, " {}", if self.right_strings[i][j] { " " } else { "|" })?;
+                write!(f, " {}", if present(i, j, Side::Right) { " " } else { "|" })?;
             }
             write!(f, "\n  ")?;
             for i in 0..self.width() {
-                write!(f, "+{}", if self.down_strings[i][j] { " " } else { "-" })?;
+                write!(f, "+{}", if present(i, j, Side::Bottom) { " " } else { "-" })?;
             }
             write!(f, "+\n")?;
         }
@@ -575,15 +533,31 @@ impl fmt::Display for SimplePosition {
     }
 }
 
+// The number of strings in a position of the given size
+fn edge_count(width: usize, height: usize) -> usize {
+    2 * width * height + width + height
+}
+
+// Index of the string cut by a move (on a board of the given size) in per-string arrays.
+// The horizontal strings come first, column by column from the left and each column from
+// the top, followed by the vertical strings, likewise. So both moves cutting a string
+// between two coins give the same index.
+fn edge_index(width: usize, height: usize, m: Move) -> usize {
+    let (x, y) = (m.x, m.y);
+    match m.side {
+        Side::Top => x * (height + 1) + y,
+        Side::Bottom => x * (height + 1) + y + 1,
+        Side::Left => width * (height + 1) + x * height + y,
+        Side::Right => width * (height + 1) + (x + 1) * height + y,
+    }
+}
+
 // Struct to encapsulate Zobrist hash for positions
-// It has an internal structure mirroring the position, one integer per element
+// It has one random value per string, at the string's edge_index
 #[derive(Clone)]
 struct ZHash {
     current_val: u64,
-    top_strings: Vec<u64>,
-    left_strings: Vec<u64>,
-    right_strings: Vec<Vec<u64>>,
-    down_strings: Vec<Vec<u64>>,
+    strings: Vec<u64>,
 }
 
 impl ZHash {
@@ -597,62 +571,38 @@ impl ZHash {
         seed[1] = height as u8;
         seed[2] = extra_seed as u8;
         let mut r: StdRng = SeedableRng::from_seed(seed);
-        let mut top_strings: Vec<u64> = Vec::with_capacity(width);
-        let mut left_strings: Vec<u64> = Vec::with_capacity(height);
-        let mut right_strings: Vec<Vec<u64>> = Vec::with_capacity(width);
-        let mut down_strings: Vec<Vec<u64>> = Vec::with_capacity(width);
-
-        for i in 0..width {
-            top_strings.push(r.random());
-            right_strings.push(Vec::with_capacity(height));
-            down_strings.push(Vec::with_capacity(height));
-            for _ in 0..height {
-                right_strings[i].push(r.random());
-                down_strings[i].push(r.random());
+        let mut strings = vec![0; edge_count(width, height)];
+        let idx = |x, y, side| edge_index(width, height, Move::new(x, y, side));
+        for x in 0..width {
+            strings[idx(x, 0, Side::Top)] = r.random();
+            for y in 0..height {
+                strings[idx(x, y, Side::Right)] = r.random();
+                strings[idx(x, y, Side::Bottom)] = r.random();
             }
         }
-        for _ in 0..height {
-            left_strings.push(r.random());
+        for y in 0..height {
+            strings[idx(0, y, Side::Left)] = r.random();
         }
 
         ZHash{
             current_val: r.random(),
-            top_strings: top_strings,
-            left_strings: left_strings,
-            right_strings: right_strings,
-            down_strings: down_strings,
+            strings: strings,
         }
     }
 
     // Toggle the element for each string which has been cut (is false) in a position's
-    // string arrays, which have the same shape as this hash's arrays
-    fn toggle_cut_strings(self: &mut ZHash, top: &[bool], left: &[bool], right: &[Vec<bool>], down: &[Vec<bool>]) {
-        fn xor_cut(vals: &[u64], present: &[bool]) -> u64 {
-            vals.iter().zip(present).filter(|&(_, &p)| !p).fold(0, |acc, (&v, _)| acc ^ v)
-        }
-        self.current_val ^= xor_cut(&self.top_strings, top);
-        self.current_val ^= xor_cut(&self.left_strings, left);
-        for (vals, present) in self.right_strings.iter().zip(right) {
-            self.current_val ^= xor_cut(vals, present);
-        }
-        for (vals, present) in self.down_strings.iter().zip(down) {
-            self.current_val ^= xor_cut(vals, present);
-        }
+    // string array, indexed in the same way as this hash's
+    fn toggle_cut_strings(self: &mut ZHash, present: &[bool]) {
+        self.current_val ^= self.strings.iter().zip(present)
+            .filter(|&(_, &p)| !p).fold(0, |acc, (&v, _)| acc ^ v);
     }
 
     fn current_value(self: &ZHash) -> u64 {
         self.current_val
     }
 
-    fn toggle_element(self: &mut ZHash, m: Move) {
-        match (m.x, m.y, m.side) {
-            (0, y, Side::Left) => self.current_val ^= self.left_strings[y],
-            (x, 0, Side::Top) => self.current_val ^= self.top_strings[x],
-            (x, y, Side::Left) => self.current_val ^= self.right_strings[x-1][y],
-            (x, y, Side::Right) => self.current_val ^= self.right_strings[x][y],
-            (x, y, Side::Bottom) => self.current_val ^= self.down_strings[x][y],
-            (x, y, Side::Top) => self.current_val ^= self.down_strings[x][y-1],
-        }
+    fn toggle_element(self: &mut ZHash, edge_index: usize) {
+        self.current_val ^= self.strings[edge_index];
     }
 }
 
@@ -1437,6 +1387,29 @@ mod tests {
             r#"{"parts":[{"width":2,"height":1,"h_strings":[[false,false],[false,false]],"v_strings":[[true,true,true]]}]}"#,
             json);
         assert_eq!(data, serde_json::from_str(&json).unwrap());
+    }
+
+    #[test]
+    fn edge_indices() {
+        for (w, h) in [(1, 1), (1, 3), (3, 1), (2, 3), (4, 4)] {
+            let pos = SimplePosition::new_game(w, h);
+            // Each string has its own index, in range
+            let mut seen = HashSet::new();
+            for m in pos.legal_moves() {
+                assert!(seen.insert(pos.edge_index(m)), "{} in {}x{}", m, w, h);
+            }
+            assert_eq!(edge_count(w, h), seen.len());
+            assert!(seen.iter().all(|&i| i < edge_count(w, h)));
+            // Equivalent moves cut the same string
+            for x in 0..w {
+                for y in 0..h {
+                    for s in Side::ALL {
+                        let m = Move::new(x, y, s);
+                        assert_eq!(pos.edge_index(m), pos.edge_index(pos.normalise_move(m).unwrap()), "{}", m);
+                    }
+                }
+            }
+        }
     }
 
     // Count a coin's strings directly, independently of the valencies kept by the position
