@@ -379,10 +379,7 @@ impl Position<Move> for SimplePosition {
     }
 
     fn would_capture(self: &SimplePosition, m: Move) -> usize {
-        // Stop counting a coin's strings at two, since only valency one matters here
-        let has_valency_one = |x, y| {
-            Side::ALL.iter().filter(|&&s| self.is_legal_move(Move{x: x, y: y, side: s})).take(2).count() == 1
-        };
+        let has_valency_one = |x, y| self.valency(x, y) == 1;
         let mut result = 0;
         if has_valency_one(m.x, m.y) {
             result += 1;
