@@ -2,12 +2,14 @@
 // and showing progress (with cancellation) while they're calculated
 import type { ComponentChildren } from "preact";
 import type { AnalysisKind } from "../game/analysis";
-import type { Player } from "../game/state";
 
 // What the board shows on the legal moves
 export type BoardValues = "evaluation" | "nimstring" | "off";
 
-// Whose point of view evaluation values are shown from: the player to move, or always A
+// Whose point of view evaluation values are shown from: the player to move, or always A.
+// (These, and whether evaluation values include the score so far (the final margin) or only
+// the rest of the game (the engine's own value, which ignores coins already taken), are
+// chosen in the settings: see MoreSettings.)
 export type Perspective = "mover" | "A";
 
 export interface Timed<T> {
@@ -23,13 +25,6 @@ interface AnalysisPanelProps {
   checkingMove: boolean;
   boardValues: BoardValues;
   onBoardValues: (v: BoardValues) => void;
-  // Whether evaluation values include the score so far (the final margin), or only
-  // the rest of the game (the engine's own value, which ignores coins already taken)
-  countScore: boolean;
-  onCountScore: (count: boolean) => void;
-  perspective: Perspective;
-  onPerspective: (perspective: Perspective) => void;
-  toMove: Player;
   onCancel: () => void;
 }
 
@@ -98,29 +93,6 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
           value={props.boardValues}
           onChange={props.onBoardValues}
         />
-        {props.boardValues === "evaluation" && (
-          <Segmented
-            label="Evaluation values"
-            options={[
-              [true, "Including score so far"],
-              [false, "Excluding score so far"],
-            ]}
-            value={props.countScore}
-            onChange={props.onCountScore}
-          />
-        )}
-        {props.boardValues === "evaluation" && (
-          <Segmented
-            label="Values for"
-            options={[
-              ["A", "Player A"],
-              // Naming the player to move, so it's always clear whose values these are
-              ["mover", `Player to move (${props.toMove})`],
-            ]}
-            value={props.perspective}
-            onChange={props.onPerspective}
-          />
-        )}
 
       {/* (When the engine is thinking about its move, the progress is shown under "Engine plays" instead) */}
       {running && !props.engineThinking && !props.checkingMove && (

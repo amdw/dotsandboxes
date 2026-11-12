@@ -9,19 +9,15 @@
 // The engine's caches are limited in size, forgetting values when full (see MAX_CACHED_POSITIONS
 // in api.rs), so in a very long analysis a chunk may forget what earlier ones found as fast as
 // it finds anything new. So chunks grow in proportion to the work done so far, which ensures
-// one is eventually long enough to finish.
+// one is eventually long enough to finish (see chunks.ts).
+//
+// An analysis with a time limit gives up once it has run that long, keeping (as when
+// cancelled) everything it has calculated, so asking again carries on from there.
 import init, * as wasm from "../wasm/dabengine_wasm.js";
 import type { AnalysisKind } from "../game/analysis";
 import type { PositionData } from "./types";
 import type { AnalysisRequest, AnalysisResponse, WorkerMessage } from "./analyser";
-
-// New positions per chunk of a full analysis: at least this (well under a second's work), and
-// at least 1/CHUNK_GROWTH of the positions analysed so far (so cancelling takes effect
-// after at most that fraction of the time taken so far)
-const CHUNK_POSITIONS = 500_000;
-const CHUNK_GROWTH = 16;
-// The most new positions that can be asked for at once (the engine takes a 32-bit count)
-const MAX_CHUNK_POSITIONS = 2 ** 32 - 1;
+import { chunkPositions } from "./chunks";
 
 const ready = init();
 const cancelled = new Set<number>();
@@ -34,7 +30,7 @@ function reply(response: AnalysisResponse) {
   self.postMessage(response);
 }
 
-async function handle({ id, kind, position, maxNew }: AnalysisRequest) {
+async function handle({ id, kind, position, maxNew, timeLimit }: AnalysisRequest) {
   try {
     await ready;
     if (maxNew !== undefined) {
@@ -43,14 +39,20 @@ async function handle({ id, kind, position, maxNew }: AnalysisRequest) {
       return;
     }
     const start = wasm.positionsCalculated(kind);
+    const startTime = performance.now();
+    const timeLimitMs = timeLimit === undefined ? undefined : timeLimit * 1000;
     for (;;) {
       if (cancelled.delete(id)) {
         reply({ type: "result", id, ok: false, error: "cancelled" });
         return;
       }
+      const elapsedMs = performance.now() - startTime;
+      if (timeLimitMs !== undefined && elapsedMs >= timeLimitMs) {
+        reply({ type: "result", id, ok: false, error: "time limit" });
+        return;
+      }
       const done = wasm.positionsCalculated(kind) - start;
-      const chunk = Math.min(Math.max(CHUNK_POSITIONS, Math.floor(done / CHUNK_GROWTH)), MAX_CHUNK_POSITIONS);
-      const result = analyse(kind, position, chunk);
+      const result = analyse(kind, position, chunkPositions(done, elapsedMs, timeLimitMs));
       if (result) {
         reply({ type: "result", id, ok: true, result });
         return;

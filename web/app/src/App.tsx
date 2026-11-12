@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { Analyser, CancelledError } from "./engine/analyser";
+import { Analyser, CancelledError, TimeLimitError } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
 import { AnalysisPanel, AnalysisProgress, progressText, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type LastMoveBadge, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
+import { DEFAULT_ENGINE_TIME_LIMIT, formatTimeLimit, isEngineTimeLimit, MoreSettings, timeLimitSeconds, type EngineTimeLimit } from "./components/SettingsPanel";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, judgeMove, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
@@ -23,6 +24,7 @@ const SHOW_CANONICAL_KEY = "dab-show-canonical";
 const LAST_MOVE_KEY = "dab-last-move";
 // The earlier, on/off form of the setting
 const SHOW_LAST_MOVE_KEY = "dab-show-last-move";
+const ENGINE_TIME_LIMIT_KEY = "dab-engine-time-limit";
 
 // Whether to show the last move, and if so whether to judge it ("?" or "??" for a mistake)
 type LastMoveDisplay = "hide" | "show" | "judge";
@@ -123,6 +125,23 @@ function saveShowCanonical(show: boolean) {
   }
 }
 
+function loadEngineTimeLimit(): EngineTimeLimit {
+  try {
+    const stored = localStorage.getItem(ENGINE_TIME_LIMIT_KEY);
+    return isEngineTimeLimit(stored) ? stored : DEFAULT_ENGINE_TIME_LIMIT;
+  } catch {
+    return DEFAULT_ENGINE_TIME_LIMIT;
+  }
+}
+
+function saveEngineTimeLimit(limit: EngineTimeLimit) {
+  try {
+    localStorage.setItem(ENGINE_TIME_LIMIT_KEY, limit);
+  } catch {
+    // Not important if the preference can't be saved
+  }
+}
+
 function saveView(view: View) {
   try {
     localStorage.setItem(VIEW_KEY, view);
@@ -161,6 +180,8 @@ export function App() {
   // through the game, so as not to overwrite the moves after the position shown)
   const [engineSides, setEngineSides] = useState<Record<Player, boolean>>({ A: false, B: false });
   const [paused, setPaused] = useState(false);
+  // How long the engine may think about a move before giving up (and pausing)
+  const [engineTimeLimit, setEngineTimeLimit] = useState(loadEngineTimeLimit);
   // Whether to highlight canonical moves (captures which can be made without loss)
   const [showCanonical, setShowCanonical] = useState(loadShowCanonical);
   // Whether to show the last move made, and marks judging it
@@ -264,15 +285,18 @@ export function App() {
     }
   }, [previousKey, judgeLastMove]);
 
-  // A full analysis, however long it takes (shown in progress, with Cancel). If it fails,
-  // the engine pauses if it was waiting for it, rather than trying again (and again).
+  // A full analysis (shown in progress, with Cancel), however long it takes, or for the
+  // engine's move, until its time limit. If it fails or runs out of time, the engine pauses if
+  // it was waiting for it, rather than trying again (and again).
   const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
     const forEngine = engineActive;
+    const timeLimit = forEngine ? timeLimitSeconds(engineTimeLimit) : undefined;
     const a = (analyser.current ??= new Analyser());
     const start = performance.now();
     setRunning({ kind, key, start });
     setNow(start);
     a.run(kind, position, {
+      timeLimit,
       onProgress: (positions) => setRunning((r) => (r && r.key === key && r.kind === kind ? { ...r, positions } : r)),
     })
       .then((result) => {
@@ -280,7 +304,11 @@ export function App() {
         setRunning(null);
       })
       .catch((e: unknown) => {
-        if (!(e instanceof CancelledError)) {
+        if (e instanceof TimeLimitError) {
+          setError(`The engine couldn't solve this position within ${formatTimeLimit(e.seconds)}. Resume to give it longer (carrying on from where it got to), or change its time limit in More settings.`);
+          setRunning(null);
+          setPaused(true);
+        } else if (!(e instanceof CancelledError)) {
           setError(errorMessage(e));
           setRunning(null);
           setBoardValues("off");
@@ -621,7 +649,14 @@ export function App() {
             </button>
           )}
           {engineToMove && paused && (
-            <button type="button" class="quiet small" onClick={() => setPaused(false)}>
+            <button
+              type="button"
+              class="quiet small"
+              onClick={() => {
+                setPaused(false);
+                setError(null);
+              }}
+            >
               Resume
             </button>
           )}
@@ -758,7 +793,7 @@ export function App() {
         </button>
       </nav>
 
-      <section class="controls" aria-label="Options">
+      <section class="controls" aria-label="Settings">
         <Segmented
           label="View"
           options={[
@@ -819,18 +854,25 @@ export function App() {
         checkingMove={checkingMove}
         boardValues={boardValues}
         onBoardValues={chooseBoardValues}
+        onCancel={cancelAnalysis}
+        />
+        <MoreSettings
         countScore={countScore}
-        perspective={perspective}
-        toMove={snap.toMove}
-        onPerspective={(p) => {
-          setPerspectives(countScore ? { ...perspectives, withScore: p } : { ...perspectives, withoutScore: p });
-          savePerspective(countScore, p);
-        }}
         onCountScore={(count) => {
           setCountScore(count);
           saveCountScore(count);
         }}
-        onCancel={cancelAnalysis}
+        perspective={perspective}
+        onPerspective={(p) => {
+          setPerspectives(countScore ? { ...perspectives, withScore: p } : { ...perspectives, withoutScore: p });
+          savePerspective(countScore, p);
+        }}
+        toMove={snap.toMove}
+        engineTimeLimit={engineTimeLimit}
+        onEngineTimeLimit={(limit) => {
+          setEngineTimeLimit(limit);
+          saveEngineTimeLimit(limit);
+        }}
         />
       </section>
     </main>
