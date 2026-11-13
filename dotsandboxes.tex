@@ -1472,9 +1472,13 @@ force a win are defined to be equal to the zero game (and we write $G
 = 0$). Then, we say two games $G$ and $H$ are equal, or have the same
 \emph{value}, and write simply $G = H$, if $G - H = 0$ in this sense.
 
-To take a simple example, $\cgtgame{0}{} = -\cgtgame{}{0}$, since
-$\cgtgame{0}{} + \cgtgame{}{0}$ is a win for the second player and
-hence is equal to $0$.
+To take a simple example, consider $\cgtgame{0}{0} +
+\cgtgame{0}{0}$. Whichever player moves first must move one of the two
+components to $0$, leaving just $\cgtgame{0}{0}$; the other player
+then moves that to $0$, leaving the first player with no move. So
+$\cgtgame{0}{0} + \cgtgame{0}{0}$ is a win for the second player, and
+hence is equal to $0$, even though each component on its own is a win
+for the first player.
 
 It can be shown that if $G = H$, then $G$ and $H$ are always in the
 same outcome class (e.g.\ if $G$ is always a win for $L$ then so is
@@ -1497,8 +1501,8 @@ added to other games.
 It should also be noted that CGT sources have a strong tendency to
 blur the distinction between games and game values. Games are called
 ``equal'' if they have the same value, even if they have completely
-different sets of options: in the example we saw above, $\cgtgame{0}{}
-+ \cgtgame{}{0}$ does not have literally the same set of options as
+different sets of options: in the example we saw above, $\cgtgame{0}{0}
++ \cgtgame{0}{0}$ does not have literally the same set of options as
 the zero game, but it is still equal to $0$, because it is a win for
 the second player.
 
