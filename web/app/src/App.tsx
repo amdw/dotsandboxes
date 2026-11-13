@@ -180,6 +180,9 @@ export function App() {
   // through the game, so as not to overwrite the moves after the position shown)
   const [engineSides, setEngineSides] = useState<Record<Player, boolean>>({ A: false, B: false });
   const [paused, setPaused] = useState(false);
+  // The position (by positionKey) the engine last ran out of time on, and its time limit then:
+  // while it's paused there, a message says so, with a button to resume
+  const [timedOut, setTimedOut] = useState<{ key: string; seconds: number } | null>(null);
   // How long the engine may think about a move before giving up (and pausing)
   const [engineTimeLimit, setEngineTimeLimit] = useState(loadEngineTimeLimit);
   // Whether to highlight canonical moves (captures which can be made without loss)
@@ -305,7 +308,7 @@ export function App() {
       })
       .catch((e: unknown) => {
         if (e instanceof TimeLimitError) {
-          setError(`The engine couldn't solve this position within ${formatTimeLimit(e.seconds)}. Resume to give it longer (carrying on from where it got to), or change its time limit in More settings.`);
+          setTimedOut({ key, seconds: e.seconds });
           setRunning(null);
           setPaused(true);
         } else if (!(e instanceof CancelledError)) {
@@ -443,6 +446,15 @@ export function App() {
     if (engineActive) setPaused(true);
   };
 
+  // Let the engine carry on (after being paused, or running out of time)
+  const resume = () => {
+    setPaused(false);
+    setError(null);
+    setTimedOut(null);
+  };
+  // Whether to say the engine ran out of time: only while it's still paused on that position
+  const showTimedOut = timedOut !== null && engineToMove && paused && timedOut.key === key;
+
   // Moving through the game pauses the engine, so it doesn't play over later moves
   const navigate = (cursor: number) => {
     setGame(goTo(game, cursor));
@@ -451,7 +463,7 @@ export function App() {
 
   const chooseEngineSides = (sides: Record<Player, boolean>) => {
     setEngineSides(sides);
-    setPaused(false);
+    resume();
   };
 
   const anyCaptured = snap.position.parts.some((p, i) => snap.owners[i].some((row, y) => row.some((_, x) => isCoinCaptured(p, x, y) && !game.voids?.[i][y][x])));
@@ -648,15 +660,9 @@ export function App() {
               Switch
             </button>
           )}
-          {engineToMove && paused && (
-            <button
-              type="button"
-              class="quiet small"
-              onClick={() => {
-                setPaused(false);
-                setError(null);
-              }}
-            >
+          {/* (Unless the message about running out of time is shown, with its own Resume button) */}
+          {engineToMove && paused && !showTimedOut && (
+            <button type="button" class="quiet small" onClick={resume}>
               Resume
             </button>
           )}
@@ -830,6 +836,20 @@ export function App() {
         />
         {running && engineActive && (
           <AnalysisProgress label={`${snap.toMove} (engine) thinking`} seconds={Math.max(0, now - running.start) / 1000} progress={running.progress} onCancel={cancelAnalysis} />
+        )}
+        {/* Where its progress was shown, if the engine ran out of time */}
+        {showTimedOut && (
+          <div class="running timed-out" role="status">
+            <div>
+              <span class="timed-out-message">
+                {snap.toMove} (engine) ran out of time ({formatTimeLimit(timedOut.seconds)})
+              </span>
+              <button type="button" class="small" onClick={resume}>
+                Resume
+              </button>
+            </div>
+            <div class="note">Resume to give it another {formatTimeLimit(timedOut.seconds)}, carrying on from where it got to, or change its time limit in More settings.</div>
+          </div>
         )}
         <Segmented
           label="Canonical moves"
