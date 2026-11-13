@@ -61,6 +61,7 @@ pub struct Cache<V> {
     // The capacity of the table once it first held max_len values (see needs_room)
     full_capacity: Option<usize>,
     added: u64,
+    forgotten: u64,
 }
 
 impl<V: CacheValue> Cache<V> {
@@ -69,7 +70,7 @@ impl<V: CacheValue> Cache<V> {
     // table of some size holds: 7/8 of a power of 2 (at least 8).
     pub fn new(max_len: usize) -> Cache<V> {
         assert!(max_len > 0, "A cache must be able to hold at least one value");
-        Cache{ map: ZHashMap::default(), max_len: max_len, full_capacity: None, added: 0 }
+        Cache{ map: ZHashMap::default(), max_len: max_len, full_capacity: None, added: 0, forgotten: 0 }
     }
 
     // A cache with no limit on its size
@@ -81,10 +82,21 @@ impl<V: CacheValue> Cache<V> {
         self.map.len()
     }
 
+    // The most values the cache holds
+    pub fn max_len(&self) -> usize {
+        self.max_len
+    }
+
     // The number of values added to the cache since it was created: values replaced aren't
     // counted, but values forgotten and calculated again are, so this measures the work done
     pub fn added(&self) -> u64 {
         self.added
+    }
+
+    // The number of values forgotten to make room for others since the cache was created
+    // (not counting those forgotten by clearing it)
+    pub fn forgotten(&self) -> u64 {
+        self.forgotten
     }
 
     pub fn get(&self, key: u64) -> Option<V> {
@@ -138,7 +150,9 @@ impl<V: CacheValue> Cache<V> {
             forgetting += counts[threshold];
             threshold += 1;
         }
+        let len_before = self.map.len();
         self.map.retain(|_, v| v.work_class() as usize >= threshold);
+        self.forgotten += (len_before - self.map.len()) as u64;
     }
 
     #[cfg(test)]
@@ -197,6 +211,7 @@ mod test {
         assert_eq!(None, cache.get(4));
         assert_eq!(Some(0), cache.get(5));
         assert_eq!(5, cache.added());
+        assert_eq!(3, cache.forgotten());
     }
 
     #[test]
@@ -207,6 +222,7 @@ mod test {
         }
         assert_eq!(1, cache.len());
         assert_eq!(Some(7), cache.get(4));
+        assert_eq!(4, cache.forgotten());
     }
 
     #[test]

@@ -16,7 +16,7 @@
 import init, * as wasm from "../wasm/dabengine_wasm.js";
 import type { AnalysisKind } from "../game/analysis";
 import type { PositionData } from "./types";
-import type { AnalysisRequest, AnalysisResponse, WorkerMessage } from "./analyser";
+import type { AnalysisRequest, AnalysisResponse, Progress, WorkerMessage } from "./analyser";
 import { chunkPositions } from "./chunks";
 
 const ready = init();
@@ -24,6 +24,25 @@ const cancelled = new Set<number>();
 
 function analyse(kind: AnalysisKind, position: PositionData, maxNew: number) {
   return kind === "evaluate" ? wasm.evaluate(position, maxNew) : wasm.nimstringAnalysis(position, maxNew);
+}
+
+// The work done by the engine since it was loaded, and the state of its cache (see cacheStats
+// in lib.rs)
+interface CacheStats {
+  calculated: number;
+  cached: number;
+  capacity: number;
+  forgotten: number;
+}
+
+function cacheStats(kind: AnalysisKind): CacheStats {
+  return wasm.cacheStats(kind) as CacheStats;
+}
+
+// The progress of an analysis which started when the engine's stats were as given
+function progressSince(kind: AnalysisKind, start: CacheStats): Progress {
+  const now = cacheStats(kind);
+  return { positions: now.calculated - start.calculated, cached: now.cached, capacity: now.capacity, forgotten: now.forgotten - start.forgotten };
 }
 
 function reply(response: AnalysisResponse) {
@@ -38,7 +57,7 @@ async function handle({ id, kind, position, maxNew, timeLimit }: AnalysisRequest
       reply({ type: "result", id, ok: true, result: analyse(kind, position, maxNew) ?? null });
       return;
     }
-    const start = wasm.positionsCalculated(kind);
+    const start = cacheStats(kind);
     const startTime = performance.now();
     const timeLimitMs = timeLimit === undefined ? undefined : timeLimit * 1000;
     for (;;) {
@@ -51,13 +70,13 @@ async function handle({ id, kind, position, maxNew, timeLimit }: AnalysisRequest
         reply({ type: "result", id, ok: false, error: "time limit" });
         return;
       }
-      const done = wasm.positionsCalculated(kind) - start;
+      const done = cacheStats(kind).calculated - start.calculated;
       const result = analyse(kind, position, chunkPositions(done, elapsedMs, timeLimitMs));
       if (result) {
         reply({ type: "result", id, ok: true, result });
         return;
       }
-      reply({ type: "progress", id, positions: wasm.positionsCalculated(kind) - start });
+      reply({ type: "progress", id, progress: progressSince(kind, start) });
       // Let other messages (cancellation, other requests) be handled before the next chunk
       await new Promise((resolve) => setTimeout(resolve, 0));
     }

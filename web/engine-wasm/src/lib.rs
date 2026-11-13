@@ -87,17 +87,34 @@ pub fn nimstring_analysis(position: JsValue, max_new: Option<u32>) -> Result<JsV
     to_js(NIMSTRING.with(|calculator| api::nimstring_analysis_with(&mut calculator.borrow_mut(), &position, max_new)))
 }
 
-// Number of positions evaluated ("evaluate") or whose Nimstring values have been calculated
-// ("nimstring") since the module was loaded, e.g. to show the progress of a long calculation
-// (as a float, since it may not fit in 32 bits)
-#[wasm_bindgen(js_name = positionsCalculated)]
-pub fn positions_calculated(kind: &str) -> f64 {
-    let count = if kind == "evaluate" {
-        EVALUATOR.with(|evaluator| evaluator.borrow().positions_evaluated())
+// The work done by the evaluator ("evaluate") or the Nimstring calculator ("nimstring") since
+// the module was loaded, and the state of its cache, e.g. to show the progress of a long
+// calculation. (Counts are floats, since they may not fit in 32 bits.)
+#[derive(Serialize)]
+pub struct CacheStats {
+    // Positions whose values have been calculated
+    calculated: f64,
+    // Positions whose values are cached now, and the most which can be
+    cached: f64,
+    capacity: f64,
+    // Positions whose values have been forgotten to make room for others
+    forgotten: f64,
+}
+
+#[wasm_bindgen(js_name = cacheStats)]
+pub fn cache_stats(kind: &str) -> Result<JsValue, JsError> {
+    let stats = if kind == "evaluate" {
+        EVALUATOR.with(|evaluator| {
+            let e = evaluator.borrow();
+            CacheStats{ calculated: e.positions_evaluated() as f64, cached: e.cached_positions() as f64, capacity: e.max_cached() as f64, forgotten: e.positions_forgotten() as f64 }
+        })
     } else {
-        NIMSTRING.with(|calculator| calculator.borrow().positions_calculated())
+        NIMSTRING.with(|calculator| {
+            let c = calculator.borrow();
+            CacheStats{ calculated: c.positions_calculated() as f64, cached: c.cached_positions() as f64, capacity: c.max_cached() as f64, forgotten: c.positions_forgotten() as f64 }
+        })
     };
-    count as f64
+    to_js(Ok(stats))
 }
 
 #[wasm_bindgen(js_name = parsePos)]
