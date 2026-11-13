@@ -768,6 +768,16 @@ button.part-chip {
   font-variant-numeric: tabular-nums;
 }
 
+/* The engine having run out of time, in place of its progress */
+.running .timed-out-message {
+  color: var(--accent);
+}
+
+.running.timed-out .note {
+  font-size: 0.8rem;
+  max-width: 32em;
+}
+
 
 button.canonical-play {
   border-color: var(--canonical);
