@@ -31,6 +31,12 @@ export interface Progress {
   forgotten: number;
 }
 
+// The progress of an analysis carrying on from an earlier one (of the same position, which
+// stopped early), counting the work of both
+export function addProgress(earlier: Progress, later: Progress): Progress {
+  return { positions: earlier.positions + later.positions, cached: later.cached, capacity: later.capacity, forgotten: earlier.forgotten + later.forgotten };
+}
+
 export type WorkerMessage = AnalysisRequest | { type: "cancel"; id: number };
 
 type Result = Evaluation | NimstringAnalysis | null;
