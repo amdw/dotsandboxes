@@ -10,7 +10,7 @@ import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels
 import { chooseEngineMove, evaluationLabels, judgeMove, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
 import { isCoinCaptured, lineKey, lineToMove, moveToLine, type Line } from "./game/lines";
 import { decodeGame, encodeGame } from "./game/share";
-import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
+import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player, type Snapshot } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 // Pause before the engine plays a move it has chosen, so that playouts can be followed
@@ -201,6 +201,9 @@ export function App() {
   const [engineTimeLimit, setEngineTimeLimit] = useState(loadEngineTimeLimit);
   // Whether to highlight canonical moves (captures which can be made without loss)
   const [showCanonical, setShowCanonical] = useState(loadShowCanonical);
+  // The position in which a highlighted canonical move is hovered, previewing them all: it
+  // stops when the position changes, as the move hovered may be gone without being left
+  const [canonicalHoverAt, setCanonicalHoverAt] = useState<Snapshot | null>(null);
   // Whether to show the last move made, and marks judging it
   const [lastMoveDisplay, setLastMoveDisplay] = useState(loadLastMoveDisplay);
   const showLastMove = lastMoveDisplay !== "hide";
@@ -760,6 +763,8 @@ export function App() {
               voids={game.voids?.[i]}
               canonical={canonical}
               canonicalCoins={canonicalPlan.captured.filter((c) => c.part === i).map((c): [number, number] => [c.x, c.y])}
+              canonicalPreview={canonicalHoverAt === snap}
+              onCanonicalHover={(hovering) => setCanonicalHoverAt(hovering ? snap : null)}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}
