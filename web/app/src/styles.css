@@ -703,6 +703,15 @@ button.part-chip {
   opacity: 1;
 }
 
+/* All the canonical moves, while one of them (which plays them all) is hovered or focused */
+.board .move.previewing .preview {
+  opacity: 0.85;
+}
+
+.board.view-snc .move.previewing .preview {
+  opacity: 1;
+}
+
 @media (hover: hover) {
   .board .move:hover .preview {
     opacity: 0.85;
@@ -776,12 +785,6 @@ button.part-chip {
 .running.timed-out .note {
   font-size: 0.8rem;
   max-width: 32em;
-}
-
-
-button.canonical-play {
-  border-color: var(--canonical);
-  color: var(--canonical);
 }
 
 

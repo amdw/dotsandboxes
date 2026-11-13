@@ -8,9 +8,9 @@ import { ConfirmPopover } from "./components/ConfirmPopover";
 import { DEFAULT_ENGINE_TIME_LIMIT, formatTimeLimit, isEngineTimeLimit, MoreSettings, timeLimitSeconds, type EngineTimeLimit } from "./components/SettingsPanel";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, judgeMove, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
-import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
+import { isCoinCaptured, lineKey, lineToMove, moveToLine, type Line } from "./game/lines";
 import { decodeGame, encodeGame } from "./game/share";
-import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
+import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player, type Snapshot } from "./game/state";
 
 const VIEW_KEY = "dab-view";
 // Pause before the engine plays a move it has chosen, so that playouts can be followed
@@ -201,6 +201,9 @@ export function App() {
   const [engineTimeLimit, setEngineTimeLimit] = useState(loadEngineTimeLimit);
   // Whether to highlight canonical moves (captures which can be made without loss)
   const [showCanonical, setShowCanonical] = useState(loadShowCanonical);
+  // The position in which a highlighted canonical move is hovered, previewing them all: it
+  // stops when the position changes, as the move hovered may be gone without being left
+  const [canonicalHoverAt, setCanonicalHoverAt] = useState<Snapshot | null>(null);
   // Whether to show the last move made, and marks judging it
   const [lastMoveDisplay, setLastMoveDisplay] = useState(loadLastMoveDisplay);
   const showLastMove = lastMoveDisplay !== "hide";
@@ -522,15 +525,10 @@ export function App() {
     setRunning(null);
   };
 
-  // Canonical moves, when highlighted: the whole sequence of them which can be played from here
+  // Canonical moves, when highlighted: the whole sequence of them which can be played from
+  // here. Clicking any of them plays them all (see play).
   const canonicalPlan = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : { moves: [], captured: [] };
-  const canonicalMoves = canonicalPlan.moves;
-  const canonical = new Set(canonicalMoves.map(lineKeyOf));
-  const playCanonical = () =>
-    attempt(() => {
-      setGame(playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove));
-      setPaused(false);
-    });
+  const canonical = new Set(canonicalPlan.moves.map(lineKeyOf));
 
   // The position split into its independent components, if that would give more parts
   const split = engine.split(snap.position);
@@ -580,9 +578,11 @@ export function App() {
       setPanel(null);
     });
 
+  // Playing a highlighted canonical move plays the whole sequence of them: it's assumed that
+  // whoever highlights them wants to play them
   const play = (line: Line) =>
     attempt(() => {
-      setGame(playMove(game, lineToMove(line), engine.makeMove));
+      setGame(canonical.has(lineKey(line)) ? playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove) : playMove(game, lineToMove(line), engine.makeMove));
       setPaused(false);
     });
 
@@ -763,6 +763,8 @@ export function App() {
               voids={game.voids?.[i]}
               canonical={canonical}
               canonicalCoins={canonicalPlan.captured.filter((c) => c.part === i).map((c): [number, number] => [c.x, c.y])}
+              canonicalPreview={canonicalHoverAt === snap}
+              onCanonicalHover={(hovering) => setCanonicalHoverAt(hovering ? snap : null)}
               margins={margins[i]}
               width={`${(100 * naturalWidth(data, margins[i])) / maxWidth}%`}
               labels={labels}
@@ -830,28 +832,6 @@ export function App() {
 
       <section class="controls" aria-label="Settings">
         <Segmented
-          label="View"
-          options={[
-            ["dab", "Dots and boxes"],
-            ["snc", "Strings and coins"],
-          ]}
-          value={view}
-          onChange={chooseView}
-        />
-        <Segmented
-          label="Last move"
-          options={[
-            ["judge", "Show and judge"],
-            ["show", "Show"],
-            ["hide", "Hide"],
-          ]}
-          value={lastMoveDisplay}
-          onChange={(display: LastMoveDisplay) => {
-            setLastMoveDisplay(display);
-            saveLastMoveDisplay(display);
-          }}
-        />
-        <Segmented
           label="Engine plays"
           options={[
             ["none", "Neither"],
@@ -879,31 +859,22 @@ export function App() {
             <div class="note">Resume to give it another {formatTimeLimit(timedOut.seconds)}, carrying on from where it got to, or change its time limit in More settings.</div>
           </div>
         )}
-        <Segmented
-          label="Canonical moves"
-          options={[
-            [true, "Show"],
-            [false, "Hide"],
-          ]}
-          value={showCanonical}
-          onChange={(show) => {
-            setShowCanonical(show);
-            saveShowCanonical(show);
-          }}
-        >
-          {canonicalMoves.length > 0 && (
-            <button type="button" class="canonical-play" disabled={engineActive} onClick={playCanonical}>
-              Play canonical moves
-            </button>
-          )}
-        </Segmented>
         <AnalysisPanel
-        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000, progress: running.progress }}
-        engineThinking={engineActive}
-        checkingMove={checkingMove}
-        boardValues={boardValues}
-        onBoardValues={chooseBoardValues}
-        onCancel={cancelAnalysis}
+          running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000, progress: running.progress }}
+          engineThinking={engineActive}
+          checkingMove={checkingMove}
+          boardValues={boardValues}
+          onBoardValues={chooseBoardValues}
+          onCancel={cancelAnalysis}
+        />
+        <Segmented
+          label="View"
+          options={[
+            ["dab", "Dots and boxes"],
+            ["snc", "Strings and coins"],
+          ]}
+          value={view}
+          onChange={chooseView}
         />
         <MoreSettings
         countScore={countScore}
@@ -922,7 +893,33 @@ export function App() {
           setEngineTimeLimit(limit);
           saveEngineTimeLimit(limit);
         }}
-        />
+        >
+          <Segmented
+            label="Last move"
+            options={[
+              ["judge", "Show and judge"],
+              ["show", "Show"],
+              ["hide", "Hide"],
+            ]}
+            value={lastMoveDisplay}
+            onChange={(display: LastMoveDisplay) => {
+              setLastMoveDisplay(display);
+              saveLastMoveDisplay(display);
+            }}
+          />
+          <Segmented
+            label="Canonical moves"
+            options={[
+              [true, "Show"],
+              [false, "Hide"],
+            ]}
+            value={showCanonical}
+            onChange={(show) => {
+              setShowCanonical(show);
+              saveShowCanonical(show);
+            }}
+          />
+        </MoreSettings>
       </section>
     </main>
   );

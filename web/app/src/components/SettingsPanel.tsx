@@ -1,4 +1,5 @@
 // Rarely-changed settings, at the end of the settings under the board, hidden until opened
+import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { Segmented, type Perspective } from "./AnalysisPanel";
 import type { Player } from "../game/state";
@@ -38,6 +39,8 @@ interface MoreSettingsProps {
   toMove: Player;
   engineTimeLimit: EngineTimeLimit;
   onEngineTimeLimit: (limit: EngineTimeLimit) => void;
+  // Further settings rows, shown first
+  children?: ComponentChildren;
 }
 
 // Rendered inside the .controls grid, so that its rows line up with the other settings
@@ -52,6 +55,7 @@ export function MoreSettings(props: MoreSettingsProps) {
       </div>
       {open && (
         <>
+        {props.children}
         <Segmented
           label="Evaluation values"
           options={[

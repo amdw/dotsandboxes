@@ -42,6 +42,10 @@ interface BoardProps {
   canonical?: Set<string>;
   // Coins which the highlighted canonical moves would capture
   canonicalCoins?: [number, number][];
+  // Whether a highlighted canonical move is under the pointer (or has keyboard focus), in
+  // this part or another: playing it plays them all, so they're all previewed together
+  canonicalPreview?: boolean;
+  onCanonicalHover?: (hovering: boolean) => void;
   // voids[y][x]: cells which aren't coins, just padding (see GameState.voids)
   voids?: boolean[][] | null;
 }
@@ -148,7 +152,7 @@ function GroundArrow({ ends, class: cls }: { ends: [Point, Point]; class: string
   return <polyline class={cls} points={`${back(1)} ${x2},${y2} ${back(-1)}`} />;
 }
 
-export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = null, lastMover = null, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [] }: BoardProps) {
+export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = null, lastMover = null, interactive, onPlay, onCycleOwner, margins, width: cssWidth, labels, voids, canonical, canonicalCoins = [], canonicalPreview = false, onCanonicalHover }: BoardProps) {
   // Cells off the board count as voids, so that lines and dots bordering only voids are hidden
   const isVoid = (x: number, y: number) => x < 0 || y < 0 || x >= data.width || y >= data.height || !!voids?.[y][x];
   const lineBordersOnlyVoids = (line: Line) =>
@@ -169,9 +173,19 @@ export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = 
   // The move under the pointer (or with keyboard focus), and the coins it would capture.
   // These are previewed in separate layers (under the drawn lines in the dots-and-boxes
   // view, so the preview doesn't cover them), so this is tracked in state rather than CSS.
+  // A highlighted canonical move previews the whole sequence of them, which it plays.
   const [hovered, setHovered] = useState<Line | null>(null);
-  const unhover = (line: Line) => setHovered((h) => (sameLine(h, line) ? null : h));
-  const previewCoins = interactive && hovered && isStringPresent(data, hovered) ? coinsCapturedBy(data, hovered) : [];
+  const isCanonical = (line: Line) => !!canonical?.has(lineKey(line));
+  const hover = (line: Line) => {
+    setHovered(line);
+    if (isCanonical(line)) onCanonicalHover?.(true);
+  };
+  const unhover = (line: Line) => {
+    setHovered((h) => (sameLine(h, line) ? null : h));
+    if (isCanonical(line)) onCanonicalHover?.(false);
+  };
+  const previewingCanonical = interactive && canonicalPreview;
+  const previewCoins = previewingCanonical ? canonicalCoins : interactive && hovered && isStringPresent(data, hovered) ? coinsCapturedBy(data, hovered) : [];
   const willCapture = (x: number, y: number) => previewCoins.some(([px, py]) => px === x && py === y);
 
   const moveTargets = interactive
@@ -188,15 +202,15 @@ export function Board({ data, part, owners, view, toMove, lastMove, lastBadge = 
           return (
             <g
               key={`m${line.orientation}${line.x},${line.y}`}
-              class="move"
+              class={previewingCanonical && isCanonical(line) ? "move previewing" : "move"}
               role="button"
               tabIndex={0}
               aria-label={lineLabel(line, view)}
               onClick={play}
               onKeyDown={onKeyDown}
-              onPointerEnter={() => setHovered(line)}
+              onPointerEnter={() => hover(line)}
               onPointerLeave={() => unhover(line)}
-              onFocus={() => setHovered(line)}
+              onFocus={() => hover(line)}
               onBlur={() => unhover(line)}
             >
               <Segment ends={ends(line)} class="hit" />
