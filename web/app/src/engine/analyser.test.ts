@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Analyser, CancelledError, TimeLimitError, type AnalysisRequest, type AnalysisResponse, type Progress, type WorkerMessage } from "./analyser";
+import { addProgress, Analyser, CancelledError, TimeLimitError, type AnalysisRequest, type AnalysisResponse, type Progress, type WorkerMessage } from "./analyser";
 import type { PositionData } from "./types";
 
 // A stand-in for the analysis worker, recording the messages sent to it, and replying as told
@@ -102,5 +102,13 @@ describe("Analyser", () => {
     expect(worker.terminated).toBe(false);
     void analyser.run("evaluate", position);
     expect(FakeWorker.created).toHaveLength(1);
+  });
+});
+
+describe("addProgress", () => {
+  it("adds up the work of both analyses, with the cache as it is after the later one", () => {
+    const earlier = { positions: 1000, cached: 900, capacity: 2000, forgotten: 100 };
+    const later = { positions: 500, cached: 1200, capacity: 2000, forgotten: 50 };
+    expect(addProgress(earlier, later)).toEqual({ positions: 1500, cached: 1200, capacity: 2000, forgotten: 150 });
   });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { Analyser, CancelledError, TimeLimitError, type Progress } from "./engine/analyser";
+import { addProgress, Analyser, CancelledError, TimeLimitError, type Progress } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
 import { AnalysisPanel, AnalysisProgress, elapsedText, progressText, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
@@ -169,6 +169,16 @@ function NimstringValueText({ value }: { value: NimstringValue }) {
   return <span class={text === LOONY ? "loony" : undefined}>{text}</span>;
 }
 
+// The engine having run out of time thinking about a position (see App)
+interface TimedOut {
+  key: string;
+  // Its time limit
+  seconds: number;
+  // How long it had been thinking about the position, and its progress, in all
+  elapsedMs: number;
+  progress?: Progress;
+}
+
 export function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [name, setName] = useState("position");
@@ -180,9 +190,13 @@ export function App() {
   // through the game, so as not to overwrite the moves after the position shown)
   const [engineSides, setEngineSides] = useState<Record<Player, boolean>>({ A: false, B: false });
   const [paused, setPaused] = useState(false);
-  // The position (by positionKey) the engine last ran out of time on, and its time limit then:
-  // while it's paused there, a message says so, with a button to resume
-  const [timedOut, setTimedOut] = useState<{ key: string; seconds: number } | null>(null);
+  // The position (by positionKey) the engine last ran out of time on, its time limit then, and
+  // how long it had been thinking about it (in ms) and its progress: while it's paused there, a
+  // message says so, with a button to resume
+  const [timedOut, setTimedOut] = useState<TimedOut | null>(null);
+  // When the engine resumes after running out of time, so its next analysis of that position
+  // shows the time and progress so far, carrying on from them
+  const resumingFrom = useRef<TimedOut | null>(null);
   // How long the engine may think about a move before giving up (and pausing)
   const [engineTimeLimit, setEngineTimeLimit] = useState(loadEngineTimeLimit);
   // Whether to highlight canonical moves (captures which can be made without loss)
@@ -291,16 +305,24 @@ export function App() {
   // A full analysis (shown in progress, with Cancel), however long it takes, or for the
   // engine's move, until its time limit. If it fails or runs out of time, the engine pauses if
   // it was waiting for it, rather than trying again (and again).
-  const analyse = (kind: AnalysisKind, position: PositionData, key: string) => {
+  // An analysis carrying on from an earlier one which ran out of time starts from its time and
+  // progress.
+  const analyse = (kind: AnalysisKind, position: PositionData, key: string, carryOn?: TimedOut) => {
     const forEngine = engineActive;
     const timeLimit = forEngine ? timeLimitSeconds(engineTimeLimit) : undefined;
     const a = (analyser.current ??= new Analyser());
-    const start = performance.now();
-    setRunning({ kind, key, start });
-    setNow(start);
+    const startedAt = performance.now();
+    const start = startedAt - (carryOn?.elapsedMs ?? 0);
+    let progress = carryOn?.progress;
+    setRunning({ kind, key, start, progress });
+    setNow(startedAt);
     a.run(kind, position, {
       timeLimit,
-      onProgress: (progress) => setRunning((r) => (r && r.key === key && r.kind === kind ? { ...r, progress } : r)),
+      onProgress: (p) => {
+        progress = carryOn?.progress ? addProgress(carryOn.progress, p) : p;
+        const latest = progress;
+        setRunning((r) => (r && r.key === key && r.kind === kind ? { ...r, progress: latest } : r));
+      },
     })
       .then((result) => {
         storeResult(key, kind, result!, start);
@@ -308,7 +330,7 @@ export function App() {
       })
       .catch((e: unknown) => {
         if (e instanceof TimeLimitError) {
-          setTimedOut({ key, seconds: e.seconds });
+          setTimedOut({ key, seconds: e.seconds, elapsedMs: performance.now() - start, progress });
           setRunning(null);
           setPaused(true);
         } else if (!(e instanceof CancelledError)) {
@@ -326,7 +348,11 @@ export function App() {
     if (!engineActive || !shownPosition || !shownKey) return;
     const evaluation = results.get(shownKey)?.evaluate;
     if (!evaluation) {
-      if (!running) analyse("evaluate", shownPosition, shownKey);
+      if (!running) {
+        const carryOn = resumingFrom.current?.key === shownKey ? resumingFrom.current : undefined;
+        resumingFrom.current = null;
+        analyse("evaluate", shownPosition, shownKey, carryOn);
+      }
       return;
     }
     const timer = setTimeout(() => {
@@ -448,6 +474,8 @@ export function App() {
 
   // Let the engine carry on (after being paused, or running out of time)
   const resume = () => {
+    // (If it ran out of time on the position shown, it carries on from where it got to)
+    resumingFrom.current = timedOut?.key === key ? timedOut : null;
     setPaused(false);
     setError(null);
     setTimedOut(null);
