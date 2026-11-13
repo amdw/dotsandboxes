@@ -779,12 +779,6 @@ button.part-chip {
 }
 
 
-button.canonical-play {
-  border-color: var(--canonical);
-  color: var(--canonical);
-}
-
-
 /* Canonical moves (captures which can be made without loss), when highlighted */
 .board .canonical-box {
   fill: var(--canonical-soft);

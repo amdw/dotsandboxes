@@ -8,7 +8,7 @@ import { ConfirmPopover } from "./components/ConfirmPopover";
 import { DEFAULT_ENGINE_TIME_LIMIT, formatTimeLimit, isEngineTimeLimit, MoreSettings, timeLimitSeconds, type EngineTimeLimit } from "./components/SettingsPanel";
 import { ExportPanel, ImportPanel, NewGamePanel } from "./components/SetupPanels";
 import { chooseEngineMove, evaluationLabels, judgeMove, formatNimstring, lineKeyOf, LOONY, nimstringLabels, partValues, positionKey, type AnalysisKind, type MoveLabels } from "./game/analysis";
-import { isCoinCaptured, lineToMove, moveToLine, type Line } from "./game/lines";
+import { isCoinCaptured, lineKey, lineToMove, moveToLine, type Line } from "./game/lines";
 import { decodeGame, encodeGame } from "./game/share";
 import { canonicalSequence, current, goTo, isolatePart, newGameState, nextOwner, other, playCanonicalMoves, playMove, restart, startFromCurrent, startSplit, withStart, type GameState, type Player } from "./game/state";
 
@@ -522,15 +522,10 @@ export function App() {
     setRunning(null);
   };
 
-  // Canonical moves, when highlighted: the whole sequence of them which can be played from here
+  // Canonical moves, when highlighted: the whole sequence of them which can be played from
+  // here. Clicking any of them plays them all (see play).
   const canonicalPlan = showCanonical && !snap.gameOver ? canonicalSequence(snap.position, engine.canonicalMoves, engine.makeMove) : { moves: [], captured: [] };
-  const canonicalMoves = canonicalPlan.moves;
-  const canonical = new Set(canonicalMoves.map(lineKeyOf));
-  const playCanonical = () =>
-    attempt(() => {
-      setGame(playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove));
-      setPaused(false);
-    });
+  const canonical = new Set(canonicalPlan.moves.map(lineKeyOf));
 
   // The position split into its independent components, if that would give more parts
   const split = engine.split(snap.position);
@@ -580,9 +575,11 @@ export function App() {
       setPanel(null);
     });
 
+  // Playing a highlighted canonical move plays the whole sequence of them: it's assumed that
+  // whoever highlights them wants to play them
   const play = (line: Line) =>
     attempt(() => {
-      setGame(playMove(game, lineToMove(line), engine.makeMove));
+      setGame(canonical.has(lineKey(line)) ? playCanonicalMoves(game, engine.canonicalMoves, engine.makeMove) : playMove(game, lineToMove(line), engine.makeMove));
       setPaused(false);
     });
 
@@ -916,13 +913,7 @@ export function App() {
               setShowCanonical(show);
               saveShowCanonical(show);
             }}
-          >
-            {canonicalMoves.length > 0 && (
-              <button type="button" class="canonical-play" disabled={engineActive} onClick={playCanonical}>
-                Play canonical moves
-              </button>
-            )}
-          </Segmented>
+          />
         </MoreSettings>
       </section>
     </main>
