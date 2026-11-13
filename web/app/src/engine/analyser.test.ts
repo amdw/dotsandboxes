@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Analyser, CancelledError, TimeLimitError, type AnalysisRequest, type AnalysisResponse, type WorkerMessage } from "./analyser";
+import { Analyser, CancelledError, TimeLimitError, type AnalysisRequest, type AnalysisResponse, type Progress, type WorkerMessage } from "./analyser";
 import type { PositionData } from "./types";
 
 // A stand-in for the analysis worker, recording the messages sent to it, and replying as told
@@ -42,14 +42,15 @@ describe("Analyser", () => {
 
   it("passes on results and progress", async () => {
     const analyser = new Analyser();
-    const progress: number[] = [];
+    const progress: Progress[] = [];
     const result = analyser.run("evaluate", position, { onProgress: (p) => progress.push(p) });
     const worker = FakeWorker.created[0];
     const { id } = worker.requests()[0];
-    worker.reply({ type: "progress", id, positions: 1000 });
+    const update = { positions: 1000, cached: 800, capacity: 2000, forgotten: 200 };
+    worker.reply({ type: "progress", id, progress: update });
     worker.reply({ type: "result", id, ok: true, result: null });
     await expect(result).resolves.toBeNull();
-    expect(progress).toEqual([1000]);
+    expect(progress).toEqual([update]);
   });
 
   it("passes on the time limit, and reports running out of time", async () => {

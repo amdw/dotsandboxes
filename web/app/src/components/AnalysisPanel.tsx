@@ -2,6 +2,7 @@
 // and showing progress (with cancellation) while they're calculated
 import type { ComponentChildren } from "preact";
 import type { AnalysisKind } from "../game/analysis";
+import type { Progress } from "../engine/analyser";
 
 // What the board shows on the legal moves
 export type BoardValues = "evaluation" | "nimstring" | "off";
@@ -18,7 +19,7 @@ export interface Timed<T> {
 }
 
 interface AnalysisPanelProps {
-  running: { kind: AnalysisKind; seconds: number; positions?: number } | null;
+  running: { kind: AnalysisKind; seconds: number; progress?: Progress } | null;
   // Whether the analysis running is the engine thinking about its move, or checking the
   // last move (both of which show their progress elsewhere)
   engineThinking: boolean;
@@ -56,25 +57,42 @@ export function Segmented<T extends string | boolean>({ label, options, value, o
   );
 }
 
-// How long an analysis has taken, and how many positions it has analysed, e.g.
-// "3.2 s · 1.4M positions"
-export function progressText(seconds: number, positions?: number): string {
-  const time = `${seconds.toFixed(1)} s`;
-  if (!positions) return time;
-  const count = positions >= 1e6 ? `${(positions / 1e6).toFixed(1)}M` : positions >= 1e3 ? `${Math.round(positions / 1e3)}k` : String(positions);
-  return `${time} · ${count} positions`;
+// A count of positions, e.g. "1.4M"
+function count(n: number): string {
+  return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n);
 }
 
-// Progress of an analysis, with a Cancel button: shown in the .controls grid under the
-// option which started it
-export function AnalysisProgress({ label, seconds, positions, onCancel }: { label: string; seconds: number; positions?: number; onCancel: () => void }) {
+// How long an analysis has taken, e.g. "3.2 s"
+export function elapsedText(seconds: number): string {
+  return `${seconds.toFixed(1)} s`;
+}
+
+// How many positions an analysis has calculated, and how full the engine's cache is, e.g.
+// "1.4M positions · cache 12% full", or once the analysis has had to forget values to make
+// room, how many, e.g. "21.0M positions · cache full, 7.3M forgotten". Null until there is
+// any progress to show.
+export function progressText(progress?: Progress): string | null {
+  if (!progress?.positions) return null;
+  const cache =
+    progress.forgotten > 0 ? `cache full, ${count(progress.forgotten)} forgotten` : `cache ${Math.floor((100 * progress.cached) / progress.capacity)}% full`;
+  return `${count(progress.positions)} positions · ${cache}`;
+}
+
+// Progress of an analysis: the time so far, with a Cancel button, then (more quietly) the
+// positions calculated and the state of the cache. Shown in the .controls grid under the
+// option which started it.
+export function AnalysisProgress({ label, seconds, progress, onCancel }: { label: string; seconds: number; progress?: Progress; onCancel: () => void }) {
+  const detail = progressText(progress);
   return (
-    <p class="running" role="status">
-      {label}… {progressText(seconds, positions)}
-      <button type="button" class="quiet small" onClick={onCancel}>
-        Cancel
-      </button>
-    </p>
+    <div class="running" role="status">
+      <div>
+        {label}… {elapsedText(seconds)}
+        <button type="button" class="quiet small" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      {detail && <div class="progress-detail">{detail}</div>}
+    </div>
   );
 }
 
@@ -96,7 +114,7 @@ export function AnalysisPanel(props: AnalysisPanelProps) {
 
       {/* (When the engine is thinking about its move, the progress is shown under "Engine plays" instead) */}
       {running && !props.engineThinking && !props.checkingMove && (
-        <AnalysisProgress label={running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"} seconds={running.seconds} positions={running.positions} onCancel={props.onCancel} />
+        <AnalysisProgress label={running.kind === "evaluate" ? "Evaluating" : "Calculating Nimber values"} seconds={running.seconds} progress={running.progress} onCancel={props.onCancel} />
       )}
     </>
   );

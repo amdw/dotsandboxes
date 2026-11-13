@@ -18,6 +18,19 @@ export interface AnalysisRequest {
   timeLimit?: number;
 }
 
+// A full analysis's progress, and the state of the engine's cache, which it keeps between
+// analyses: when full, it forgets the values cheapest to calculate again, which may then need
+// calculating again
+export interface Progress {
+  // Positions this analysis has calculated so far
+  positions: number;
+  // Positions whose values are cached now, and the most which can be
+  cached: number;
+  capacity: number;
+  // Positions whose values this analysis has forgotten to make room for others
+  forgotten: number;
+}
+
 export type WorkerMessage = AnalysisRequest | { type: "cancel"; id: number };
 
 type Result = Evaluation | NimstringAnalysis | null;
@@ -26,8 +39,7 @@ export type AnalysisResponse =
   | { type: "result"; id: number; ok: true; result: Result }
   // fatal if the engine crashed, so the worker can't be used again
   | { type: "result"; id: number; ok: false; error: string; fatal?: boolean }
-  // A full analysis's progress: the number of positions it has analysed so far
-  | { type: "progress"; id: number; positions: number };
+  | { type: "progress"; id: number; progress: Progress };
 
 export class CancelledError extends Error {
   constructor() {
@@ -47,7 +59,7 @@ interface Pending {
   timeLimit?: number;
   resolve: (r: Result) => void;
   reject: (e: Error) => void;
-  onProgress?: (positions: number) => void;
+  onProgress?: (progress: Progress) => void;
 }
 
 export class Analyser {
@@ -68,7 +80,7 @@ export class Analyser {
         const pending = this.pending.get(response.id);
         if (!pending) return;
         if (response.type === "progress") {
-          pending.onProgress?.(response.positions);
+          pending.onProgress?.(response.progress);
           return;
         }
         this.pending.delete(response.id);
@@ -92,7 +104,7 @@ export class Analyser {
     for (const p of pending) p.reject(new Error(message));
   }
 
-  run(kind: AnalysisKind, position: PositionData, options: { maxNew?: number; timeLimit?: number; onProgress?: (positions: number) => void } = {}): Promise<Result> {
+  run(kind: AnalysisKind, position: PositionData, options: { maxNew?: number; timeLimit?: number; onProgress?: (progress: Progress) => void } = {}): Promise<Result> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { full: options.maxNew === undefined, timeLimit: options.timeLimit, resolve, reject, onProgress: options.onProgress });

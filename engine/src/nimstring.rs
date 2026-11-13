@@ -284,6 +284,17 @@ impl NimstringCalculator {
         self.cache.added()
     }
 
+    // Most positions whose values are cached (see with_max_cached)
+    pub fn max_cached(&self) -> usize {
+        self.cache.max_len()
+    }
+
+    // Number of positions whose values have been forgotten to make room for others, since
+    // the calculator was created
+    pub fn positions_forgotten(&self) -> u64 {
+        self.cache.forgotten()
+    }
+
     // Forget all cached values, freeing their memory
     pub fn clear(&mut self) {
         self.cache.clear();
@@ -613,6 +624,9 @@ mod tests {
             assert!(calculator.cached_positions() <= 20);
         }
         assert!(calculator.positions_calculated() > 20);
+        // Each position calculated is either still cached or has been forgotten
+        assert_eq!(20, calculator.max_cached());
+        assert_eq!(calculator.positions_calculated(), calculator.cached_positions() as u64 + calculator.positions_forgotten());
     }
 
     #[test]

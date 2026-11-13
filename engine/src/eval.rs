@@ -326,6 +326,17 @@ impl<M: Copy + PartialEq> Evaluator<M> {
         self.cache.added()
     }
 
+    // Most positions whose values are cached (see with_max_cached)
+    pub fn max_cached(&self) -> usize {
+        self.cache.max_len()
+    }
+
+    // Number of positions whose values have been forgotten to make room for others, since
+    // the evaluator was created
+    pub fn positions_forgotten(&self) -> u64 {
+        self.cache.forgotten()
+    }
+
     // Forget all cached values, freeing their memory
     pub fn clear(&mut self) {
         self.cache.clear();
@@ -897,6 +908,9 @@ mod test {
         assert_eq!(expected, result);
         assert!(chunks > 1);
         assert!(evaluator.positions_evaluated() > evaluator.cached_positions() as u64);
+        // Each position evaluated is either still cached or has been forgotten
+        assert_eq!(1000, evaluator.max_cached());
+        assert_eq!(evaluator.positions_evaluated(), evaluator.cached_positions() as u64 + evaluator.positions_forgotten());
     }
 
     #[test]

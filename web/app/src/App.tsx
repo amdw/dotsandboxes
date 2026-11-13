@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { Analyser, CancelledError, TimeLimitError } from "./engine/analyser";
+import { Analyser, CancelledError, TimeLimitError, type Progress } from "./engine/analyser";
 import { engine, errorMessage, loadEngine } from "./engine/engine";
 import type { CPosMove, Evaluation, NimstringAnalysis, NimstringValue, PositionData } from "./engine/types";
-import { AnalysisPanel, AnalysisProgress, progressText, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
+import { AnalysisPanel, AnalysisProgress, elapsedText, progressText, Segmented, type BoardValues, type Perspective, type Timed } from "./components/AnalysisPanel";
 import { Board, boardMargins, naturalWidth, type LastMoveBadge, type View } from "./components/Board";
 import { ConfirmPopover } from "./components/ConfirmPopover";
 import { DEFAULT_ENGINE_TIME_LIMIT, formatTimeLimit, isEngineTimeLimit, MoreSettings, timeLimitSeconds, type EngineTimeLimit } from "./components/SettingsPanel";
@@ -196,8 +196,8 @@ export function App() {
   // Engine analysis: results are cached per position (keyed by positionKey)
   const analyser = useRef<Analyser | null>(null);
   const [results, setResults] = useState<Map<string, { evaluate?: Timed<Evaluation>; nimstring?: Timed<NimstringAnalysis> }>>(new Map());
-  // The full analysis running, if any, and its progress (the number of positions analysed)
-  const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number; positions?: number } | null>(null);
+  // The full analysis running, if any, and its progress
+  const [running, setRunning] = useState<{ kind: AnalysisKind; key: string; start: number; progress?: Progress } | null>(null);
   const [now, setNow] = useState(0);
   // Values are only calculated when chosen, since analysing larger positions takes a long
   // time, so this is off unless the chosen values are available for the position shown
@@ -297,7 +297,7 @@ export function App() {
     setNow(start);
     a.run(kind, position, {
       timeLimit,
-      onProgress: (positions) => setRunning((r) => (r && r.key === key && r.kind === kind ? { ...r, positions } : r)),
+      onProgress: (progress) => setRunning((r) => (r && r.key === key && r.kind === kind ? { ...r, progress } : r)),
     })
       .then((result) => {
         storeResult(key, kind, result!, start);
@@ -777,8 +777,9 @@ export function App() {
             </button>
           )}
           {checkingMove && running && (
-            <span class="checking">
-              Checking… {progressText(Math.max(0, now - running.start) / 1000, running.positions)}
+            // (Just the time, to keep the history bar on one line: the rest is in the tooltip)
+            <span class="checking" title={progressText(running.progress) ?? undefined}>
+              Checking… {elapsedText(Math.max(0, now - running.start) / 1000)}
               <button type="button" class="quiet small" onClick={cancelCheck}>
                 Cancel
               </button>
@@ -828,7 +829,7 @@ export function App() {
           onChange={(v) => chooseEngineSides({ A: v === "A" || v === "both", B: v === "B" || v === "both" })}
         />
         {running && engineActive && (
-          <AnalysisProgress label={`${snap.toMove} (engine) thinking`} seconds={Math.max(0, now - running.start) / 1000} positions={running.positions} onCancel={cancelAnalysis} />
+          <AnalysisProgress label={`${snap.toMove} (engine) thinking`} seconds={Math.max(0, now - running.start) / 1000} progress={running.progress} onCancel={cancelAnalysis} />
         )}
         <Segmented
           label="Canonical moves"
@@ -849,7 +850,7 @@ export function App() {
           )}
         </Segmented>
         <AnalysisPanel
-        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000, positions: running.positions }}
+        running={running && { kind: running.kind, seconds: Math.max(0, now - running.start) / 1000, progress: running.progress }}
         engineThinking={engineActive}
         checkingMove={checkingMove}
         boardValues={boardValues}

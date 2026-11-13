@@ -837,6 +837,10 @@ button.canonical-play {
   font-size: 0.9rem;
 }
 
+.running .progress-detail {
+  font-size: 0.8rem;
+}
+
 /* The toggle for the rarely-changed settings, aligned with the controls, which open below it */
 .controls .more-settings {
   grid-column: 2;
