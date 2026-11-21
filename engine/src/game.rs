@@ -111,6 +111,8 @@ pub trait Position<M> {
     fn undo_move(&mut self, m: M);
     // Indicate whether the game is over (i.e. whether all strings have been cut).
     fn is_end_of_game(&self) -> bool;
+    // The number of coins not yet captured (those with any strings left)
+    fn uncaptured_coins(&self) -> usize;
     // Compute all possible legal moves in the position.
     fn legal_moves(&self) -> Vec<M>;
     // The legal moves, leaving out any which would give the same position as another one
@@ -440,6 +442,10 @@ impl Position<Move> for SimplePosition {
         !self.strings.iter().any(|&b| b)
     }
 
+    fn uncaptured_coins(self: &SimplePosition) -> usize {
+        self.valencies.iter().filter(|&&v| v > 0).count()
+    }
+
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
         let mut result: Vec<Move> = Vec::with_capacity(self.legal_move_count());
         let mut push_if_legal = |m| if self.is_legal_move(m) { result.push(m) };
@@ -713,6 +719,10 @@ impl Position<CPosMove> for CompoundPosition {
 
     fn is_end_of_game(self: &CompoundPosition) -> bool {
         self.parts.iter().all(|p| p.is_end_of_game())
+    }
+
+    fn uncaptured_coins(self: &CompoundPosition) -> usize {
+        self.parts.iter().map(|p| p.uncaptured_coins()).sum()
     }
 
     fn legal_moves(self: &CompoundPosition) -> Vec<CPosMove> {
