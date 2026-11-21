@@ -104,6 +104,8 @@ pub trait Position<M> {
     // The moves which capture coins: one for each coin with a single string left, except
     // that a string joining two such coins (capturing both) is listed only once
     fn captures(&self) -> Vec<M>;
+    // Whether any move captures a coin (i.e. whether captures() is non-empty)
+    fn has_captures(&self) -> bool;
     // Make a given move on the board, and indicate the outcome.
     fn make_move(&mut self, m: M) -> MoveOutcome;
     // Undo a given move by putting the line back on the board.
@@ -203,8 +205,10 @@ pub struct SimplePosition {
     // The valency of each coin, at its coin_index: derived from the strings,
     // but kept up to date as strings are cut and restored, since it is needed so often
     valencies: Box<[u8]>,
-    // The number of coins with any strings left, likewise kept up to date
-    uncaptured: usize,
+    // The number of coins with any strings left, likewise kept up to date, and the number
+    // with exactly one string left, likewise (32 bits each, to keep positions small)
+    uncaptured: u32,
+    capturable: u32,
     zhash: ZHash,
 }
 
@@ -231,7 +235,8 @@ impl SimplePosition {
             height: height,
             strings: strings.into_boxed_slice(),
             valencies: vec![valency; width * height].into_boxed_slice(),
-            uncaptured: if init_string { width * height } else { 0 },
+            uncaptured: if init_string { (width * height) as u32 } else { 0 },
+            capturable: 0,
             zhash: zhash,
         }
     }
@@ -379,7 +384,8 @@ impl SimplePosition {
         let before = *v;
         if gained { *v += 1 } else { *v -= 1 }
         let after = *v;
-        self.uncaptured = self.uncaptured + (before == 0) as usize - (after == 0) as usize;
+        self.uncaptured = self.uncaptured + (before == 0) as u32 - (after == 0) as u32;
+        self.capturable = self.capturable + (after == 1) as u32 - (before == 1) as u32;
     }
 
     // Whether a move cuts a string between a coin and the ground when the coin has another
@@ -445,6 +451,10 @@ impl Position<Move> for SimplePosition {
         result
     }
 
+    fn has_captures(self: &SimplePosition) -> bool {
+        self.capturable > 0
+    }
+
     fn make_move(self: &mut SimplePosition, m: Move) -> MoveOutcome {
         if !self.is_legal_move(m) {
             panic!("Illegal move {}, pos:\n{}", m, self);
@@ -473,7 +483,7 @@ impl Position<Move> for SimplePosition {
     }
 
     fn uncaptured_coins(self: &SimplePosition) -> usize {
-        self.uncaptured
+        self.uncaptured as usize
     }
 
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
@@ -899,6 +909,10 @@ impl Position<CPosMove> for CompoundPosition {
         self.parts.iter().enumerate()
             .flat_map(|(i, p)| p.captures().into_iter().map(move |m| CPosMove{ part: i, m: m }))
             .collect()
+    }
+
+    fn has_captures(self: &CompoundPosition) -> bool {
+        self.parts.iter().any(|p| p.has_captures())
     }
 
     fn make_move(self: &mut CompoundPosition, m: CPosMove) -> MoveOutcome {
@@ -1720,6 +1734,7 @@ mod tests {
             .filter(|&(x, y)| count_strings(pos, x, y) > 0).count();
         assert_eq!(uncaptured, pos.uncaptured_coins(), "{}", pos);
         assert_eq!(uncaptured == 0, pos.is_end_of_game(), "{}", pos);
+        assert_eq!(!pos.captures().is_empty(), pos.has_captures(), "{}", pos);
     }
 
     #[test]

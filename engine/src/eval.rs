@@ -294,6 +294,20 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 // Evaluate a position within the window (alpha, beta) (see eval_moves), using the cache
 fn eval_cache<M, P>(pos: &mut P, mut alpha: isize, mut beta: isize, search: &mut Search) -> (isize, Option<M>)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
+    // A position with a canonical capture (one which can be made without loss) is worth
+    // that capture plus the position after it, so it has no need of a cache entry of its
+    // own: the cache is kept for positions where there is something to decide. That leaves
+    // room for several times as many of those, which matters most when the cache is full.
+    let mut moves_found = None;
+    if pos.has_captures() {
+        let (moves, capture_or_ddeal) = moves_to_consider(pos);
+        if !capture_or_ddeal {
+            let m = moves[0];
+            return (eval_move(pos, m, alpha, beta, search), Some(m));
+        }
+        moves_found = Some(moves);
+    }
+
     // The players share the remaining coins between them, so the value (the difference
     // between their shares) is no more than the number of coins either way, and is odd or
     // even as that number is.
@@ -328,7 +342,11 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     }
     debug_assert!(alpha < beta);
 
-    let (mut moves, capture_or_ddeal) = moves_to_consider(pos);
+    let capture_or_ddeal = moves_found.is_some();
+    let mut moves = match moves_found {
+        Some(moves) => moves,
+        None => moves_to_consider(pos).0,
+    };
     if moves.is_empty() {
         return (0, None);
     }
