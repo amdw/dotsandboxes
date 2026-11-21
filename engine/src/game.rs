@@ -209,6 +209,11 @@ pub struct SimplePosition {
     // with exactly one string left, likewise (32 bits each, to keep positions small)
     uncaptured: u32,
     capturable: u32,
+    // Which coins have exactly one string left (a bit for each coin, at its coin_index),
+    // likewise, on boards of up to 64 coins (which covers any board likely to be played; on
+    // larger ones this is 0). A single word, rather than a heap-allocated set, keeps
+    // positions cheap to create and copy, as the Nimstring calculator does often.
+    capturable_bits: u64,
     zhash: ZHash,
 }
 
@@ -237,6 +242,7 @@ impl SimplePosition {
             valencies: vec![valency; width * height].into_boxed_slice(),
             uncaptured: if init_string { (width * height) as u32 } else { 0 },
             capturable: 0,
+            capturable_bits: 0,
             zhash: zhash,
         }
     }
@@ -385,7 +391,30 @@ impl SimplePosition {
         if gained { *v += 1 } else { *v -= 1 }
         let after = *v;
         self.uncaptured = self.uncaptured + (before == 0) as u32 - (after == 0) as u32;
-        self.capturable = self.capturable + (after == 1) as u32 - (before == 1) as u32;
+        if (before == 1) != (after == 1) {
+            self.capturable = self.capturable + (after == 1) as u32 - (before == 1) as u32;
+            if self.valencies.len() <= 64 {
+                self.capturable_bits ^= 1 << coin_index;
+            }
+        }
+    }
+
+    // The coins with exactly one string left, in order of coin_index (so by x, then by y)
+    pub fn capturable_coins(self: &SimplePosition) -> impl Iterator<Item = (usize, usize)> + '_ {
+        // On boards too large for capturable_bits, find them from the valencies instead
+        let coins = self.valencies.len();
+        let mut bits = self.capturable_bits;
+        let from_bits = std::iter::from_fn(move || {
+            if bits == 0 {
+                return None;
+            }
+            let coin_index = bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            Some(coin_index)
+        });
+        let from_valencies = (if coins > 64 { 0..coins } else { 0..0 })
+            .filter(move |&coin_index| self.valencies[coin_index] == 1);
+        from_bits.chain(from_valencies).map(move |coin_index| (coin_index / self.height, coin_index % self.height))
     }
 
     // Whether a move cuts a string between a coin and the ground when the coin has another
@@ -430,23 +459,18 @@ impl Position<Move> for SimplePosition {
     }
 
     fn captures(self: &SimplePosition) -> Vec<Move> {
-        let mut result = Vec::new();
-        for x in 0..self.width() {
-            for y in 0..self.height() {
-                if self.valency(x, y) != 1 {
+        let mut result = Vec::with_capacity(self.capturable as usize);
+        for (x, y) in self.capturable_coins() {
+            let side = Side::ALL.into_iter()
+                .find(|&s| self.is_legal_move(Move{x: x, y: y, side: s}))
+                .expect("Coin of valency 1 should have a string");
+            // A string to another capturable coin is listed from the first of the two
+            if let Some((nx, ny)) = self.offset(x, y, side) {
+                if self.valency(nx, ny) == 1 && (nx, ny) < (x, y) {
                     continue;
                 }
-                let side = Side::ALL.into_iter()
-                    .find(|&s| self.is_legal_move(Move{x: x, y: y, side: s}))
-                    .expect("Coin of valency 1 should have a string");
-                // A string to another capturable coin is listed from the first of the two
-                if let Some((nx, ny)) = self.offset(x, y, side) {
-                    if self.valency(nx, ny) == 1 && (nx, ny) < (x, y) {
-                        continue;
-                    }
-                }
-                result.push(Move{x: x, y: y, side: side});
             }
+            result.push(Move{x: x, y: y, side: side});
         }
         result
     }
@@ -1735,6 +1759,10 @@ mod tests {
         assert_eq!(uncaptured, pos.uncaptured_coins(), "{}", pos);
         assert_eq!(uncaptured == 0, pos.is_end_of_game(), "{}", pos);
         assert_eq!(!pos.captures().is_empty(), pos.has_captures(), "{}", pos);
+        // And which coins are capturable
+        let capturable: Vec<(usize, usize)> = (0..pos.width()).flat_map(|x| (0..pos.height()).map(move |y| (x, y)))
+            .filter(|&(x, y)| count_strings(pos, x, y) == 1).collect();
+        assert_eq!(capturable, pos.capturable_coins().collect::<Vec<_>>(), "{}", pos);
     }
 
     #[test]
@@ -1742,7 +1770,9 @@ mod tests {
         let mut seed: [u8; 32] = [0; 32];
         seed[0] = 5;
         let mut r: StdRng = SeedableRng::from_seed(seed);
-        for (w, h) in [(1, 1), (1, 3), (3, 1), (2, 2), (3, 4)] {
+        // (Including boards of exactly 64 coins and of more, which keep track of the
+        // capturable coins differently)
+        for (w, h) in [(1, 1), (1, 3), (3, 1), (2, 2), (3, 4), (8, 8), (9, 8)] {
             assert_valencies(&SimplePosition::new_end_game(w, h));
             let mut pos = SimplePosition::new_game(w, h);
             assert_valencies(&pos);

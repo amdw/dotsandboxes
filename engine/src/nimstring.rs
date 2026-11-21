@@ -62,26 +62,21 @@ pub trait NimstringPosition<M>: SplittablePosition<M> {
 
 impl NimstringPosition<Move> for SimplePosition {
     fn is_loony(self: &SimplePosition) -> bool {
-        for x in 0..self.width() {
-            for y in 0..self.height() {
-                if self.valency(x, y) != 1 {
+        for (x, y) in self.capturable_coins() {
+            if let Some((neighbour_x, neighbour_y, side)) = connected_coin(self, x, y, Side::ALL) {
+                if self.valency(neighbour_x, neighbour_y) != 2 {
                     continue
                 }
-                if let Some((neighbour_x, neighbour_y, side)) = connected_coin(self, x, y, Side::ALL) {
-                    if self.valency(neighbour_x, neighbour_y) != 2 {
-                        continue
+                // We have found a capturable coin attached to a coin of valency 2 (o-o-?).
+                // This means the position is loony unless there is a valency-1 coin
+                // on the other side (o-o-o).
+                let far_sides = Side::all_except(side.opposite());
+                if let Some((far_x, far_y, _)) = connected_coin(self, neighbour_x, neighbour_y, far_sides) {
+                    if self.valency(far_x, far_y) == 1 {
+                        continue;
                     }
-                    // We have found a capturable coin attached to a coin of valency 2 (o-o-?).
-                    // This means the position is loony unless there is a valency-1 coin
-                    // on the other side (o-o-o).
-                    let far_sides = Side::all_except(side.opposite());
-                    if let Some((far_x, far_y, _)) = connected_coin(self, neighbour_x, neighbour_y, far_sides) {
-                        if self.valency(far_x, far_y) == 1 {
-                            continue;
-                        }
-                    }
-                    return true;
                 }
+                return true;
             }
         }
         false
