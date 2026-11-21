@@ -62,6 +62,9 @@ pub fn eval_benchmark(c: &mut Criterion) {
     slow_group.bench_function("Eval simple 2x5", |b| b.iter(|| eval::eval(&game::SimplePosition::new_game(2, 5))));
     let pos = middle_game_4x5();
     slow_group.bench_function("Eval middle game 4x5", |b| b.iter(|| eval::eval(&pos)));
+    // With a cache too small for the search (which needs about 3M entries), as for the
+    // searches on larger boards which fill the web app's cache
+    slow_group.bench_function("Eval middle game 4x5 small cache", |b| b.iter(|| eval::Evaluator::with_max_cached(300_000).eval(&pos)));
     slow_group.finish();
 }
 
