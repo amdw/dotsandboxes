@@ -138,11 +138,12 @@ pub trait Position<M> {
     // This makes moves more costly to make, so is only worth it for searches from a
     // symmetric position, which meet many pairs of symmetric positions.
     fn track_symmetries(&mut self);
-    // Convert a move to or from the form in which to cache it under canonical_hash, such
-    // that a move cached from one position can be read back as the corresponding move in
-    // any position with the same canonical hash.
-    fn to_canonical_move(&self, m: M) -> M;
-    fn from_canonical_move(&self, m: M) -> M;
+    // Convert a move to or from the compact form in which to cache it under canonical_hash,
+    // such that a move cached from one position can be read back as the corresponding move
+    // in any position with the same canonical hash. (Reading back something which isn't the
+    // compact form of a move on this board gives None.)
+    fn to_canonical_move(&self, m: M) -> u32;
+    fn from_canonical_move(&self, m: u32) -> Option<M>;
 }
 
 // Plain-data description of a SimplePosition, for exchange with other programs
@@ -509,20 +510,21 @@ impl Position<Move> for SimplePosition {
         self.zhash.track_symmetries(self.width, self.height, &self.strings);
     }
 
-    fn to_canonical_move(self: &SimplePosition, m: Move) -> Move {
-        if !self.zhash.tracking_symmetries() {
-            return m;
-        }
+    fn to_canonical_move(self: &SimplePosition, m: Move) -> u32 {
         let image = transform_move(self.width, self.height, self.zhash.canonical_symmetry(), m);
-        self.normalise_move(image).unwrap_or(m)
+        let side = Side::ALL.iter().position(|&s| s == image.side).unwrap();
+        ((image.x << 16) | (image.y << 2) | side) as u32
     }
 
-    fn from_canonical_move(self: &SimplePosition, m: Move) -> Move {
-        if !self.zhash.tracking_symmetries() || m.x >= self.width || m.y >= self.height {
-            return m;
+    fn from_canonical_move(self: &SimplePosition, m: u32) -> Option<Move> {
+        let image = Move{ x: (m >> 16) as usize, y: ((m >> 2) & 0x3fff) as usize, side: Side::ALL[(m & 3) as usize] };
+        if image.x >= self.width || image.y >= self.height {
+            return None;
         }
-        let original = untransform_move(self.width, self.height, self.zhash.canonical_symmetry(), m);
-        self.normalise_move(original).unwrap_or(m)
+        if !self.zhash.tracking_symmetries() {
+            return Some(image);
+        }
+        self.normalise_move(untransform_move(self.width, self.height, self.zhash.canonical_symmetry(), image))
     }
 }
 
@@ -949,15 +951,15 @@ impl Position<CPosMove> for CompoundPosition {
         }
     }
 
-    fn to_canonical_move(self: &CompoundPosition, m: CPosMove) -> CPosMove {
-        CPosMove{ part: m.part, m: self.parts[m.part].to_canonical_move(m.m) }
+    // The part's move, with the x coordinate and the part sharing its upper 16 bits
+    fn to_canonical_move(self: &CompoundPosition, m: CPosMove) -> u32 {
+        self.parts[m.part].to_canonical_move(m.m) | ((m.part as u32) << 24)
     }
 
-    fn from_canonical_move(self: &CompoundPosition, m: CPosMove) -> CPosMove {
-        match self.parts.get(m.part) {
-            Some(part) => CPosMove{ part: m.part, m: part.from_canonical_move(m.m) },
-            None => m,
-        }
+    fn from_canonical_move(self: &CompoundPosition, m: u32) -> Option<CPosMove> {
+        let part = (m >> 24) as usize;
+        let part_move = self.parts.get(part)?.from_canonical_move(m & 0xffffff)?;
+        Some(CPosMove{ part: part, m: part_move })
     }
 }
 
@@ -1382,7 +1384,7 @@ mod tests {
                     assert!(image.is_legal_move(image_move));
                     // (The move read back needn't be image_move itself, if the position has
                     // symmetries of its own, but it leads to an equivalent position)
-                    let read_back = image.from_canonical_move(pos.to_canonical_move(m));
+                    let read_back = image.from_canonical_move(pos.to_canonical_move(m)).unwrap();
                     assert!(image.is_legal_move(read_back));
                     pos.make_move(m);
                     image.make_move(read_back);

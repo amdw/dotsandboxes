@@ -22,6 +22,7 @@ use crate::nimstring::{self, NimstringPosition};
 use std::cmp;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::marker::PhantomData;
 
 pub trait EvaluablePosition<M> : NimstringPosition<M> {
     // Given a loony position and the capture, find the corresponding double-dealing move.
@@ -153,15 +154,22 @@ impl EvaluablePosition<CPosMove> for CompoundPosition {
 // it is exact or a bound, pays in this game: the same position is often reached with either
 // player to move, and so with very different windows (Barker and Korf, "Solving
 // Dots-And-Boxes", AAAI 2012).
+//
+// Entries are kept small (8 bytes), since the size of the cache is what limits the evaluation
+// of large positions: the move is in the compact form of Position::to_canonical_move, and
+// the bounds in a byte each, so positions with too many coins for that aren't cached (they
+// are far too large to evaluate anyway).
 #[derive(Clone, Copy)]
-struct CachedEvaluation<M> {
-    lower: i16,
-    upper: i16,
-    best_move: M,
+struct CachedEvaluation {
+    lower: i8,
+    upper: i8,
     work: u8,
+    best_move: u32,
 }
 
-impl<M: Copy> CacheValue for CachedEvaluation<M> {
+const MAX_CACHED_COINS: isize = i8::MAX as isize;
+
+impl CacheValue for CachedEvaluation {
     fn work_class(&self) -> u8 {
         self.work
     }
@@ -176,15 +184,14 @@ const INFINITY: isize = isize::MAX / 2;
 // values added to it (see Cache::added), beyond which the evaluation is abandoned (aborted).
 // Once aborted, the search unwinds without caching anything more, so every cached value (or
 // bound) is still correct.
-struct Search<'a, M> {
-    cache: &'a mut Cache<CachedEvaluation<M>>,
+struct Search<'a> {
+    cache: &'a mut Cache<CachedEvaluation>,
     limit: u64,
     aborted: bool,
 }
 
-impl<'a, M> Search<'a, M> {
-    fn new(cache: &'a mut Cache<CachedEvaluation<M>>, max_new: usize) -> Search<'a, M>
-    where M: Copy {
+impl<'a> Search<'a> {
+    fn new(cache: &'a mut Cache<CachedEvaluation>, max_new: usize) -> Search<'a> {
         let limit = cache.added().saturating_add(max_new as u64);
         Search{ cache: cache, limit: limit, aborted: false }
     }
@@ -193,7 +200,7 @@ impl<'a, M> Search<'a, M> {
 // Evaluate a position given a (non-empty) set of moves to consider, and the window (alpha,
 // beta). The result is exact if it is strictly inside the window; otherwise it is an upper
 // bound (at or below alpha) or a lower bound (at or above beta) on the value.
-fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, mut alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, M)
+fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, mut alpha: isize, beta: isize, search: &mut Search) -> (isize, M)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let mut value = -INFINITY;
     let mut best_move = moves[0];
@@ -216,7 +223,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 
 // Evaluate a single move within the window (alpha, beta): the coins it captures, plus or
 // minus the value of the resulting position depending on whether the same player moves again
-fn eval_move<M, P>(pos: &mut P, m: M, alpha: isize, beta: isize, search: &mut Search<M>) -> isize
+fn eval_move<M, P>(pos: &mut P, m: M, alpha: isize, beta: isize, search: &mut Search) -> isize
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let captures = pos.make_move(m).coins_captured as isize;
     let value = if captures > 0 {
@@ -283,7 +290,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 }
 
 // Evaluate a position within the window (alpha, beta) (see eval_moves), using the cache
-fn eval_cache<M, P>(pos: &mut P, mut alpha: isize, mut beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
+fn eval_cache<M, P>(pos: &mut P, mut alpha: isize, mut beta: isize, search: &mut Search) -> (isize, Option<M>)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
     // The players share the remaining coins between them, so the value (the difference
     // between their shares) is no more than the number of coins either way, and is odd or
@@ -298,7 +305,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     if let Some(e) = search.cache.get(key) {
         lower = e.lower as isize;
         upper = e.upper as isize;
-        cached_move = Some(pos.from_canonical_move(e.best_move));
+        cached_move = pos.from_canonical_move(e.best_move);
     }
     if lower >= beta || lower == upper {
         return (lower, cached_move);
@@ -349,7 +356,9 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     }
     debug_assert!(lower <= upper && same_parity(lower) && same_parity(upper));
     let work = cache::work_class(search.cache.added() - added_before + 1);
-    search.cache.insert(key, CachedEvaluation{ lower: lower as i16, upper: upper as i16, best_move: pos.to_canonical_move(best_move), work: work });
+    if coins <= MAX_CACHED_COINS {
+        search.cache.insert(key, CachedEvaluation{ lower: lower as i8, upper: upper as i8, work: work, best_move: pos.to_canonical_move(best_move) });
+    }
     (if value <= alpha { upper } else { lower }, Some(best_move))
 }
 
@@ -358,19 +367,21 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 // reachable from the next position were already explored when evaluating the previous one.
 // The value of a position depends only on the position, so the cache never goes stale.
 pub struct Evaluator<M> {
-    cache: Cache<CachedEvaluation<M>>,
+    cache: Cache<CachedEvaluation>,
+    // The cache holds moves in a compact form, not as values of the move type
+    moves: PhantomData<M>,
 }
 
 impl<M: Copy + PartialEq> Evaluator<M> {
     pub fn new() -> Evaluator<M> {
-        Evaluator{ cache: Cache::unbounded() }
+        Evaluator{ cache: Cache::unbounded(), moves: PhantomData }
     }
 
     // An evaluator caching the values of at most max_cached positions (see Cache::new). When
     // full, it forgets the values cheapest to calculate again, so evaluations still complete
     // however many positions they need, but take longer if they need many more than this.
     pub fn with_max_cached(max_cached: usize) -> Evaluator<M> {
-        Evaluator{ cache: Cache::new(max_cached) }
+        Evaluator{ cache: Cache::new(max_cached), moves: PhantomData }
     }
 
     // Number of positions whose values are cached
