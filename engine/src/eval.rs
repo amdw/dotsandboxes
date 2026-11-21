@@ -144,23 +144,20 @@ impl EvaluablePosition<CPosMove> for CompoundPosition {
 
 // Values are relative to the player to move, and searches are given a window (alpha, beta):
 // a value at or below alpha, or at or above beta, needn't be found exactly, since the player
-// (or the opponent) already has a better alternative elsewhere. So a cached value may be just
-// a bound on the position's value, which is enough when it is outside a later window.
-#[derive(Clone, Copy, PartialEq, Debug)]
-enum Bound {
-    Exact,
-    Lower,
-    Upper,
-}
-
-// What the cache records about a position: its value (or a bound on it, if the search which
-// found it was cut short by its window), the best move found, and how much work finding them
-// took (see cache::work_class)
+// (or the opponent) already has a better alternative elsewhere. So a search may find only a
+// bound on a position's value, which is enough when it is outside a later window.
+//
+// What the cache records about a position: the best lower and upper bounds found on its value
+// (equal once the value is known exactly), the best move found, and how much work finding
+// them took (see cache::work_class). Keeping both bounds, rather than one value and whether
+// it is exact or a bound, pays in this game: the same position is often reached with either
+// player to move, and so with very different windows (Barker and Korf, "Solving
+// Dots-And-Boxes", AAAI 2012).
 #[derive(Clone, Copy)]
 struct CachedEvaluation<M> {
-    value: isize,
+    lower: i16,
+    upper: i16,
     best_move: M,
-    bound: Bound,
     work: u8,
 }
 
@@ -193,22 +190,17 @@ impl<'a, M> Search<'a, M> {
     }
 }
 
-// Evaluate a position given a set of moves to consider, and the window (alpha, beta). The
-// result is exact if it is strictly inside the window; otherwise it is an upper bound (at or
-// below alpha) or a lower bound (at or above beta) on the value.
-fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, mut alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
+// Evaluate a position given a (non-empty) set of moves to consider, and the window (alpha,
+// beta). The result is exact if it is strictly inside the window; otherwise it is an upper
+// bound (at or below alpha) or a lower bound (at or above beta) on the value.
+fn eval_moves<M, P>(pos: &mut P, moves: &Vec<M>, mut alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, M)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
-    if moves.is_empty() {
-        return (0, None);
-    }
-    let alpha_orig = alpha;
-    let added_before = search.cache.added();
     let mut value = -INFINITY;
     let mut best_move = moves[0];
     for &m in moves {
         let sub_val = eval_move(pos, m, alpha, beta, search);
         if search.aborted {
-            return (0, None);
+            break;
         }
         if sub_val > value {
             value = sub_val;
@@ -219,16 +211,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
             break;
         }
     }
-    let bound = if value <= alpha_orig {
-        Bound::Upper
-    } else if value >= beta {
-        Bound::Lower
-    } else {
-        Bound::Exact
-    };
-    let work = cache::work_class(search.cache.added() - added_before + 1);
-    search.cache.insert(pos.zhash(), CachedEvaluation{ value: value, best_move: best_move, bound: bound, work: work });
-    (value, Some(best_move))
+    (value, best_move)
 }
 
 // Evaluate a single move within the window (alpha, beta): the coins it captures, plus or
@@ -300,23 +283,45 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
 }
 
 // Evaluate a position within the window (alpha, beta) (see eval_moves), using the cache
-fn eval_cache<M, P>(pos: &mut P, alpha: isize, beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
+fn eval_cache<M, P>(pos: &mut P, mut alpha: isize, mut beta: isize, search: &mut Search<M>) -> (isize, Option<M>)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
+    // The players share the remaining coins between them, so the value (the difference
+    // between their shares) is no more than the number of coins either way, and is odd or
+    // even as that number is.
+    let coins = pos.uncaptured_coins() as isize;
+    let same_parity = |v: isize| (v - coins) % 2 == 0;
+    let mut lower = -coins;
+    let mut upper = coins;
     let mut cached_move = None;
     if let Some(e) = search.cache.get(pos.zhash()) {
-        let enough = match e.bound {
-            Bound::Exact => true,
-            Bound::Lower => e.value >= beta,
-            Bound::Upper => e.value <= alpha,
-        };
-        if enough {
-            return (e.value, Some(e.best_move));
-        }
+        lower = e.lower as isize;
+        upper = e.upper as isize;
         cached_move = Some(e.best_move);
     }
+    if lower >= beta || lower == upper {
+        return (lower, cached_move);
+    }
+    if upper <= alpha {
+        return (upper, cached_move);
+    }
+    // Narrow the window to the values still possible. A value above alpha is at least the
+    // next possible value above it, so alpha can be raised to just below that, and likewise
+    // beta lowered, so long as alpha stays below beta.
+    alpha = cmp::max(alpha, lower - 1);
+    beta = cmp::min(beta, upper + 1);
+    if same_parity(alpha) && alpha + 1 < beta {
+        alpha += 1;
+    }
+    if same_parity(beta) && beta - 1 > alpha {
+        beta -= 1;
+    }
+    debug_assert!(alpha < beta);
 
     let mut moves = moves_to_consider(pos);
-    if !moves.is_empty() && search.cache.added() >= search.limit {
+    if moves.is_empty() {
+        return (0, None);
+    }
+    if search.cache.added() >= search.limit {
         search.aborted = true;
         return (0, None);
     }
@@ -325,7 +330,25 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     if let Some(i) = cached_move.and_then(|cm| moves.iter().position(|&m| m == cm)) {
         moves.swap(0, i);
     }
-    eval_moves(pos, &moves, alpha, beta, search)
+    let added_before = search.cache.added();
+    let (value, mut best_move) = eval_moves(pos, &moves, alpha, beta, search);
+    if search.aborted {
+        return (0, None);
+    }
+    if value <= alpha {
+        // No move was shown to reach alpha, so the search says nothing about which is best
+        upper = cmp::min(upper, value);
+        best_move = cached_move.unwrap_or(best_move);
+    } else if value >= beta {
+        lower = cmp::max(lower, value);
+    } else {
+        lower = value;
+        upper = value;
+    }
+    debug_assert!(lower <= upper && same_parity(lower) && same_parity(upper));
+    let work = cache::work_class(search.cache.added() - added_before + 1);
+    search.cache.insert(pos.zhash(), CachedEvaluation{ lower: lower as i16, upper: upper as i16, best_move: best_move, work: work });
+    (if value <= alpha { upper } else { lower }, Some(best_move))
 }
 
 // An evaluator which keeps the values of the positions it has evaluated, so that later
