@@ -261,32 +261,34 @@ where M: Copy, P: EvaluablePosition<M> + Clone {
     keeping_loony
 }
 
-// Determine what moves deserve consideration in a given position
-fn moves_to_consider<M, P>(pos: &mut P) -> Vec<M>
+// Determine what moves deserve consideration in a given position, and whether the player
+// to move has the choice of capturing everything on offer or double-dealing (as in a loony
+// position where neither is known to be best without searching)
+fn moves_to_consider<M, P>(pos: &mut P) -> (Vec<M>, bool)
 where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let captures = pos.captures();
     let Some(&capture) = captures.first() else {
         // A position with no captures can't be loony
         let mut moves = pos.distinct_moves();
         moves.sort_by_cached_key(|&m| pos.move_priority(m));
-        return moves;
+        return (moves, false);
     };
 
     // If there are any canonical captures, just go ahead and make one
     if !pos.is_loony() {
-        return vec!(capture);
+        return (vec!(capture), false);
     }
     if let Some(m) = captures.iter().copied().find(|&m| nimstring::would_be_loony(pos, m)) {
-        return vec!(m);
+        return (vec!(m), false);
     }
     if pos.can_capture_all() {
-        return vec!(capture);
+        return (vec!(capture), false);
     }
 
     // Consider only capturing all and double-dealing in the loony case
     // TODO: Use other canonical play results to further reduce the set of moves considered
     let ddeal_move = pos.find_ddeal_move(capture);
-    vec!(capture, ddeal_move)
+    (vec!(capture, ddeal_move), true)
 }
 
 // Evaluate a position within the window (alpha, beta) (see eval_moves), using the cache
@@ -326,9 +328,23 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     }
     debug_assert!(alpha < beta);
 
-    let mut moves = moves_to_consider(pos);
+    let (mut moves, capture_or_ddeal) = moves_to_consider(pos);
     if moves.is_empty() {
         return (0, None);
+    }
+    if capture_or_ddeal {
+        // The player to move in a loony position can take at least half the coins left
+        // (Berlekamp, "The Dots and Boxes Game", ch. 2): if capturing everything on offer
+        // and then moving in the rest of the position would net less than that, then
+        // double-dealing, which leaves the opponent to move in the rest instead, nets more.
+        // So the value is at least 0, or 1 if the number of coins is odd. That may be
+        // enough for the window; if not, at least no move need be shown to do worse. (The
+        // bound isn't cached, since no best move is known for it.)
+        let at_least = coins % 2;
+        if at_least >= beta {
+            return (at_least, Some(moves[0]));
+        }
+        alpha = cmp::max(alpha, at_least - 1);
     }
     if search.cache.added() >= search.limit {
         search.aborted = true;
@@ -647,14 +663,14 @@ mod test {
             pos.make_move(open);
             // Once the first chain is opened, capturing the first coin
             // is the only move to consider
-            assert_eq!(1, moves_to_consider(&mut pos).len());
+            assert_eq!(1, moves_to_consider(&mut pos).0.len());
             let (val, best_move) = eval(&pos);
             assert_eq!(-case.exp_val, val, "{:?}", case);
             assert_eq!(1, pos.make_move(best_move.unwrap()).coins_captured);
 
             let (val, best_move) = eval(&pos);
             if case.i > 0 {
-                assert_eq!(2, moves_to_consider(&mut pos).len());
+                assert_eq!(2, moves_to_consider(&mut pos).0.len());
             }
             assert_eq!(-case.exp_val-1, val, "{:?}", case);
 
@@ -675,7 +691,7 @@ mod test {
         let mut pos = CompoundPosition::new(vec!(make_chain(2), make_chain(2)));
         pos.make_move(CPosMove::new(0, 0, 0, Side::Left));
         pos.make_move(CPosMove::new(1, 0, 0, Side::Left));
-        assert_eq!(1, moves_to_consider(&mut pos).len());
+        assert_eq!(1, moves_to_consider(&mut pos).0.len());
     }
 
     // For use in generative tests
