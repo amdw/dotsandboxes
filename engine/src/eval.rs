@@ -293,10 +293,12 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let mut lower = -coins;
     let mut upper = coins;
     let mut cached_move = None;
-    if let Some(e) = search.cache.get(pos.zhash()) {
+    // Positions which are the same up to symmetry have the same value, so share an entry
+    let key = pos.canonical_hash();
+    if let Some(e) = search.cache.get(key) {
         lower = e.lower as isize;
         upper = e.upper as isize;
-        cached_move = Some(e.best_move);
+        cached_move = Some(pos.from_canonical_move(e.best_move));
     }
     if lower >= beta || lower == upper {
         return (lower, cached_move);
@@ -347,7 +349,7 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     }
     debug_assert!(lower <= upper && same_parity(lower) && same_parity(upper));
     let work = cache::work_class(search.cache.added() - added_before + 1);
-    search.cache.insert(pos.zhash(), CachedEvaluation{ lower: lower as i16, upper: upper as i16, best_move: best_move, work: work });
+    search.cache.insert(key, CachedEvaluation{ lower: lower as i16, upper: upper as i16, best_move: pos.to_canonical_move(best_move), work: work });
     (if value <= alpha { upper } else { lower }, Some(best_move))
 }
 
@@ -402,6 +404,7 @@ impl<M: Copy + PartialEq> Evaluator<M> {
     pub fn eval<P>(&mut self, pos: &P) -> (isize, Option<M>)
     where P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
+        pos.track_symmetries();
         let mut search = Search::new(&mut self.cache, usize::MAX);
         eval_cache(&mut pos, -INFINITY, INFINITY, &mut search)
     }
@@ -420,6 +423,7 @@ impl<M: Copy + PartialEq> Evaluator<M> {
     pub fn eval_with_moves_limited<P>(&mut self, pos: &P, max_new: usize) -> Option<(isize, HashMap<M, isize>)>
     where M: Hash + Eq, P: EvaluablePosition<M> + Clone {
         let mut pos = pos.clone();
+        pos.track_symmetries();
         let mut search = Search::new(&mut self.cache, max_new);
         let (value, _) = eval_cache(&mut pos, -INFINITY, INFINITY, &mut search);
         let mut per_move = HashMap::new();
@@ -456,6 +460,28 @@ mod test {
     use rand::seq::SliceRandom;
     use std::cmp;
     use std::time::Instant;
+
+    #[test]
+    fn cache_shared_with_and_without_symmetries() {
+        // Searches from a symmetric position take account of symmetry in their cache keys and
+        // those from other positions don't, but they can share a cache: evaluating each
+        // position of a game in turn, forwards and then backwards, with the same evaluator
+        // gives the same results as a fresh evaluator would
+        let mut r: StdRng = SeedableRng::from_seed([11; 32]);
+        for (width, height) in [(2, 2), (2, 3), (3, 3)] {
+            let mut pos = SimplePosition::new_game(width, height);
+            let mut game = vec![pos.clone()];
+            while !pos.is_end_of_game() {
+                let moves = pos.legal_moves();
+                pos.make_move(moves[r.random_range(0..moves.len())]);
+                game.push(pos.clone());
+            }
+            let mut evaluator = Evaluator::new();
+            for pos in game.iter().chain(game.iter().rev()) {
+                assert_eq!(eval_with_moves(pos), evaluator.eval_with_moves(pos), "{}", pos);
+            }
+        }
+    }
 
     #[test]
     fn eval_chain() {

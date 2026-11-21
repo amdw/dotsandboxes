@@ -128,6 +128,21 @@ pub trait Position<M> {
     // This hash should be consistent across positions,
     // i.e. equal positions should have equal hashes.
     fn zhash(&self) -> u64;
+    // A hash which is also the same for positions which are the same up to symmetry (for
+    // example, reflections of one another), and so have the same value, for use as a key
+    // when caching values. It takes account of symmetry only after track_symmetries, and
+    // is the same as zhash until then.
+    fn canonical_hash(&self) -> u64;
+    // Have canonical_hash take account of symmetry from now on, if the position is the
+    // same as one of its images (as a new game is); otherwise it stays the same as zhash.
+    // This makes moves more costly to make, so is only worth it for searches from a
+    // symmetric position, which meet many pairs of symmetric positions.
+    fn track_symmetries(&mut self);
+    // Convert a move to or from the form in which to cache it under canonical_hash, such
+    // that a move cached from one position can be read back as the corresponding move in
+    // any position with the same canonical hash.
+    fn to_canonical_move(&self, m: M) -> M;
+    fn from_canonical_move(&self, m: M) -> M;
 }
 
 // Plain-data description of a SimplePosition, for exchange with other programs
@@ -485,6 +500,30 @@ impl Position<Move> for SimplePosition {
     fn zhash(self: &SimplePosition) -> u64 {
         self.zhash.current_value()
     }
+
+    fn canonical_hash(self: &SimplePosition) -> u64 {
+        self.zhash.canonical_value()
+    }
+
+    fn track_symmetries(self: &mut SimplePosition) {
+        self.zhash.track_symmetries(self.width, self.height, &self.strings);
+    }
+
+    fn to_canonical_move(self: &SimplePosition, m: Move) -> Move {
+        if !self.zhash.tracking_symmetries() {
+            return m;
+        }
+        let image = transform_move(self.width, self.height, self.zhash.canonical_symmetry(), m);
+        self.normalise_move(image).unwrap_or(m)
+    }
+
+    fn from_canonical_move(self: &SimplePosition, m: Move) -> Move {
+        if !self.zhash.tracking_symmetries() || m.x >= self.width || m.y >= self.height {
+            return m;
+        }
+        let original = untransform_move(self.width, self.height, self.zhash.canonical_symmetry(), m);
+        self.normalise_move(original).unwrap_or(m)
+    }
 }
 
 impl PartialEq for SimplePosition {
@@ -555,12 +594,75 @@ fn edge_index(width: usize, height: usize, m: Move) -> usize {
     }
 }
 
+const MAX_SYMMETRIES: usize = 8;
+
+// The symmetries of a board: each is a combination of a left-right flip (1), a top-bottom
+// flip (2), and, on a square board only, a reflection in the leading diagonal (4), applied
+// in that order.
+fn symmetry_count(width: usize, height: usize) -> usize {
+    if width == height { 8 } else { 4 }
+}
+
+// The move a symmetry takes a move to
+fn transform_move(width: usize, height: usize, symmetry: usize, m: Move) -> Move {
+    let mut m = m;
+    if symmetry & 1 != 0 {
+        m.x = width - 1 - m.x;
+        m.side = match m.side { Side::Left => Side::Right, Side::Right => Side::Left, s => s };
+    }
+    if symmetry & 2 != 0 {
+        m.y = height - 1 - m.y;
+        m.side = match m.side { Side::Top => Side::Bottom, Side::Bottom => Side::Top, s => s };
+    }
+    if symmetry & 4 != 0 {
+        m = transpose_move(m);
+    }
+    m
+}
+
+// The move a symmetry takes to a given move
+fn untransform_move(width: usize, height: usize, symmetry: usize, m: Move) -> Move {
+    // Each of the three reflections undoes itself, and the two flips can be made in
+    // either order
+    let m = if symmetry & 4 != 0 { transpose_move(m) } else { m };
+    transform_move(width, height, symmetry & 3, m)
+}
+
+fn transpose_move(m: Move) -> Move {
+    let side = match m.side {
+        Side::Top => Side::Left,
+        Side::Left => Side::Top,
+        Side::Bottom => Side::Right,
+        Side::Right => Side::Bottom,
+    };
+    Move{ x: m.y, y: m.x, side: side }
+}
+
 // Struct to encapsulate Zobrist hash for positions
-// It has one random value per string, at the string's edge_index
+// It has one random value per string, at the string's edge_index. Once asked to (see
+// track_symmetries), it also keeps the hash of the position's image under each symmetry of
+// the board (see symmetry_count): the least of these is the same for all positions which
+// are images of one another. Until then it keeps only the position's own hash, since the
+// others make every move several times as costly to hash.
 #[derive(Clone)]
 struct ZHash {
     current_val: u64,
+    // (A boxed slice rather than a Vec, to keep positions small)
+    strings: Box<[u64]>,
+    // Boxed, to keep positions which don't track symmetries small: the Nimstring calculator
+    // creates and moves many of them
+    images: Option<Box<ImageHashes>>,
+}
+
+// The hashes of a position's images under each symmetry of the board other than the
+// identity, the first of which is symmetry 1
+#[derive(Clone)]
+struct ImageHashes {
+    current_vals: [u64; MAX_SYMMETRIES - 1],
+    // For each string, the random value of its image under each symmetry, at
+    // edge_index * (symmetries - 1) + symmetry - 1
     strings: Vec<u64>,
+    symmetries: usize,
 }
 
 impl ZHash {
@@ -589,23 +691,105 @@ impl ZHash {
 
         ZHash{
             current_val: r.random(),
-            strings: strings,
+            strings: strings.into_boxed_slice(),
+            images: None,
         }
     }
 
     // Toggle the element for each string which has been cut (is false) in a position's
-    // string array, indexed in the same way as this hash's
+    // string array, indexed by edge_index
     fn toggle_cut_strings(self: &mut ZHash, present: &[bool]) {
-        self.current_val ^= self.strings.iter().zip(present)
-            .filter(|&(_, &p)| !p).fold(0, |acc, (&v, _)| acc ^ v);
+        for (edge_index, _) in present.iter().enumerate().filter(|&(_, &p)| !p) {
+            self.toggle_element(edge_index);
+        }
+    }
+
+    // Start keeping the hashes of the position's images under all the board's symmetries,
+    // given the position's string array, if the position is the same as one of its images
+    // (as a new game is), so that canonical_value takes account of the symmetries from now
+    // on. Otherwise keep only its own hash: a search from such a position rarely meets two
+    // images of the same position, so tracking them costs more than it saves.
+    fn track_symmetries(self: &mut ZHash, width: usize, height: usize, present: &[bool]) {
+        if self.images.is_some() {
+            return;
+        }
+        let symmetries = symmetry_count(width, height);
+        let others = symmetries - 1;
+        let mut strings = vec![0; self.strings.len() * others];
+        for x in 0..width {
+            for y in 0..height {
+                for side in Side::ALL {
+                    let m = Move::new(x, y, side);
+                    for symmetry in 1..symmetries {
+                        let image = transform_move(width, height, symmetry, m);
+                        strings[edge_index(width, height, m) * others + symmetry - 1] = self.strings[edge_index(width, height, image)];
+                    }
+                }
+            }
+        }
+        // The hash of the position with no strings cut, from which to find its images'
+        let initial_val = present.iter().zip(&self.strings).filter(|&(&p, _)| !p)
+            .fold(self.current_val, |acc, (_, &v)| acc ^ v);
+        let mut images = ImageHashes{
+            current_vals: [initial_val; MAX_SYMMETRIES - 1],
+            strings: strings,
+            symmetries: symmetries,
+        };
+        for (edge_index, _) in present.iter().enumerate().filter(|&(_, &p)| !p) {
+            images.toggle_element(edge_index);
+        }
+        if images.current_vals[..others].contains(&self.current_val) {
+            self.images = Some(Box::new(images));
+        }
+    }
+
+    // Whether the hashes of the position's images are being kept
+    fn tracking_symmetries(self: &ZHash) -> bool {
+        self.images.is_some()
     }
 
     fn current_value(self: &ZHash) -> u64 {
         self.current_val
     }
 
+    // The symmetry under which the position's image has the least hash, and that hash
+    fn canonical(self: &ZHash) -> (usize, u64) {
+        let mut best = (0, self.current_val);
+        if let Some(images) = &self.images {
+            for symmetry in 1..images.symmetries {
+                if images.current_vals[symmetry - 1] < best.1 {
+                    best = (symmetry, images.current_vals[symmetry - 1]);
+                }
+            }
+        }
+        best
+    }
+
+    fn canonical_symmetry(self: &ZHash) -> usize {
+        self.canonical().0
+    }
+
+    // The least hash of the position's images under the symmetries
+    fn canonical_value(self: &ZHash) -> u64 {
+        self.canonical().1
+    }
+
+    #[inline]
     fn toggle_element(self: &mut ZHash, edge_index: usize) {
         self.current_val ^= self.strings[edge_index];
+        if let Some(images) = &mut self.images {
+            images.toggle_element(edge_index);
+        }
+    }
+}
+
+impl ImageHashes {
+    fn toggle_element(self: &mut ImageHashes, edge_index: usize) {
+        let others = self.symmetries - 1;
+        let start = edge_index * others;
+        for (val, string) in self.current_vals[..others].iter_mut().zip(&self.strings[start..start + others]) {
+            *val ^= string;
+        }
     }
 }
 
@@ -752,6 +936,28 @@ impl Position<CPosMove> for CompoundPosition {
             result ^= part.zhash();
         }
         result
+    }
+
+    // The parts are independent, so each can be replaced by any of its images
+    fn canonical_hash(self: &CompoundPosition) -> u64 {
+        self.parts.iter().fold(0, |acc, part| acc ^ part.canonical_hash())
+    }
+
+    fn track_symmetries(self: &mut CompoundPosition) {
+        for part in self.parts.iter_mut() {
+            part.track_symmetries();
+        }
+    }
+
+    fn to_canonical_move(self: &CompoundPosition, m: CPosMove) -> CPosMove {
+        CPosMove{ part: m.part, m: self.parts[m.part].to_canonical_move(m.m) }
+    }
+
+    fn from_canonical_move(self: &CompoundPosition, m: CPosMove) -> CPosMove {
+        match self.parts.get(m.part) {
+            Some(part) => CPosMove{ part: m.part, m: part.from_canonical_move(m.m) },
+            None => m,
+        }
     }
 }
 
@@ -1125,6 +1331,69 @@ mod tests {
         }
         assert_eq!(1, hashes.len());
         assert_eq!(hashes.pop().unwrap(), pos.zhash());
+    }
+
+    #[test]
+    fn symmetries_tracked_only_for_symmetric_positions() {
+        // A new game is the same as its images, so its canonical hash takes account of
+        // symmetry from then on; a position which is the same as none of its images keeps
+        // its own hash as its canonical one
+        let mut pos = SimplePosition::new_game(3, 2);
+        pos.make_move(Move::new(0, 0, Side::Top));
+        let mut tracked = pos.clone();
+        tracked.track_symmetries();
+        assert_eq!(pos.zhash(), tracked.canonical_hash());
+        assert!(!tracked.zhash.tracking_symmetries());
+
+        let mut tracked = SimplePosition::new_game(3, 2);
+        tracked.track_symmetries();
+        assert!(tracked.zhash.tracking_symmetries());
+        tracked.make_move(Move::new(0, 0, Side::Top));
+        let mut image = SimplePosition::new_game(3, 2);
+        image.track_symmetries();
+        image.make_move(Move::new(2, 1, Side::Bottom));
+        assert_eq!(tracked.canonical_hash(), image.canonical_hash());
+        assert_ne!(tracked.zhash(), image.zhash());
+    }
+
+    #[test]
+    fn canonical_hashes_and_moves() {
+        // Play the same random game on a board and on each of its images under the board's
+        // symmetries: the canonical hashes agree throughout, and a move converted to
+        // canonical form on one board converts back to a corresponding move on the other
+        for (width, height) in [(3, 3), (2, 4), (1, 3), (1, 1)] {
+            let mut r: StdRng = SeedableRng::from_seed([7; 32]);
+            for symmetry in 0..symmetry_count(width, height) {
+                let mut pos = SimplePosition::new_game(width, height);
+                let mut image = SimplePosition::new_game(width, height);
+                pos.track_symmetries();
+                image.track_symmetries();
+                let mut canonical_hashes = HashSet::new();
+                loop {
+                    assert_eq!(pos.canonical_hash(), image.canonical_hash());
+                    canonical_hashes.insert(pos.canonical_hash());
+                    let moves = pos.legal_moves();
+                    if moves.is_empty() {
+                        break;
+                    }
+                    let m = moves[r.random_range(0..moves.len())];
+                    let image_move = image.normalise_move(transform_move(width, height, symmetry, m)).unwrap();
+                    assert_eq!(m, pos.normalise_move(untransform_move(width, height, symmetry, image_move)).unwrap());
+                    assert!(image.is_legal_move(image_move));
+                    // (The move read back needn't be image_move itself, if the position has
+                    // symmetries of its own, but it leads to an equivalent position)
+                    let read_back = image.from_canonical_move(pos.to_canonical_move(m));
+                    assert!(image.is_legal_move(read_back));
+                    pos.make_move(m);
+                    image.make_move(read_back);
+                    assert_eq!(pos.canonical_hash(), image.canonical_hash(), "symmetry {} move {}", symmetry, m);
+                    image.undo_move(read_back);
+                    image.make_move(image_move);
+                }
+                // Different positions of the game still have different hashes
+                assert_eq!(edge_count(width, height) + 1, canonical_hashes.len());
+            }
+        }
     }
 
     #[test]
