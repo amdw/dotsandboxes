@@ -143,8 +143,7 @@ pub fn make_move(data: &CompoundPositionData, m: CPosMove) -> Result<MoveResult,
 // Most positions cached by the evaluator and the Nimstring calculator kept between
 // calculations (see Evaluator::with_max_cached), to bound their memory use. Beyond this, they
 // forget the values cheapest to calculate again. This fills a hash table of 2^24 entries,
-// about 550MB for the evaluator in WebAssembly, the next size up being too big to allocate
-// there (and too big for many phones).
+// about 285MB for the evaluator in WebAssembly.
 pub const MAX_CACHED_POSITIONS: usize = (1 << 24) / 8 * 7;
 
 // Evaluate a position with an evaluator kept between evaluations, so later evaluations
@@ -353,13 +352,13 @@ mod tests {
 
         // Likewise with too small a cache to keep everything, so values are forgotten
         let full = evaluate(&pos).unwrap();
-        let mut evaluator = Evaluator::with_max_cached(2000);
+        let mut evaluator = Evaluator::with_max_cached(300);
         let chunked = loop {
             if let Some(result) = evaluate_with(&mut evaluator, &pos, Some(200)).unwrap() {
                 break result;
             }
         };
-        assert!(evaluator.positions_evaluated() > 2000);
+        assert!(evaluator.positions_evaluated() > 300 && evaluator.positions_forgotten() > 0);
         assert_eq!((full.value, full.moves), (chunked.value, chunked.moves));
     }
 
