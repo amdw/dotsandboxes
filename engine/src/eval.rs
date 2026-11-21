@@ -396,6 +396,34 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     (if value <= alpha { upper } else { lower }, Some(best_move))
 }
 
+// Evaluate a position exactly. Rather than one search with a wide window, this makes a
+// series of searches with the narrowest possible windows, each asking only whether the value
+// is at least some guess, and each starting from the answer to the last (the MTD(f)
+// algorithm of Plaat et al.): the narrow windows cut off far more of each search, and the
+// cache means little is searched twice.
+fn eval_root<M, P>(pos: &mut P, search: &mut Search) -> (isize, Option<M>)
+where M: Copy + PartialEq, P: EvaluablePosition<M> {
+    let coins = pos.uncaptured_coins() as isize;
+    let (mut lower, mut upper) = (-coins, coins);
+    // Most positions reached in play are close to level
+    let mut guess = coins % 2;
+    while lower < upper {
+        let beta = if guess == lower { guess + 1 } else { guess };
+        let (value, _) = eval_cache(pos, beta - 1, beta, search);
+        if search.aborted {
+            return (0, None);
+        }
+        if value < beta {
+            upper = value;
+        } else {
+            lower = value;
+        }
+        guess = value;
+    }
+    // The value is now cached (unless the cache was too full to keep it), with its move
+    eval_cache(pos, -INFINITY, INFINITY, search)
+}
+
 // An evaluator which keeps the values of the positions it has evaluated, so that later
 // evaluations can reuse them: for example, as a game goes on, most of the positions
 // reachable from the next position were already explored when evaluating the previous one.
@@ -451,7 +479,7 @@ impl<M: Copy + PartialEq> Evaluator<M> {
         let mut pos = pos.clone();
         pos.track_symmetries();
         let mut search = Search::new(&mut self.cache, usize::MAX);
-        eval_cache(&mut pos, -INFINITY, INFINITY, &mut search)
+        eval_root(&mut pos, &mut search)
     }
 
     // Calculate the value function of a given position, along with the value achieved by
@@ -470,7 +498,7 @@ impl<M: Copy + PartialEq> Evaluator<M> {
         let mut pos = pos.clone();
         pos.track_symmetries();
         let mut search = Search::new(&mut self.cache, max_new);
-        let (value, _) = eval_cache(&mut pos, -INFINITY, INFINITY, &mut search);
+        let (value, _) = eval_root(&mut pos, &mut search);
         let mut per_move = HashMap::new();
         for m in pos.legal_moves() {
             if search.aborted {
