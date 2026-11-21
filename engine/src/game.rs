@@ -197,10 +197,14 @@ fn v_line_move(x: usize, y: usize) -> Move {
 pub struct SimplePosition {
     width: usize,
     height: usize,
-    strings: Vec<bool>,
+    // (Boxed slices rather than Vecs, to keep positions small: the Nimstring calculator
+    // creates and moves many of them)
+    strings: Box<[bool]>,
     // The valency of each coin, at its coin_index: derived from the strings,
     // but kept up to date as strings are cut and restored, since it is needed so often
-    valencies: Vec<u8>,
+    valencies: Box<[u8]>,
+    // The number of coins with any strings left, likewise kept up to date
+    uncaptured: usize,
     zhash: ZHash,
 }
 
@@ -225,8 +229,9 @@ impl SimplePosition {
         SimplePosition {
             width: width,
             height: height,
-            strings: strings,
-            valencies: vec![valency; width * height],
+            strings: strings.into_boxed_slice(),
+            valencies: vec![valency; width * height].into_boxed_slice(),
+            uncaptured: if init_string { width * height } else { 0 },
             zhash: zhash,
         }
     }
@@ -357,16 +362,24 @@ impl SimplePosition {
 
     fn set_string_value(self: &mut SimplePosition, m: Move, val: bool) {
         if self.is_legal_move(m) != val {
-            let change = |v: &mut u8| if val { *v += 1 } else { *v -= 1 };
             let i = self.coin_index(m.x, m.y);
-            change(&mut self.valencies[i]);
+            self.change_valency(i, val);
             if let Some((nx, ny)) = self.offset(m.x, m.y, m.side) {
                 let i = self.coin_index(nx, ny);
-                change(&mut self.valencies[i]);
+                self.change_valency(i, val);
             }
         }
         let i = self.edge_index(m);
         self.strings[i] = val;
+    }
+
+    // Record that the coin at a coin_index has gained (or lost) a string
+    fn change_valency(self: &mut SimplePosition, coin_index: usize, gained: bool) {
+        let v = &mut self.valencies[coin_index];
+        let before = *v;
+        if gained { *v += 1 } else { *v -= 1 }
+        let after = *v;
+        self.uncaptured = self.uncaptured + (before == 0) as usize - (after == 0) as usize;
     }
 
     // Whether a move cuts a string between a coin and the ground when the coin has another
@@ -455,11 +468,12 @@ impl Position<Move> for SimplePosition {
     }
 
     fn is_end_of_game(self: &SimplePosition) -> bool {
-        !self.strings.iter().any(|&b| b)
+        // Every string is attached to a coin, so none are left once every coin is captured
+        self.uncaptured == 0
     }
 
     fn uncaptured_coins(self: &SimplePosition) -> usize {
-        self.valencies.iter().filter(|&&v| v > 0).count()
+        self.uncaptured
     }
 
     fn legal_moves(self: &SimplePosition) -> Vec<Move> {
@@ -649,7 +663,7 @@ fn transpose_move(m: Move) -> Move {
 #[derive(Clone)]
 struct ZHash {
     current_val: u64,
-    // (A boxed slice rather than a Vec, to keep positions small)
+    // (A boxed slice rather than a Vec, to keep positions small, as in SimplePosition)
     strings: Box<[u64]>,
     // Boxed, to keep positions which don't track symmetries small: the Nimstring calculator
     // creates and moves many of them
@@ -1701,6 +1715,11 @@ mod tests {
                 assert_eq!(count_strings(pos, x, y), pos.valency(x, y), "({}, {}) in {}", x, y, pos);
             }
         }
+        // The count of uncaptured coins is kept up to date too
+        let uncaptured = (0..pos.width()).flat_map(|x| (0..pos.height()).map(move |y| (x, y)))
+            .filter(|&(x, y)| count_strings(pos, x, y) > 0).count();
+        assert_eq!(uncaptured, pos.uncaptured_coins(), "{}", pos);
+        assert_eq!(uncaptured == 0, pos.is_end_of_game(), "{}", pos);
     }
 
     #[test]
