@@ -31,6 +31,11 @@ pub trait EvaluablePosition<M> : NimstringPosition<M> {
     // Whether captures alone can take every remaining coin, ending the game. (Capturing only
     // makes other coins easier to capture, so the order the captures are made in doesn't matter.)
     fn can_capture_all(&self) -> bool;
+
+    // How soon the search should try a move which captures nothing: lower is sooner. Trying
+    // the moves likeliest to be best first narrows the search window soonest, so the rest
+    // need less work. This affects only the speed of the search, never its result.
+    fn move_priority(&self, m: M) -> usize;
 }
 
 impl EvaluablePosition<Move> for SimplePosition {
@@ -99,6 +104,28 @@ impl EvaluablePosition<Move> for SimplePosition {
         }
         captured.iter().all(|&c| c)
     }
+
+    // Moves which offer the opponent a coin (by leaving it with one string) come last, as
+    // they are usually bad. Otherwise, moves nearest the centre of the board come first:
+    // Barker and Korf ("Solving Dots-And-Boxes", AAAI 2012) found this simple ordering
+    // made their search many times faster on empty boards.
+    fn move_priority(self: &SimplePosition, m: Move) -> usize {
+        // The string's midpoint, in units of half a coin from the board's top left corner
+        let (mx, my) = match m.side {
+            Side::Top => (2 * m.x + 1, 2 * m.y),
+            Side::Bottom => (2 * m.x + 1, 2 * m.y + 2),
+            Side::Left => (2 * m.x, 2 * m.y + 1),
+            Side::Right => (2 * m.x + 2, 2 * m.y + 1),
+        };
+        let centre_distance = mx.abs_diff(self.width()) + my.abs_diff(self.height());
+        let offers_coin = self.valency(m.x, m.y) == 2
+            || self.offset(m.x, m.y, m.side).is_some_and(|(nx, ny)| self.valency(nx, ny) == 2);
+        if offers_coin {
+            centre_distance + 2 * (self.width() + self.height()) + 1
+        } else {
+            centre_distance
+        }
+    }
 }
 
 impl EvaluablePosition<CPosMove> for CompoundPosition {
@@ -108,6 +135,10 @@ impl EvaluablePosition<CPosMove> for CompoundPosition {
 
     fn can_capture_all(self: &CompoundPosition) -> bool {
         self.parts.iter().all(|p| p.can_capture_all())
+    }
+
+    fn move_priority(self: &CompoundPosition, m: CPosMove) -> usize {
+        self.parts[m.part].move_priority(m.m)
     }
 }
 
@@ -246,7 +277,9 @@ where M: Copy + PartialEq, P: EvaluablePosition<M> {
     let captures = pos.captures();
     let Some(&capture) = captures.first() else {
         // A position with no captures can't be loony
-        return pos.distinct_moves();
+        let mut moves = pos.distinct_moves();
+        moves.sort_by_cached_key(|&m| pos.move_priority(m));
+        return moves;
     };
 
     // If there are any canonical captures, just go ahead and make one
@@ -483,7 +516,10 @@ mod test {
         let (val, best_move) = eval(&pos);
         let best_move = best_move.unwrap();
         assert_eq!(-3, val);
-        assert!(pos.moves_equivalent(best_move, Move{x: 0, y: 0, side: Side::Bottom}));
+        // Several moves are equally good here, so check the one chosen is among them
+        let (_, per_move) = eval_with_moves(&pos);
+        assert_eq!(-3, per_move[&best_move]);
+        assert_eq!(-3, per_move[&Move{x: 0, y: 0, side: Side::Bottom}]);
 
         pos.make_move(Move{x: 0, y: 0, side: Side::Bottom});
         let (val, _) = eval(&pos);
